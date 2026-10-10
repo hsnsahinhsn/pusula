@@ -19,31 +19,40 @@ Geleneksel üretken LLM'leri (GPT-4, Claude, Qwen vb.) her karar, güvenlik dene
 
 ---
 
-## 🌐 23 Makro Alanı Kapsayan Evrensel Taksonomi
+## 🌐 32 Makro Alanı Kapsayan Evrensel Taksonomi
 
 1. **Evrensel Ana Yönlendirici (Master Router)**
 2. **Tüm Sınavlar:** SAT, ACT, ESAT, STEP, IMAT, BMAT, IELTS, TOEFL, PTE, GRE, GMAT, YKS (TYT/AYT), LGS, KPSS, ALES, DGS, TUS, DUS.
 3. **Sağlık, Tıp & Klinik Triyaj:** 112 acil durum, dahiliye, çocuk, ortopedi, psikiyatri, tahlil/lab, ilaç etkileşimi.
 4. **Hukuk & Adalet:** İçtihat/emsal karar, sözleşmeler, iş/tazminat, ceza, KVKK, resmi dilekçe taslağı.
 5. **Bankacılık, Finans & Kripto:** Fraud/dolandırıcılık alarmı, kredi faizleri, BIST hisse/fonlar, kripto varlıklar, makroekonomi.
-6. **Yazılım, BT & Yapay Zeka:** Debug/hata ayıklama, kod refactor, SQL/veritabanı, Docker/K8s/DevOps, PyTorch/MLOps, API entegrasyonu.
-7. **Temel Bilimler (İleri STEM):** İleri matematik, geometri ispatları, kuantum/klasik fizik, organik kimya, moleküler biyoloji/genetik.
-8. **Mühendislik & İmalat:** Elektrik-elektronik, makine/mekatronik/CAD, inşaat/statik/deprem, endüstri, TSE/ISO standartları.
-9. **E-Ticaret & Pazar Yerleri:** İade/cayma hakkı, kargo gecikmesi, mükerrer ödeme, stok/ürün sorgusu, pazar yeri operasyonları.
-10. **Emlak, Gayrimenkul & Tapu:** Kira artış oranı, tahliye taahhütnamesi, tapu/kadastro, konut değerleme rayici.
-11. **Otomotiv & Araç Bakımı:** Motor arıza lambası / OBD-II kodları, ekspertiz/tramer, kasko/trafik sigortası, periyodik bakım.
-12. **Kariyer, İK & İstihdam:** ATS uyumlu CV/LinkedIn, mülakat simülasyonu, maaş pazarlığı, istifa/ihbar süreçleri.
-13. **Seyahat, Turizm & Vize:** Schengen ve ABD vize evrakları, konsolosluk randevusu, uçak/otel rezervasyonu, gezi rotası.
-14. **Beslenme, Fitness & Spor:** Günlük kalori/makro hesabı, diyet programları, hipertrofi antrenman planı, sporcu takviyeleri.
-15. **Tarım, Ziraat & Veterinerlik:** Evcil hayvan acil zehirlenme, kedi/köpek bakımı, bitki hastalıkları ve tarımsal sulama.
-16. **Siyaset & Kamu Diplomasisi:** e-Devlet işlemleri, seçim/anayasa süreçleri, jeopolitik, tarafsız olgusal bilgi.
-17. **Dilbilim, Çeviri & Edebiyat:** Yeminli tercüme, yabancı dil öğrenimi, proofreading, yaratıcı metin yazarlığı.
-18. **Medya, Pazarlama & Tasarım:** SEO analizi, sosyal medya stratejisi, reklam kampanyaları (Google/Meta Ads), grafik tasarım.
-19. **Felsefe, Din, Etik & Sosyoloji:** Yapay zeka ve biyoetik ikilemleri, ilahiyat soruları, epistemoloji/ontoloji, toplum analizi.
-20. **Psikolojik Kriz & Acil Destek:** İntihar/kendine zarar riski (182 / 112 Acil), aile içi şiddet (183 KADES), panik atak ilk yardım.
-21. **Gündelik Sohbet (Chit-Chat):** Selamlaşma, hal-hatır, hafif sohbeti tanıyan ve ağır servislere gitmeyen vana.
-22. **Kişisel Verimlilik & Asistanlık:** Takvim kurma, e-posta taslağı, yapılacaklar listesi, uzun notları özetleme.
-23. **Güvenlik, Guardrails & Fallback:** Prompt injection, jailbreak, kredi kartı/TC PII ifşası ve anlamsız girdileri ayıklama.
+6. **Sigortacılık, Aktüerya & Sosyal Güvenlik:** SGK, emeklilik hesabı, prim günleri, DASK, kasko/trafik hasar tazminatı, BES.
+7. **Yazılım, BT & Yapay Zeka:** Debug/hata ayıklama, kod refactor, SQL/veritabanı, Docker/K8s/DevOps, PyTorch/MLOps, API entegrasyonu.
+8. **Temel Bilimler (İleri STEM):** İleri matematik, geometri ispatları, kuantum/klasik fizik, organik kimya, moleküler biyoloji/genetik.
+9. **Mühendislik & İmalat:** Elektrik-elektronik, makine/mekatronik/CAD, inşaat/statik/deprem, endüstri, TSE/ISO standartları.
+10. **E-Ticaret & Pazar Yerleri:** İade/cayma hakkı, kargo gecikmesi, mükerrer ödeme, stok/ürün sorgusu, pazar yeri operasyonları.
+11. **Lojistik, Gümrük & Tedarik Zinciri:** Uluslararası navlun, konşimento, GTİP kodu tespiti, gümrükleme, antrepo ve soğuk zincir.
+12. **Emlak, Gayrimenkul & Tapu:** Kira artış oranı, tahliye taahhütnamesi, tapu/kadastro, konut değerleme rayici.
+13. **Otomotiv & Araç Bakımı:** Motor arıza lambası / OBD-II kodları, ekspertiz/tramer, kasko/trafik sigortası, periyodik bakım.
+14. **Kariyer, İK & İstihdam:** ATS uyumlu CV/LinkedIn, mülakat simülasyonu, maaş pazarlığı, istifa/ihbar süreçleri.
+15. **Seyahat, Turizm & Vize:** Schengen ve ABD vize evrakları, konsolosluk randevusu, uçak/otel rezervasyonu, gezi rotası.
+16. **Gastronomi, Mutfak Sanatları & Gıda Güvenliği:** Yemek tarifleri, pişirme teknikleri, gıda bozulması/botulizm riski, alerjenler.
+17. **Beslenme, Fitness & Spor:** Günlük kalori/makro hesabı, diyet programları, hipertrofi antrenman planı, sporcu takviyeleri.
+18. **Ebeveynlik, Çocuk Gelişimi & Aile:** Bebek bakımı/beslenme, dil/motor gelişimi, ergenlik krizleri, ekran bağımlılığı.
+19. **Tarım, Ziraat & Veterinerlik:** Evcil hayvan acil zehirlenme, kedi/köpek bakımı, bitki hastalıkları ve tarımsal sulama.
+20. **Çevre, İklim & Temiz Enerji:** Çatı GES/Güneş enerjisi, karbon ayak izi, sıfır atık, ÇED raporları, enerji kimlik belgesi.
+21. **Siyaset & Kamu Diplomasisi:** e-Devlet işlemleri, seçim/anayasa süreçleri, jeopolitik, tarafsız olgusal bilgi.
+22. **Tarih, Arkeoloji & Kültürel Miras:** Osmanlı/Selçuklu, Cumhuriyet ve inkılaplar, Antik Anadolu, dünya savaşları tarihi.
+23. **Dilbilim, Çeviri & Edebiyat:** Yeminli tercüme, yabancı dil öğrenimi, proofreading, yaratıcı metin yazarlığı.
+24. **Sanat, Müzik, Sinema & Tiyatro:** Müzik teorisi/armoni, film tahlili/dramaturji, resim teknikleri, sanat tarihi.
+25. **Oyun, E-Spor & Oyun Geliştirme:** Unreal/Unity script, oyun mekanikleri/level design, rekabetçi e-spor, FPS ayarları.
+26. **Medya, Pazarlama & Tasarım:** SEO analizi, sosyal medya stratejisi, reklam kampanyaları (Google/Meta Ads), grafik tasarım.
+27. **Moda, Tekstil & Kişisel Bakım:** Cilt bakımı aktif içerikler (retinol/C vitamini), saç dökülmesi, kumaş türleri, stil rehberi.
+28. **Felsefe, Din, Etik & Sosyoloji:** Yapay zeka ve biyoetik ikilemleri, ilahiyat soruları, epistemoloji/ontoloji, toplum analizi.
+29. **Psikolojik Kriz & Acil Destek:** İntihar/kendine zarar riski (182 / 112 Acil), aile içi şiddet (183 KADES), panik atak ilk yardım.
+30. **Gündelik Sohbet (Chit-Chat):** Selamlaşma, hal-hatır, hafif sohbeti tanıyan ve ağır servislere gitmeyen vana.
+31. **Kişisel Verimlilik & Asistanlık:** Takvim kurma, e-posta taslağı, yapılacaklar listesi, uzun notları özetleme.
+32. **Güvenlik, Guardrails & Fallback:** Prompt injection, jailbreak, kredi kartı/TC PII ifşası ve anlamsız girdileri ayıklama.
 
 ---
 
@@ -51,7 +60,7 @@ Geleneksel üretken LLM'leri (GPT-4, Claude, Qwen vb.) her karar, güvenlik dene
 
 ```
 turkish-decision-model/
-├── config.py                  # 23 dikey alan, model ve eğitim hiperparametreleri
+├── config.py                  # 32 dikey alan, model ve eğitim hiperparametreleri
 ├── synthetic_generator.py     # Yerel Qwen LLM ile sentetik Türkçe JSONL veri üretici
 ├── model.py                   # PyTorch Türkçe Tipli Karar Modeli Mimarisi
 ├── train.py                   # bfloat16 + Flash Attention eğitim ve kalibrasyon döngüsü

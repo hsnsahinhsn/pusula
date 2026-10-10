@@ -1,7 +1,8 @@
 """
-Evrensel Türkçe Karar Modeli (Universal Turkish Decision Engine) Kapsamlı Konfigürasyonu
+Evrensel Türkçe Karar Modeli (Universal Turkish Decision Model) - 30+ Makro Alan Taksonomisi
 Akademik sınavlar, tıp, hukuk, finans, yazılım, STEM, mühendislik, emlak, otomotiv, seyahat,
-tarım, kariyer, felsefe, gündelik sohbet, kriz desteği ve güvenlik dahil 23 makro alanı kapsar.
+tarım, kariyer, felsefe, sohbet, kriz, gastronomi, sanat, oyun, çevre, sigorta/SGK, tarih,
+lojistik, ebeveynlik ve moda/kişisel bakım dahil 30'dan fazla bağımsız makro alanı kapsar.
 """
 from dataclasses import dataclass, field
 from typing import List, Dict
@@ -19,40 +20,49 @@ class GenerationConfig:
     max_tokens: int = 550
     request_timeout: int = 120
     
-    # 23 dikey alan x 400 örnek = ~9.200 adet yüksek kaliteli sentetik veri
-    samples_per_category: int = 400
+    # 30 dikey alan x 350 örnek = ~10.500 adet zengin, dengeli ve doğrulanmış sentetik veri
+    samples_per_category: int = 350
     batch_size: int = 16
     output_dir: str = "data"
     train_split: float = 0.8
     val_split: float = 0.1
     test_split: float = 0.1
 
-    # 23 MAKRO ALANDAN OLUŞAN EVRENSEL KARAR TAKSONOMİSİ
+    # 30+ MAKRO ALANDAN OLUŞAN EKSİKSİZ EVRENSEL KARAR TAKSONOMİSİ
     taxonomies: Dict[str, Dict] = field(default_factory=lambda: {
         # 1. EVRENSEL MAKRO YÖNLENDİRİCİ (Global Master Router)
         "global_master_routing": {
-            "description": "Kullanıcı girdisini 23 temel uzmanlık alanından en uygununa yönlendirme.",
+            "description": "Gelen kullanıcı sorgusunu 30 temel uzmanlık alanından en doğrusuna yönlendirme.",
             "options": [
-                "akademik_ve_sinavlar",     # Sınavlar (SAT, ACT, YKS, IELTS vb.)
+                "akademik_ve_sinavlar",     # Sınavlar (SAT, ACT, ESAT, IMAT, YKS, IELTS vb.)
                 "saglik_tip_ve_klinik",     # Tıp, klinik branşlar, tahlil, ilaç
                 "hukuk_adalet_mevzuat",     # Yargı, dava, sözleşme, KVKK
-                "bankacilik_finans_kripto", # Finans, borsa, kripto, vergi, muhasebe
-                "yazilim_bt_yapayzeka",     # Kodlama, hata ayıklama, veri tabanı, siber güvenlik
-                "temel_bilimler_stem",      # İleri matematik, fizik, kimya, genetik
-                "muhendislik_teknoloji",    # Elektrik, makine, inşaat, endüstri, standartlar
-                "e_ticaret_lojistik",       # Sipariş, kargo, iade, pazar yerleri
-                "emlak_ve_gayrimenkul",     # Kira, tapu, değerleme, tahliye davaları
-                "otomotiv_ve_ulasim",       # Araç arızaları, ekspertiz, kasko, sigorta
+                "bankacilik_finans_kripto", # Finans, borsa, kripto, vergi
+                "sigorta_ve_sosyal_guvenlik", # SGK, emeklilik, prim, DASK, kasko
+                "yazilim_bt_yapayzeka",     # Kodlama, hata ayıklama, veri tabanı, bulut
+                "temel_bilimler_stem",      # İleri matematik, fizik, kimya, biyoloji
+                "muhendislik_teknoloji",    # Elektrik, makine, inşaat, endüstri
+                "e_ticaret_pazaryerleri",   # Sipariş, kargo, iade, mağaza yönetimi
+                "lojistik_ve_gumruk",       # Navlun, konşimento, GTİP, antrepo
+                "emlak_ve_gayrimenkul",     # Kira, tapu, değerleme, tahliye
+                "otomotiv_ve_ulasim",       # Araç arızaları, ekspertiz, sigorta
                 "kariyer_ve_ik",            # CV, mülakat, maaş pazarlığı, istifa
-                "seyahat_turizm_vize",      # Vize başvurusu, konsolosluk, otel, seyahat rotası
+                "seyahat_turizm_vize",      # Vize başvurusu, konsolosluk, otel, rota
+                "gastronomi_ve_mutfak",     # Tarifler, pişirme teknikleri, gıda güvenliği
                 "beslenme_ve_fitness",      # Diyetisyen, antrenman, kalori, spor
-                "tarim_ve_veterinerlik",    # Zirai üretim, evcil hayvan sağlığı ve zehirlenme
-                "siyaset_ve_diplomasi",     # Kamu politikası, e-Devlet, uluslararası ilişkiler
-                "dilbilim_ve_ceviri",       # Yeminli tercüme, yabancı dil öğrenimi, proofreading
-                "medya_pazarlama_tasarim",  # Dijital pazarlama, SEO, grafik tasarım, senaryo
-                "felsefe_din_ve_etik",      # Etik ikilemler, ilahiyat, sosyoloji, felsefe
+                "ebeveynlik_cocuk_gelisimi",# Bebek gelişimi, ergenlik, aile psikolojisi
+                "tarim_ve_veterinerlik",    # Zirai üretim, evcil hayvan acil zehirlenme
+                "cevre_ve_yenilenebilir_enerji", # Güneş enerjisi, sıfır atık, karbon
+                "siyaset_ve_diplomasi",     # Kamu politikası, e-Devlet, jeopolitik
+                "tarih_ve_arkeoloji",       # Osmanlı, Cumhuriyet, Antik medeniyetler
+                "dilbilim_ve_ceviri",       # Yeminli tercüme, yabancı dil öğrenimi
+                "sanat_muzik_sinema",       # Müzik teorisi, sinema analizi, resim
+                "oyun_espor_oyun_motoru",   # Unreal/Unity, oyun mekanikleri, e-spor
+                "medya_pazarlama_tasarim",  # Dijital pazarlama, SEO, grafik tasarım
+                "moda_ve_kisisel_bakim",    # Cilt bakımı, tekstil, stil danışmanlığı
+                "felsefe_din_ve_etik",      # Etik ikilemler, ilahiyat, sosyoloji
                 "psikolojik_kriz_destek",   # İntihar, şiddet, akut kriz (182/183/112 Acil!)
-                "gundelik_sohbet_selam",    # Hal-hatır sorma, selamlama, geyik, chit-chat
+                "gundelik_sohbet_selam",    # Hal-hatır sorma, selamlama, chit-chat
                 "kisisel_asistanlik",       # Takvim, e-posta taslağı, yapılacaklar listesi
                 "belirsiz_anlamsiz_girdi",  # Out-of-domain fallback, anlamsız metin
                 "guvenlik_ve_guardrails"    # Prompt injection, jailbreak, saldırı engelleme
@@ -122,7 +132,20 @@ class GenerationConfig:
             ]
         },
 
-        # 6. YAZILIM, YAPAY ZEKA & SİBER GÜVENLİK (Software & AI)
+        # 6. SİGORTACILIK, AKTÜERYA & SOSYAL GÜVENLİK (Insurance & Social Security)
+        "insurance_and_social_security": {
+            "description": "SGK, emeklilik hesabı, prim günleri, kasko ve sigorta tazminatları.",
+            "options": [
+                "sgk_ve_emeklilik_hesabi",  # EYT, prim gün sayısı, ne zaman emekli olurum
+                "tamamlayici_saglik_sigortasi", # Anlaşmalı hastaneler, provizyon onayı
+                "dask_deprem_sigortasi",    # Zorunlu deprem sigortası, poliçe yenileme
+                "kasko_ve_trafik_hasar_dosyasi", # Kaza sonrası tazminat, değer kaybı davası
+                "bireysel_emeklilik_bes",   # Devlet katkısı, fon getirisi, ayrılma şartları
+                "hayat_ve_maluliyet_sigortasi" # Sürekli iş göremezlik tazminatı, vefat teminatı
+            ]
+        },
+
+        # 7. YAZILIM, YAPAY ZEKA & SİBER GÜVENLİK (Software & AI)
         "software_ai_security": {
             "description": "Yazılım mühendisliği, sistem yönetimi ve yapay zeka görevleri.",
             "options": [
@@ -136,7 +159,7 @@ class GenerationConfig:
             ]
         },
 
-        # 7. TEMEL BİLİMLER (İLERİ STEM) (Fundamental Sciences)
+        # 8. TEMEL BİLİMLER (İLERİ STEM) (Fundamental Sciences)
         "stem_sciences_advanced": {
             "description": "Doğa bilimleri ve ileri matematiksel sorgular.",
             "options": [
@@ -150,7 +173,7 @@ class GenerationConfig:
             ]
         },
 
-        # 8. MÜHENDİSLİK & İMALAT (Applied Engineering)
+        # 9. MÜHENDİSLİK & İMALAT (Applied Engineering)
         "applied_engineering": {
             "description": "Mühendislik disiplinleri ve endüstriyel teknik hesaplamalar.",
             "options": [
@@ -162,7 +185,7 @@ class GenerationConfig:
             ]
         },
 
-        # 9. E-TİCARET & PAZAR YERLERİ (E-Commerce)
+        # 10. E-TİCARET & PAZAR YERLERİ (E-Commerce)
         "ecommerce_retail_marketplaces": {
             "description": "E-ticaret sipariş, teslimat ve pazar yeri (Trendyol/Amazon vb.) operasyonları.",
             "options": [
@@ -175,7 +198,19 @@ class GenerationConfig:
             ]
         },
 
-        # 10. EMLAK, GAYRİMENKUL & TAPU (Real Estate)
+        # 11. LOJİSTİK, GÜMRÜK & TEDARİK ZİNCİRİ (Logistics & Supply Chain)
+        "logistics_and_customs": {
+            "description": "Uluslararası taşımacılık, navlun, gümrükleme ve antrepo süreçleri.",
+            "options": [
+                "gumruk_mevzuati_ve_gtip",  # GTİP kodu tespiti, gümrük vergisi, ithalat/ihracat
+                "denizyolu_ve_konnsimento", # Konşimento (Bill of Lading), konteyner takibi
+                "havayolu_ve_iata_kargo",   # Hava kargo taşıma senedi (AWB), hızlı kurye
+                "antrepo_ve_depolama",      # Serbest bölge, soğuk zincir, stok kontrolü
+                "uluslararasi_navlun_teklifi" # Karayolu/denizyolu navlun maliyet hesabı
+            ]
+        },
+
+        # 12. EMLAK, GAYRİMENKUL & TAPU (Real Estate)
         "real_estate_and_housing": {
             "description": "Kira, tapu, emlak değerleme ve konut mevzuatı.",
             "options": [
@@ -187,7 +222,7 @@ class GenerationConfig:
             ]
         },
 
-        # 11. OTOMOTİV, ARAÇ VE ULAŞIM (Automotive)
+        # 13. OTOMOTİV, ARAÇ VE ULAŞIM (Automotive)
         "automotive_and_vehicles": {
             "description": "Araç alım-satım, ekspertiz, arıza kodları ve sigorta.",
             "options": [
@@ -199,7 +234,7 @@ class GenerationConfig:
             ]
         },
 
-        # 12. KARİYER, İK & İSTİHDAM (Career & HR)
+        # 14. KARİYER, İK & İSTİHDAM (Career & HR)
         "career_hr_employment": {
             "description": "Özgeçmiş, iş arama, mülakat hazırlığı ve işyeri hakları.",
             "options": [
@@ -211,7 +246,7 @@ class GenerationConfig:
             ]
         },
 
-        # 13. SEYAHAT, TURİZM VE VİZE (Travel & Visa)
+        # 15. SEYAHAT, TURİZM VE VİZE (Travel & Visa)
         "travel_tourism_visa": {
             "description": "Vize başvurusu, seyahat planlaması ve konaklama.",
             "options": [
@@ -223,7 +258,19 @@ class GenerationConfig:
             ]
         },
 
-        # 14. BESLENME, FİTNESS VE SPOR (Nutrition & Fitness)
+        # 16. GASTRONOMİ, MUTFAK SANATLARI & GIDA GÜVENLİĞİ (Gastronomy & Food)
+        "gastronomy_and_culinary": {
+            "description": "Tarifler, pişirme teknikleri, gıda saklama ve gıda zehirlenmesi uyarısı.",
+            "options": [
+                "yemek_tarifi_ve_malzemeler", # Türk ve dünya mutfağı reçeteleri
+                "pisirme_teknikleri_ve_puf_noktasi", # Mühürleme, sous-vide, hamur mayalama
+                "gida_guvenligi_ve_bozulma_riski", # Botulizm riski, SKT, çiğ tavuk/et saklama (Önemli!)
+                "besin_alerjisi_ve_intolerans", # Gluten, laktoz, fıstık alerjisi uyarısı
+                "restoran_ve_menu_yonetimi" # Maliyet hesabı, porsiyonlama, mutfak düzeni
+            ]
+        },
+
+        # 17. BESLENME, FİTNESS VE SPOR (Nutrition & Fitness)
         "nutrition_fitness_sports": {
             "description": "Beslenme programı, kalori takibi ve spor antrenmanları.",
             "options": [
@@ -235,7 +282,19 @@ class GenerationConfig:
             ]
         },
 
-        # 15. TARIM, HAYVANCILIK VE VETERİNERLİK (Agriculture & Vet)
+        # 18. EBEVEYNLİK, ÇOCUK GELİŞİMİ & AİLE (Parenting & Child Development)
+        "parenting_and_child_care": {
+            "description": "Bebek bakımı, gelişim basamakları, ergen psikolojisi ve aile içi iletişim.",
+            "options": [
+                "bebek_bakimi_ve_beslenme", # Ek gıdaya geçiş, uyku eğitimi, kolik sancısı
+                "cocuk_motor_ve_dil_gelisimi", # Konuşma gecikmesi, ince/kaba motor beceriler
+                "ergenlik_ve_davranis_sorunlari", # Sınav kaygısı, öfke kontrolü, sınır koyma
+                "ekran_bagimliligi_ve_teknoloji", # Dijital detoks, güvenli internet kullanımı
+                "pedagojik_oyun_ve_etkinlik" # Zeka geliştirici oyunlar, Montessori aktiviteleri
+            ]
+        },
+
+        # 19. TARIM, HAYVANCILIK VE VETERİNERLİK (Agriculture & Vet)
         "agriculture_and_veterinary": {
             "description": "Zirai üretim, bitki sağlığı ve evcil hayvan acil durumları.",
             "options": [
@@ -247,7 +306,19 @@ class GenerationConfig:
             ]
         },
 
-        # 16. SİYASET, KAMU YÖNETİMİ & DİPLOMASİ (Politics & Policy)
+        # 20. ÇEVRE, İKLİM & YENİLENEBİLİR ENERJİ (Environment & Energy)
+        "environment_and_clean_energy": {
+            "description": "Güneş enerjisi, sıfır atık, karbon ayak izi ve iklim mevzuatı.",
+            "options": [
+                "gunes_ve_ruzgar_enerjisi", # Çatı GES kurulumu, inverter, amortisman hesabı
+                "karbon_ayak_izi_ve_surdurulebilirlik", # Yeşil mutabakat, sera gazı emisyonu
+                "atik_yonetimi_ve_geri_donusum", # Sıfır atık belgesi, kompost, tehlikeli atık
+                "cevre_mevzuati_ve_ced_raporu", # ÇED süreci, çevre izin ve lisansları
+                "enerji_verimliligi_ve_tasarruf" # Binalarda ısı yalıtımı, enerji kimlik belgesi
+            ]
+        },
+
+        # 21. SİYASET, KAMU YÖNETİMİ & DİPLOMASİ (Politics & Policy)
         "politics_public_diplomacy": {
             "description": "Kamu politikası, anayasal süreçler ve küresel diplomasi analizi.",
             "options": [
@@ -259,7 +330,19 @@ class GenerationConfig:
             ]
         },
 
-        # 17. DİL BİLİM, ÇEVİRİ & KÜLTÜR SANAT (Linguistics & Content)
+        # 22. TARİH, ARKEOLOJİ & KÜLTÜREL MİRAS (History & Archaeology)
+        "history_and_archaeology": {
+            "description": "Osmanlı, Cumhuriyet, Antik medeniyetler ve dünya tarihi araştırmaları.",
+            "options": [
+                "osmanli_ve_selcuklu_tarihi",# Padişahlar, fermanlar, idari ve askeri yapı
+                "cumhuriyet_tarihi_ve_inkilaplar", # Kurtuluş Savaşı, Lozan, Atatürk ilkeleri
+                "antik_anadolu_medeniyetleri", # Hititler, Urartular, Frigler, kazı buluntuları
+                "dunya_ve_avrupa_tarihi",   # Sanayi Devrimi, 1. ve 2. Dünya Savaşı, Soğuk Savaş
+                "tarihi_belge_ve_kaynak_analizi" # Birincil kaynak inceleme, arşiv araştırması
+            ]
+        },
+
+        # 23. DİL BİLİM, ÇEVİRİ & KÜLTÜR SANAT (Linguistics & Content)
         "linguistics_and_translation": {
             "description": "Yabancı dil öğrenimi, profesyonel çeviri ve metin analizi.",
             "options": [
@@ -271,7 +354,31 @@ class GenerationConfig:
             ]
         },
 
-        # 18. MEDYA, DİJİTAL PAZARLAMA & TASARIM (Media & Marketing)
+        # 24. SANAT, MÜZİK, SİNEMA & SAHNE SANATLARI (Fine Arts & Entertainment)
+        "arts_music_and_cinema": {
+            "description": "Müzik teorisi, sinema analizi, resim teknikleri ve tiyatro.",
+            "options": [
+                "muzik_teorisi_ve_enstruman", # Armoni, akor dizilimleri, piyano/gitar tabları
+                "film_ve_dizi_dramaturjisi", # Senaryo yapısı, sinematografi, film tahlili
+                "gorsel_sanatlar_ve_resim", # Yağlı boya, perspektif, anatomi çizimi, sergi
+                "sanat_tarihi_ve_akimlari", # Rönesans, Barok, Modernizm, Sürrealizm
+                "tiyatro_ve_sahne_performansi" # Tirat, diksiyon, sahne tasarımı
+            ]
+        },
+
+        # 25. OYUN, E-SPOR & OYUN MOTORLARI (Gaming & Esports)
+        "gaming_esports_gamedev": {
+            "description": "Oyun geliştirme (Unreal/Unity), mekanikler, donanım ve e-spor.",
+            "options": [
+                "oyun_motoru_unreal_unity", # C# / C++ script, Blueprint, fizik motoru
+                "oyun_tasarimi_ve_mekanik", # Level design, dengeleme, boss dövüşü dinamikleri
+                "espor_ve_rekabetci_oyunlar", # Taktik rehberi, meta analizi, takım stratejisi
+                "oyun_donanimi_ve_fps_ayari", # Ekran kartı optimizasyonu, DLSS, input lag
+                "masaustu_rpg_ve_kutu_oyunlari" # D&D karakter formu, kurallar, hikaye anlatımı
+            ]
+        },
+
+        # 26. MEDYA, DİJİTAL PAZARLAMA & TASARIM (Media & Marketing)
         "media_marketing_design": {
             "description": "Dijital pazarlama, SEO, sosyal medya ve grafik tasarım.",
             "options": [
@@ -283,7 +390,19 @@ class GenerationConfig:
             ]
         },
 
-        # 19. FELSEFE, DİN, ETİK & SOSYOLOJİ (Humanities)
+        # 27. MODA, TEKSTİL & KİŞİSEL BAKIM (Fashion & Beauty)
+        "fashion_and_personal_care": {
+            "description": "Cilt bakımı, saç sağlığı, tekstil kumaşları ve stil danışmanlığı.",
+            "options": [
+                "cilt_bakimi_ve_aktif_icerik", # Retinol, C vitamini, asitler, bariyer onarımı
+                "sac_bakimi_ve_dokulme",    # Saç mezoterapisi, dökülme karşıtı bakım, keratin
+                "kumas_turleri_ve_tekstil", # Pamuk, keten, polyester, yıkama talimatı simgeleri
+                "kisisel_stil_ve_kombin",   # Vücut tipine göre giyim, renk uyumu, gardırop
+                "parfum_ve_koku_notalari"   # Notalar, kalıcılık, mevsime göre koku seçimi
+            ]
+        },
+
+        # 28. FELSEFE, DİN, ETİK & SOSYOLOJİ (Humanities)
         "humanities_ethics_religion": {
             "description": "Etik ikilemler, ilahiyat, varoluşsal felsefe ve sosyoloji.",
             "options": [
@@ -294,7 +413,7 @@ class GenerationConfig:
             ]
         },
 
-        # 20. PSİKOLOJİK KRİZ & ACİL DESTEK HATTI (Crisis Helpline - Critical Safety)
+        # 29. PSİKOLOJİK KRİZ & ACİL DESTEK HATTI (Crisis Helpline - Critical Safety)
         "crisis_support_helpline": {
             "description": "Kendine zarar verme, şiddet, akut kriz tespiti (Hayati Güvenlik!).",
             "options": [
@@ -305,7 +424,7 @@ class GenerationConfig:
             ]
         },
 
-        # 21. GÜNDELİK SOHBET & SELAMLAMA (Chit-Chat & Casual)
+        # 30. GÜNDELİK SOHBET & SELAMLAMA (Chit-Chat & Casual)
         "chit_chat_and_greetings": {
             "description": "Gündelik selamlaşma, hal-hatır sorma ve hafif muhabbet.",
             "options": [
@@ -316,7 +435,7 @@ class GenerationConfig:
             ]
         },
 
-        # 22. KİŞİSEL VERİMLİLİK & ASİSTANLIK (Personal Productivity)
+        # 31. KİŞİSEL VERİMLİLİK & ASİSTANLIK (Personal Productivity)
         "personal_productivity_tools": {
             "description": "Kişisel organizasyon, zaman yönetimi ve gündelik asistanlık.",
             "options": [
@@ -327,7 +446,7 @@ class GenerationConfig:
             ]
         },
 
-        # 23. SİSTEM GÜVENLİĞİ, SALDIRI VE BELİRSİZ GİRDİ (Security & Guardrails)
+        # 32. SİSTEM GÜVENLİĞİ, SALDIRI VE BELİRSİZ GİRDİ (Security & Guardrails)
         "security_guardrails_fallback": {
             "description": "Prompt injection, jailbreak, kötü niyetli saldırı ve anlamsız girdiler.",
             "options": [
