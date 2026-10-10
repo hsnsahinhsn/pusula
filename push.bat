@@ -15,7 +15,6 @@ git add .
 
 echo.
 echo [2/3] Değişiklikler paketleniyor (git commit)...
-:: Eğer kaydedilmemiş değişiklik varsa otomatik zaman damgalı commit atar
 git commit -m "update: %date% %time% otomatik senkronizasyon" 2>nul
 if %errorlevel% equ 0 (
     echo       Yeni değişiklikler başarıyla paketlendi.
@@ -31,13 +30,16 @@ echo.
 if %errorlevel% equ 0 (
     echo ========================================================
     echo   ✓ BAŞARILI! Tüm dosyalar GitHub'a aktarıldı.
+    echo   Pencere 2 saniye içinde otomatik kapatılıyor...
     echo ========================================================
+    timeout /t 2 /nobreak >nul
+    exit /b 0
 ) else (
     echo ========================================================
     echo   X HATA! Gönderim sırasında bir sorun oluştu.
     echo   Lütfen internet bağlantınızı ve GitHub yetkinizi kontrol edin.
     echo ========================================================
+    echo.
+    echo Hatayı inceleyebilmeniz için pencere açık bırakıldı:
+    pause
 )
-
-echo.
-pause
