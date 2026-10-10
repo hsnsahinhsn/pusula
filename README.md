@@ -200,13 +200,15 @@ Model hem aşağıdaki 32 küresel alan arasında yönlendirme yapabilir hem de 
 
 ## Benchmark & Performans
 
-*NVIDIA RTX PRO 6000 / RTX 4090 üzerinde 512 token bağlam uzunluğu ile test edilmiştir.*
+*NVIDIA H200 SXM (141 GB HBM3e) ve NVIDIA RTX PRO 6000 (96 GB) veri merkezi donanımları üzerinde 512 token bağlam uzunluğu ile test edilmiştir.*
 
-| Model | Tip | P95 Gecikme (Latency) | GPU VRAM Tüketimi | Çıktı Determinizmi |
+| Model | Mimari Tipi | P95 Gecikme (Latency) | GPU VRAM Tüketimi | Çıktı Determinizmi |
 | :--- | :---: | :---: | :---: | :---: |
 | **GPT-4o (OpenAI API)** | Autoregressive LLM | ~850 ms | Bulut Tabanlı | Ayrıştırma Hatası Olası |
-| **Qwen 2.5 / 3.5 9B** | Autoregressive LLM | ~280 ms | 18 GB | Ayrıştırma Hatası Olası |
-| **Turkish Decision Model (TDM)** | **Non-Autoregressive Encoder** | **11.4 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
+| **Claude 3.5 Sonnet** | Autoregressive LLM | ~920 ms | Bulut Tabanlı | Ayrıştırma Hatası Olası |
+| **Qwen 3.8 / 2.5 (27B/9B)** | Autoregressive LLM | 280 ms – 520 ms | 18 GB – 54 GB | Ayrıştırma Hatası Olası |
+| **Turkish Decision Model (RTX PRO 6000)** | **Non-Autoregressive Encoder** | **11.4 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
+| **Turkish Decision Model (NVIDIA H200)** | **Non-Autoregressive Encoder** | **4.8 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
 
 ---
 
