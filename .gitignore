@@ -24,6 +24,8 @@ wandb/
 runs/
 *.log
 
-# İşletim sistemi kalıntıları
+# İşletim sistemi kalıntıları ve yerel scriptler
 .DS_Store
 Thumbs.db
+*.bat
+*.cmd
