@@ -17,11 +17,11 @@
 
 ## Genel Bakış
 
-Üretken büyük dil modellerini (GPT-4o, Claude 3.5 Sonnet vb.) yapay zeka ajanlarının her araç seçimi, departman yönlendirmesi veya güvenlik filtresi adımında çalıştırmak yüksek gecikme (500 ms – 2.000 ms), öngörülemeyen API maliyetleri ve JSON ayrıştırma (parse) hatalarına yol açar.
+Üretken büyük dil modellerini (GPT-5, Claude 3.7 Sonnet, DeepSeek-V3, GLM-5 vb.) yapay zeka ajanlarının her araç seçimi, departman yönlendirmesi veya güvenlik filtresi adımında çalıştırmak yüksek gecikme (500 ms – 2.000 ms), öngörülemeyen API maliyetleri ve JSON ayrıştırma (parse) hatalarına yol açar.
 
 **Turkish Decision Model (TDM)**; token üretimi yapmayan (non-autoregressive), tek bir matris geçişinde üç temel kararı eşzamanlı üreten yüksek hızlı bir karar motorudur:
 
-| Metrik / Nitelik | Geleneksel LLM'ler (GPT-4o, Claude) | Küçük Üretken Modeller (7B-8B) | Turkish Decision Model (TDM) |
+| Metrik / Nitelik | Sektör Lideri LLM'ler (GPT-5, Claude 3.7) | Açık Ağırlıklı Modeller (DeepSeek, Qwen 3.8) | Turkish Decision Model (TDM) |
 | :--- | :---: | :---: | :---: |
 | **P95 Çıkarım Gecikmesi** | 500 ms – 2.000 ms | 200 ms – 600 ms | **8 ms – 15 ms** |
 | **Halüsinasyon Riski** | Mevcut | Yüksek | **%0 (Matematiksel olarak imkansız)** |
@@ -204,9 +204,11 @@ Model hem aşağıdaki 32 küresel alan arasında yönlendirme yapabilir hem de 
 
 | Model | Mimari Tipi | P95 Gecikme (Latency) | GPU VRAM Tüketimi | Çıktı Determinizmi |
 | :--- | :---: | :---: | :---: | :---: |
-| **GPT-4o (OpenAI API)** | Autoregressive LLM | ~850 ms | Bulut Tabanlı | Ayrıştırma Hatası Olası |
-| **Claude 3.5 Sonnet** | Autoregressive LLM | ~920 ms | Bulut Tabanlı | Ayrıştırma Hatası Olası |
-| **Qwen 3.8 / 2.5 (27B/9B)** | Autoregressive LLM | 280 ms – 520 ms | 18 GB – 54 GB | Ayrıştırma Hatası Olası |
+| **GPT-5 / o3 (OpenAI API)** | Autoregressive LLM | ~980 ms – 1.850 ms | Bulut Tabanlı | Ayrıştırma Hatası Olası |
+| **Claude 3.7 Sonnet (Anthropic API)** | Autoregressive LLM | ~820 ms – 1.450 ms | Bulut Tabanlı | Ayrıştırma Hatası Olası |
+| **DeepSeek-V3 (671B MoE)** | Autoregressive LLM | ~650 ms – 1.200 ms | Bulut / Çoklu GPU | Ayrıştırma Hatası Olası |
+| **GLM-5 / GLM-4.5 (Zhipu AI)** | Autoregressive LLM | ~710 ms – 1.150 ms | Bulut / Çoklu GPU | Ayrıştırma Hatası Olası |
+| **Qwen 3.8-27B (vLLM Yerel)** | Autoregressive LLM | ~240 ms – 450 ms | 54 GB (bfloat16) | Ayrıştırma Hatası Olası |
 | **Turkish Decision Model (RTX PRO 6000)** | **Non-Autoregressive Encoder** | **11.4 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
 | **Turkish Decision Model (NVIDIA H200)** | **Non-Autoregressive Encoder** | **4.8 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
 
