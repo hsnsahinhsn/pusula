@@ -1,6 +1,6 @@
 """
-Türkçe Karar Modeli (Laya) & Sentetik Veri Pipeline Konfigürasyonu
-NVIDIA RTX 4090 (24 GB VRAM) donanımına optimize edilmiştir.
+Türkçe Karar Modeli (Laya) & Çok Sektörlü Sentetik Veri Pipeline Konfigürasyonu
+E-Ticaret, Hukuk, Bankacılık, Yazılım, Eğitim, Sınavlar, Ekonomi, Siyaset ve Temel Bilimleri kapsar.
 """
 from dataclasses import dataclass, field
 from typing import List, Dict
@@ -11,47 +11,124 @@ class GenerationConfig:
     # Yerel LLM Sunucusu (vLLM veya Ollama)
     api_base: str = os.getenv("LLM_API_BASE", "http://localhost:8000/v1")
     api_key: str = os.getenv("LLM_API_KEY", "EMPTY")
-    model_name: str = os.getenv("LLM_MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
-    temperature: float = 0.7
+    # RTX PRO 6000 (96 GB) için Qwen 3.8 27B / 32B; RTX 4090 için Qwen 3.5 9B / 7B
+    model_name: str = os.getenv("LLM_MODEL_NAME", "Qwen/Qwen3.5-9B-Instruct")
+    temperature: float = 0.75
     top_p: float = 0.9
-    max_tokens: int = 450
-    request_timeout: int = 60
+    max_tokens: int = 500
+    request_timeout: int = 90
     
     # Üretim Hedefleri (Kategori başına örnek sayısı)
-    samples_per_category: int = 1500  # Toplam 6000 sentetik veri hedefi
+    samples_per_category: int = 800   # 9 dikey alan x 800 = ~7.200 sentetik veri
     batch_size: int = 16
     output_dir: str = "data"
     train_split: float = 0.8
     val_split: float = 0.1
     test_split: float = 0.1
 
-    # Dikey Senaryolar ve Taksonomiler
+    # Çok Sektörlü Zengin Dikey Senaryolar ve Taksonomiler
     taxonomies: Dict[str, Dict] = field(default_factory=lambda: {
-        "tool_calling": {
-            "description": "Ajanın kullanıcı niyetine göre çağıracağı en uygun aracı seçmesi.",
+        # 1. ÜST DÜZEY SEKTÖREL YÖNLENDİRME (Global Router)
+        "global_sector_routing": {
+            "description": "Gelen kullanıcı sorgusunun ait olduğu ana uzmanlık alanını belirleme.",
             "options": [
-                "web_search",          # İnternette güncel bilgi arama
-                "sql_query",           # Veritabanı sorgulama
-                "crm_lookup",          # Müşteri profili / sipariş getirme
-                "calculator",          # Sayısal ve finansal hesaplama
-                "calendar_booking",    # Randevu ve takvim organizasyonu
-                "send_email",          # E-posta oluşturma ve gönderme
-                "code_interpreter",    # Kod çalıştırma ve analiz
-                "human_handoff"        # Temsilciye devir
+                "e_ticaret",               # Alışveriş, sipariş, kargo, ürünler
+                "hukuk_mevzuat",           # Mahkeme, kanun, sözleşme, haklar
+                "bankacilik_finans",       # Para transferi, kredi, hesap, yatırım
+                "yazilim_ve_bt",           # Kodlama, sistem mimarisi, hata ayıklama
+                "egitim_ve_sinavlar",      # Okul, dersler, YKS, KPSS, ALES hazırlık
+                "temel_bilimler",          # Fizik, kimya, biyoloji, matematik teorisi
+                "ekonomi_ve_piyasalar",    # Makroekonomi, enflasyon, borsa, döviz
+                "siyaset_ve_kamu",         # Politika, kamu yönetimi, diplomasi
+                "sistem_guvenligi"         # Güvenlik açığı, kural ihlali, saldırı
             ]
         },
-        "customer_service": {
-            "description": "Gelen müşteri talep/şikayet metnini doğru departmana yönlendirme.",
+        # 2. HUKUK & YASAL SÜREÇLER
+        "law_and_judiciary": {
+            "description": "Hukuki talebin alt uzmanlık ve işlem türünü belirleme.",
             "options": [
-                "muhasebe_finans",     # Fatura, iade, ödeme, borç
-                "teknik_destek",       # Hata, sistem arızası, bağlantı sorunu
-                "satis_pazarlama",     # Ürün teklifi, yeni abonelik, demo talebi
-                "lojistik_kargo",      # Sevkiyat, kargo takibi, teslimat gecikmesi
-                "hukuk_kvkk",          # Veri silme, sözleşme, yasal ihtarlar
-                "insan_kaynaklari",    # İş başvurusu, staj, mülakat
-                "genel_destek"         # Basit bilgi talepleri, mesai saatleri
+                "ictihat_ve_emsal_karar",  # Yargıtay/Danıştay emsal arama
+                "sozlesme_inceleme",       # Ticari/iş sözleşmesi risk analizi
+                "ceza_hukuku",             # Suç duyurusu, soruşturma, şikayet
+                "is_ve_tazminat_hukuku",   # Kıdem, ihbar, işe iade davaları
+                "kvkk_ve_veri_koruma",     # Veri silme, aydınlatma metni
+                "dilekce_ve_ihtarname",    # Resmi hukuki metin taslağı hazırlama
+                "uzman_avukat_yonlendirme" # Karmaşık davalarda insan temsilciye devir
             ]
         },
+        # 3. BANKACILIK, FİNANS & EKONOMİ
+        "banking_finance_economy": {
+            "description": "Finansal ve ekonomik işlem/analiz niyetini tespit etme.",
+            "options": [
+                "kredi_ve_mevduat_hesabi", # Faiz, kredi kartı limiti, kredi başvurusu
+                "supheli_islem_ve_dolandiricilik", # Çalıntı kart, izinsiz transfer (Çok Acil!)
+                "yatirim_ve_hisse_senedi", # Borsa, fon, kripto, temettü analizi
+                "makroekonomik_gosterge",  # TÜFE, TCMB faiz kararları, cari açık
+                "fatura_ve_odeme_islemi",  # Otomatik ödeme talimatı, dekont
+                "pos_ve_ticari_bankacilik" # Şirket tahsilatları, pos arızası, çek/senet
+            ]
+        },
+        # 4. YAZILIM, BT & GELİŞTİRİCİ ARAÇLARI
+        "software_and_it": {
+            "description": "Yazılım geliştirme ve sistem yönetimi görevlerini yönlendirme.",
+            "options": [
+                "hata_ayiklama_debug",     # Stacktrace, syntax ve runtime hataları
+                "kod_yazma_ve_refactor",   # Yeni fonksiyon, temiz kod, optimizasyon
+                "veritabani_ve_sql",       # Sorgu optimizasyonu, şema tasarımı, migration
+                "devops_ve_bulut",         # Docker, Kubernetes, CI/CD, Linux sunucu
+                "api_ve_entegrasyon",      # REST, GraphQL, webhook bağlantıları
+                "siber_guvenlik_analizi"   # Kod güvenliği, yetkilendirme açıkları
+            ]
+        },
+        # 5. EĞİTİM & SINAVLARA HAZIRLIK
+        "education_and_exams": {
+            "description": "Eğitim kademeleri ve ulusal sınavlara hazırlık ihtiyaçlarını yönlendirme.",
+            "options": [
+                "yks_tyt_ayt_hazirlik",    # Üniversite giriş sınavı soru ve konuları
+                "kpss_ve_kamu_sinavlari",  # Genel yetenek/kültür, alan bilgisi
+                "lgs_hazirlik",            # Ortaokul ve liseye geçiş sınavı
+                "ales_ve_dgs",             # Lisansüstü ve dikey geçiş sayısal/sözel
+                "pedagojik_konu_anlatimi", # Adım adım kavram öğretimi
+                "soru_cozum_rehberligi",   # Doğrudan soru çözümü ve formül uygulama
+                "calisma_plani_ve_koc"     # Zaman yönetimi, haftalık ders programı
+            ]
+        },
+        # 6. TEMEL BİLİMLER (FİZİK, KİMYA, BİYOLOJİ, MATEMATİK)
+        "stem_sciences": {
+            "description": "Temel doğa ve biçimsel bilimlerin soru/araştırma tipini belirleme.",
+            "options": [
+                "matematik_ve_geometri",   # Türev, integral, cebir, geometrik ispat
+                "klasik_ve_modern_fizik",  # Mekanik, termodinamik, kuantum, optik
+                "organik_ve_genel_kimya",  # Tepkimeler, stokiyometri, periyodik tablo
+                "hucresel_ve_genel_biyoloji", # Genetik, evrim, anatomi, ekoloji
+                "bilimsel_ispat_ve_teori", # Teorem kanıtlama, aksiyomlar
+                "sayisal_hesaplama_motoru" # Formül ve numerik hesaplama aracına yönlendirme
+            ]
+        },
+        # 7. E-TİCARET, LOJİSTİK & MÜŞTERİ HİZMETLERİ
+        "ecommerce_and_retail": {
+            "description": "E-ticaret sipariş, teslimat ve müşteri operasyonlarını yönlendirme.",
+            "options": [
+                "iade_ve_degisim",         # Ürün iade kodu, cayma hakkı
+                "kargo_ve_teslimat_takibi",# Geciken paket, kayıp kargo, kurye
+                "odeme_ve_fatura_sorunu",  # Mükerrer çekim, e-fatura talebi
+                "urun_bilgisi_ve_stok",    # Beden tablosu, özellik sorgulama
+                "kampanya_ve_kupon",       # İndirim kodu çalışmıyor, promosyon
+                "canli_destek_temsilcisi"  # Çözülemeyen karmaşık şikayette temsilciye aktarım
+            ]
+        },
+        # 8. SİYASET, KAMU YÖNETİMİ & POLİTİKA
+        "politics_and_policy": {
+            "description": "Siyasi, kamusal ve uluslararası ilişkiler analizlerini yönlendirme.",
+            "options": [
+                "kamu_politikasi_analizi", # Şehir planlama, çevre ve kamu reformları
+                "secim_ve_siyasi_tarih",   # Siyasi partiler, anayasa tarihi, seçim sistemleri
+                "uluslararasi_iliskiler",  # Diplomasi, jeopolitik, dış ticaret antlaşmaları
+                "tarafsiz_bilgi_talebi",   # Objektif olgusal siyasi bilgi sunumu
+                "hukuk_politikasi_iliskisi" # Yasa teklifleri ve meclis süreçleri
+            ]
+        },
+        # 9. SİSTEM GÜVENLİĞİ & GUARDRAILS
         "security_guardrails": {
             "description": "Kullanıcı girdisinin sistem güvenlik ve uyum politikalarına uygunluk denetimi.",
             "options": [
@@ -62,29 +139,18 @@ class GenerationConfig:
                 "zararli_icerik",          # Tehdit, küfür, hakaret, nefret söylemi
                 "sistem_komut_ihlali"      # Sunucuya bash/SQL komutu çalıştırma girişimi
             ]
-        },
-        "urgency_scoring": {
-            "description": "Talebin aciliyet seviyesi ve SLA kritikliği derecelendirmesi.",
-            "options": [
-                "kritik_acil",         # Sistem çöktü, para kaybı var, anında müdahale gerek
-                "yuksek_oncelik",      # Önemli iş aksaması, 1-2 saat içinde çözüm gerek
-                "normal_oncelik",      # Günlük standart iş akışı, gün içi çözüm
-                "dusuk_oncelik"        # Zaman kısıtı olmayan genel soru veya geri bildirim
-            ]
         }
     })
 
 
 @dataclass
 class TrainingConfig:
-    # Model Omurgası
-    # Tavsiye 1: convaiinnovations/laya-multilingual (mmBERT-base, 100+ dil)
-    # Tavsiye 2: answerdotai/ModernBERT-large (421M params, en hızlı ve güçlü encoder)
+    # Model Omurgası (Türkçe için mmBERT çok dillidir ve morfolojiye hakimdir)
     base_model_name: str = "convaiinnovations/laya-multilingual"
     fallback_model_name: str = "answerdotai/ModernBERT-large"
     
     max_length: int = 512
-    batch_size: int = 32          # RTX 4090 24GB VRAM için ideal batch
+    batch_size: int = 32          # RTX 4090 / 5090 / PRO 6000 için ideal batch
     gradient_accumulation_steps: int = 2
     learning_rate_backbone: float = 2e-5
     learning_rate_heads: float = 1e-4
@@ -98,7 +164,7 @@ class TrainingConfig:
     loss_weight_action: float = 0.5
     
     # Donanım & Hızlandırma
-    mixed_precision: str = "bf16"  # RTX 4090 bfloat16 donanım desteği
+    mixed_precision: str = "bf16"
     use_flash_attention: bool = True
     torch_compile: bool = True
     output_dir: str = "checkpoints/laya_turkish_decision"
@@ -112,5 +178,4 @@ class InferenceConfig:
     host: str = "0.0.0.0"
     port: int = 8080
     workers: int = 1
-    # Kalibrasyon sıcaklık çarpanı
     temperature_scaling: float = 1.0

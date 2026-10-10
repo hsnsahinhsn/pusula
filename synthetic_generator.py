@@ -149,12 +149,14 @@ Lütfen çıktıyı SADECE VE SADECE aşağıdaki JSON formatında bir liste ola
         target_per_domain = target_samples_per_domain or self.config.samples_per_category
         all_data: List[DecisionSample] = []
 
+        num_domains = len(self.config.taxonomies)
+        total_target = num_domains * target_per_domain
         console.print(f"[bold cyan]Sentetik Türkçe Veri Üretimi Başlıyor...[/bold cyan]")
-        console.print(f"Hedef: 4 dikey alan x {target_per_domain} = {4 * target_per_domain} toplam örnek")
+        console.print(f"Hedef: {num_domains} dikey alan x {target_per_domain} = {total_target} toplam örnek")
         console.print(f"LLM Modeli: {self.config.model_name} @ {self.config.api_base}\n")
 
         with Progress() as progress:
-            task = progress.add_task("[green]Veri Üretiliyor...", total=4 * target_per_domain)
+            task = progress.add_task("[green]Veri Üretiliyor...", total=total_target)
             
             for domain_key in self.config.taxonomies.keys():
                 domain_collected: List[DecisionSample] = []
