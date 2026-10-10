@@ -16,7 +16,7 @@ if %ERRORLEVEL% equ 0 (
     echo   BASARILI: GitHub guncellendi.
     echo   Pencere 2 saniye icinde kapaniyor...
     echo ========================================
-    timeout /t 2 /nobreak >nul
+    ping 127.0.0.1 -n 3 >nul
     exit /b 0
 ) else (
     echo.
