@@ -69,7 +69,11 @@ To maximize marginal utility and eliminate cold-start bias, synthetic generation
 | `train.py` | PyTorch + bfloat16 + FlashAttention-2 eğitim ve kalibrasyon döngüsü. |
 | `serve.py` | FastAPI tabanlı, sub-15ms yüksek throughput çıkarım servisi (`/decide`). |
 | `agentic_router_example.py` | LangGraph / CrewAI tarzı otonom karar orkestrasyonu demo kodu. |
-| `README.md` | Kurumsal, profesyonel teknik dokümantasyon ve benchmark tablosu. |
+| `pyproject.toml` | Modern Python paketleme (pip install -e .) ve bağımlılık standardı. |
+| `tests/` | Birim ve entegrasyon test süiti (config, model, server API). |
+| `.github/workflows/ci.yml` | Otomatik GitHub Actions test ve CI iş akışı. |
+| `README.md` | İngilizce küresel vitrin ve benchmark dokümantasyonu. |
+| `README_TR.md` | Eksiksiz Türkçe kullanım ve entegrasyon kılavuzu. |
 | `.gitignore` | Temiz repo disiplini (checkpoints, bat scriptleri ve cache engeli). |
 | `PROJECT_STATE.md` | Kalıcı hafıza ve sistem durum kaydı (bu dosya). |
 
