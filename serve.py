@@ -1,24 +1,27 @@
 """
 Pusula: Turkish Decision Engine (FastAPI)
-NVIDIA GPU üzerinde tek geçişli tipli çıkarım ve triyaj mikrosanite servisi (<15 ms).
+NVIDIA GPU üzerinde tek geçişli tipli çıkarım ve triyaj mikroservisi (<15 ms).
+Web, Mobil ve Ajanik istemciler için kurumsal REST API.
 """
 import os
 import time
-from typing import List, Optional
+from typing import List, Optional, Dict
 import torch
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer
 
 from model import TurkishDecisionModel, PusulaDecisionEngine
+from config import GenerationConfig
 
 # API İstek ve Yanıt Şemaları
 class DecisionRequest(BaseModel):
-    context: str = Field(..., description="Kullanıcı bildirimi, bilet metni veya ajan bağlamı", min_length=3)
+    context: str = Field(..., description="Kullanıcı bildirimi, bilet metni veya ajan bağlamı", min_length=2)
     options: List[str] = Field(..., description="Aday karar seçenekleri listesi", min_length=2)
 
 class BatchDecisionRequest(BaseModel):
-    items: List[DecisionRequest]
+    items: List[DecisionRequest] = Field(..., description="Toplu karar istekleri listesi")
 
 class DecisionResponse(BaseModel):
     choice: str = Field(..., description="Seçilen karar etiketi")
@@ -27,16 +30,36 @@ class DecisionResponse(BaseModel):
     action_required: bool = Field(..., description="Müdahale / harici işlem gerekiyor mu?")
     latency_ms: float = Field(..., description="Model çıkarım gecikmesi (milisaniye)")
 
+class BatchDecisionResponse(BaseModel):
+    results: List[DecisionResponse]
+    total_latency_ms: float
+
+class TaxonomyResponse(BaseModel):
+    total_domains: int
+    domains: Dict[str, Dict]
+
 app = FastAPI(
     title="Pusula: Turkish Decision Engine API",
-    description="Sub-15 ms typed decision and triage engine for autonomous Turkish agent workflows.",
-    version="1.0.0"
+    description="Sub-15 ms typed decision and triage engine for autonomous Turkish agent workflows, web dashboards, and mobile clients.",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# Web ve Mobil istemciler için Cross-Origin (CORS) Desteği
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Global Model & Tokenizer Değişkenleri
 MODEL: Optional[TurkishDecisionModel] = None
 TOKENIZER = None
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+GEN_CONFIG = GenerationConfig()
 
 @app.on_event("startup")
 def load_decision_engine():
@@ -71,7 +94,6 @@ def load_decision_engine():
         MODEL.to(DEVICE)
         MODEL.eval()
         
-        # RTX 4090 için torch.compile hızlandırması (opsiyonel)
         if torch.cuda.is_available() and hasattr(torch, "compile"):
             try:
                 MODEL = torch.compile(MODEL, mode="reduce-overhead")
@@ -80,14 +102,14 @@ def load_decision_engine():
                 
         print(f"✓ Model başarıyla yüklendi: {checkpoint_dir} on {DEVICE}")
     else:
-        print(f"Uyarı: Model dosyası bulunamadı ({model_path}). Mock mod devrede.")
+        print(f"Bilgi: Model dosyası bulunamadı ({model_path}). Geliştirme/Mock modu devrede.")
 
-@app.post("/decide", response_model=DecisionResponse)
+@app.post("/decide", response_model=DecisionResponse, tags=["Inference"])
 async def decide(req: DecisionRequest):
+    """Tek bir bağlam için anlık tipli karar ve triyaj üretir (<15 ms)."""
     start_time = time.perf_counter()
     
     if MODEL is None or TOKENIZER is None:
-        # Model henüz eğitilmediyse veya mock moddaysa güvenli geri dönüş
         latency = (time.perf_counter() - start_time) * 1000
         return DecisionResponse(
             choice=req.options[0],
@@ -116,10 +138,32 @@ async def decide(req: DecisionRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/health")
+@app.post("/batch-decide", response_model=BatchDecisionResponse, tags=["Inference"])
+async def batch_decide(req: BatchDecisionRequest):
+    """Çoklu istekleri tek seferde işler (Web dashboard ve toplu iş akışları için)."""
+    t0 = time.perf_counter()
+    results = []
+    for item in req.items:
+        res = await decide(item)
+        results.append(res)
+    total_latency = (time.perf_counter() - t0) * 1000
+    return BatchDecisionResponse(results=results, total_latency_ms=round(total_latency, 2))
+
+@app.get("/taxonomies", response_model=TaxonomyResponse, tags=["Metadata"])
+def get_taxonomies():
+    """Web ve mobil arayüzler için yerleşik makro-alanları ve seçenekleri döner."""
+    return TaxonomyResponse(
+        total_domains=len(GEN_CONFIG.taxonomies),
+        domains=GEN_CONFIG.taxonomies
+    )
+
+@app.get("/health", tags=["Monitoring"])
 def health_check():
+    """Kubernetes liveness/readiness ve yük dengeleyici sağlık kontrolü."""
     return {
         "status": "healthy",
+        "service": "pusula-decision-engine",
+        "version": "1.0.0",
         "device": str(DEVICE),
         "cuda_available": torch.cuda.is_available(),
         "model_loaded": MODEL is not None
