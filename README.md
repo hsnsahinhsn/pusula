@@ -1,7 +1,7 @@
 <div align="center">
 
 # Turkish Decision Model (TDM)
-### Türkçe Yapay Zeka Ajanları ve Yönlendirme Katmanları İçin Düşük Gecikmeli (<15 ms) Evrensel Tipli Karar Motoru
+### Otonom Ajan İş Akışları ve Yönlendirme Altyapıları İçin Düşük Gecikmeli (<15 ms) Türkçe Karar Motoru
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-green.svg)](https://www.python.org/)
