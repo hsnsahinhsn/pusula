@@ -1,0 +1,29 @@
+# Python sanal ortamları ve önbellek
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Checkpoint ve büyük model ağırlıkları (Git'e yüklenmemeli, Hugging Face Hub veya yerel diskte tutulmalı)
+checkpoints/
+*.pt
+*.bin
+*.safetensors
+*.onnx
+
+# Gizli ortam değişkenleri ve API anahtarları
+.env
+.env.local
+
+# Günlükler ve eğitim izleme
+logs/
+wandb/
+runs/
+*.log
+
+# İşletim sistemi kalıntıları
+.DS_Store
+Thumbs.db
