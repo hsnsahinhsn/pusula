@@ -1,6 +1,6 @@
 """
-Sentetik Türkçe Karar Verisi Üretim Pipeline'ı
-Yerel LLM (Qwen 3.8 / 3.5 - vLLM / Ollama) üzerinden Türkçe Karar Modeli şablonuna uygun yüksek kaliteli veri üretir.
+Pusula: Turkish Decision Engine - Sentetik Karar Verisi Üretim Pipeline'ı
+Yerel LLM (Qwen 3.8 / 3.5 - vLLM / Ollama) üzerinden Pusula mimarisine uygun yüksek kaliteli 24.000 veri üretir.
 """
 import asyncio
 import json

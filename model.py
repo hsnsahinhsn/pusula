@@ -73,7 +73,7 @@ class TurkishDecisionModel(nn.Module):
         self.encoder = AutoModel.from_pretrained(base_model_name, config=self.config)
         hidden_size = getattr(self.config, "hidden_size", 768)
         
-        # Laya Tipli Karar Başlığı
+        # Pusula Tipli Karar Başlığı
         self.decision_head = DecisionHead(
             hidden_size=hidden_size,
             num_total_options=self.num_options,
@@ -178,5 +178,7 @@ class TurkishDecisionModel(nn.Module):
             "action_probability": round(action_prob, 4)
         }
 
-# Geriye dönük uyumluluk alias'ı
+# Pusula & Geriye dönük uyumluluk alias'ları
+Pusula = TurkishDecisionModel
+PusulaDecisionEngine = TurkishDecisionModel
 TurkishLayaDecisionModel = TurkishDecisionModel

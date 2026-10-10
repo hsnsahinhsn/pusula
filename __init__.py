@@ -1,12 +1,14 @@
 """
-Turkish Decision Model (Türkçe Karar Modeli)
-The ultra-fast, non-autoregressive, calibrated universal decision engine for Turkish AI workflows & agentic routing.
+Pusula: Turkish Decision Engine
+Sub-15 ms non-autoregressive typed decision and triage engine for autonomous Turkish agent workflows.
 """
-from model import TurkishDecisionModel, DecisionHead
+from model import TurkishDecisionModel, DecisionHead, PusulaDecisionEngine, Pusula
 from config import TrainingConfig, GenerationConfig, InferenceConfig
 
 __version__ = "1.0.0"
 __all__ = [
+    "Pusula",
+    "PusulaDecisionEngine",
     "TurkishDecisionModel",
     "DecisionHead",
     "TrainingConfig",

@@ -1,8 +1,8 @@
 """
-Evrensel Türkçe Karar Modeli (Universal Turkish Decision Model) - 30+ Makro Alan Taksonomisi
+Pusula: Turkish Decision Engine - 32 Makro Alan Taksonomisi ve Sistem Konfigürasyonu
 Akademik sınavlar, tıp, hukuk, finans, yazılım, STEM, mühendislik, emlak, otomotiv, seyahat,
 tarım, kariyer, felsefe, sohbet, kriz, gastronomi, sanat, oyun, çevre, sigorta/SGK, tarih,
-lojistik, ebeveynlik ve moda/kişisel bakım dahil 30'dan fazla bağımsız makro alanı kapsar.
+lojistik, ebeveynlik ve moda/kişisel bakım dahil 32 bağımsız makro alanı kapsar.
 """
 from dataclasses import dataclass, field
 from typing import List, Dict
@@ -485,13 +485,13 @@ class TrainingConfig:
     mixed_precision: str = "bf16"
     use_flash_attention: bool = True
     torch_compile: bool = True
-    output_dir: str = "checkpoints/turkish_decision_model"
+    output_dir: str = "checkpoints/pusula"
     save_total_limit: int = 2
 
 
 @dataclass
 class InferenceConfig:
-    checkpoint_dir: str = "checkpoints/turkish_decision_model/best"
+    checkpoint_dir: str = "checkpoints/pusula/best"
     device: str = "cuda"
     host: str = "0.0.0.0"
     port: int = 8080

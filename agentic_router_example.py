@@ -1,5 +1,5 @@
 """
-Agentic İş Akışında Türkçe Karar Modeli Entegrasyon Örneği
+Pusula: Turkish Decision Engine - Agentic İş Akışı Entegrasyon Örneği
 Büyük LLM çağrıları yerine ~15 ms içinde yerel yönlendirme ve araç seçimi yapar.
 """
 import requests
@@ -8,7 +8,7 @@ import time
 DECISION_ENDPOINT = "http://localhost:8080/decide"
 
 def decision_route(context: str, options: list) -> dict:
-    """Türkçe Karar Motoruna hafif ve hızlı bir REST çağrısı yapar."""
+    """Pusula Karar Motoruna hafif ve hızlı bir REST çağrısı yapar."""
     payload = {
         "context": context,
         "options": options
@@ -23,7 +23,8 @@ def decision_route(context: str, options: list) -> dict:
     else:
         raise RuntimeError(f"Karar Motoru Hatası: {resp.text}")
 
-# Geriye dönük uyumluluk alias'ı
+# Alias'lar
+pusula_route = decision_route
 laya_route = decision_route
 
 def agentic_orchestrator(user_query: str):

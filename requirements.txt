@@ -1,4 +1,4 @@
-# Türkçe Karar Modeli (Laya) - RTX 4090 Ortamı İçin Gereksinimler
+# Pusula: Turkish Decision Engine - Core Dependencies
 torch>=2.4.0
 transformers>=4.45.0
 accelerate>=0.34.0

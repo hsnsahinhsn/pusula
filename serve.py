@@ -1,6 +1,6 @@
 """
-Düşük Gecikmeli (<15 ms) Türkçe Karar Servisi (FastAPI)
-NVIDIA GPU üzerinde tek geçişli tipli çıkarım motoru.
+Pusula: Turkish Decision Engine (FastAPI)
+NVIDIA GPU üzerinde tek geçişli tipli çıkarım ve triyaj mikrosanite servisi (<15 ms).
 """
 import os
 import time
@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer
 
-from model import TurkishDecisionModel
+from model import TurkishDecisionModel, PusulaDecisionEngine
 
 # API İstek ve Yanıt Şemaları
 class DecisionRequest(BaseModel):
@@ -28,8 +28,8 @@ class DecisionResponse(BaseModel):
     latency_ms: float = Field(..., description="Model çıkarım gecikmesi (milisaniye)")
 
 app = FastAPI(
-    title="Türkçe Karar Motoru API",
-    description="Agentic iş akışları ve yönlendirme katmanları için <20ms tipli karar servisi.",
+    title="Pusula: Turkish Decision Engine API",
+    description="Sub-15 ms typed decision and triage engine for autonomous Turkish agent workflows.",
     version="1.0.0"
 )
 
@@ -41,12 +41,21 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 @app.on_event("startup")
 def load_decision_engine():
     global MODEL, TOKENIZER
-    checkpoint_dir = os.getenv("CHECKPOINT_DIR", "checkpoints/turkish_decision_model/best")
-    model_path = os.path.join(checkpoint_dir, "turkish_decision_model.pt")
+    checkpoint_dir = os.getenv("CHECKPOINT_DIR", "checkpoints/pusula/best")
+    if not os.path.exists(checkpoint_dir):
+        fallback_dir = "checkpoints/turkish_decision_model/best"
+        if os.path.exists(fallback_dir):
+            checkpoint_dir = fallback_dir
+
+    model_path = os.path.join(checkpoint_dir, "pusula_decision_engine.pt")
     if not os.path.exists(model_path):
-        legacy_path = os.path.join(checkpoint_dir, "laya_turkish_model.pt")
-        if os.path.exists(legacy_path):
-            model_path = legacy_path
+        legacy_tdm = os.path.join(checkpoint_dir, "turkish_decision_model.pt")
+        if os.path.exists(legacy_tdm):
+            model_path = legacy_tdm
+        else:
+            legacy_laya = os.path.join(checkpoint_dir, "laya_turkish_model.pt")
+            if os.path.exists(legacy_laya):
+                model_path = legacy_laya
 
     if os.path.exists(model_path):
         checkpoint = torch.load(model_path, map_location=DEVICE)

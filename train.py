@@ -129,8 +129,8 @@ class DecisionTrainer:
         self.criterion_action = nn.BCEWithLogitsLoss()
 
     def train(self, train_path: str = "data/train.jsonl", val_path: str = "data/val.jsonl"):
-        train_dataset = LayaDataset(train_path, self.tokenizer, self.option_to_id, self.cfg.max_length)
-        val_dataset = LayaDataset(val_path, self.tokenizer, self.option_to_id, self.cfg.max_length)
+        train_dataset = DecisionDataset(train_path, self.tokenizer, self.option_to_id, self.cfg.max_length)
+        val_dataset = DecisionDataset(val_path, self.tokenizer, self.option_to_id, self.cfg.max_length)
 
         train_loader = DataLoader(
             train_dataset,
@@ -159,7 +159,7 @@ class DecisionTrainer:
             num_training_steps=total_steps
         )
 
-        console.print(f"[bold cyan]RTX 4090 Üzerinde Eğitim Başlıyor (bfloat16)...[/bold cyan]")
+        console.print(f"[bold cyan]Pusula Eğitimi Başlatılıyor (bfloat16)...[/bold cyan]")
         console.print(f"Toplam Adım: {total_steps} | Epochs: {self.cfg.num_train_epochs}\n")
 
         best_val_acc = 0.0
@@ -232,7 +232,7 @@ class DecisionTrainer:
                 self.save_model(os.path.join(self.cfg.output_dir, "best"))
 
         # Eğitim sonrası Sıcaklık Kalibrasyonu (Temperature Calibration)
-        console.print("\n[bold yellow]Laya Sıcaklık Kalibrasyonu (Temperature Scaling) Başlatılıyor...[/bold yellow]")
+        console.print("\n[bold yellow]Pusula Sıcaklık Kalibrasyonu (Temperature Scaling) Başlatılıyor...[/bold yellow]")
         self.calibrate_temperatures(val_loader)
         self.save_model(os.path.join(self.cfg.output_dir, "best_calibrated"))
 
@@ -309,13 +309,17 @@ class DecisionTrainer:
             "base_model_name": self.cfg.base_model_name,
             "temperature_choice": self.model.temperature_choice.item(),
             "temperature_action": self.model.temperature_action.item()
-        }, os.path.join(save_path, "turkish_decision_model.pt"))
+        }, os.path.join(save_path, "pusula_decision_engine.pt"))
+        
+        # Geriye dönük uyumluluk için kopya
+        torch.save(self.model.state_dict(), os.path.join(save_path, "turkish_decision_model.pt"))
         
         # Tokenizer'ı kaydet
         self.tokenizer.save_pretrained(save_path)
         console.print(f"[green]Model ve Tokenizer kaydedildi: {save_path}[/green]")
 
-# Geriye dönük uyumluluk alias'ları
+# Pusula & Geriye dönük uyumluluk alias'ları
+PusulaTrainer = DecisionTrainer
 LayaDataset = DecisionDataset
 LayaTrainer = DecisionTrainer
 
