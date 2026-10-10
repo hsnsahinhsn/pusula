@@ -1,6 +1,6 @@
 <div align="center">
 
-# Turkish Decision Model (TDM)
+# Pusula: Turkish Decision Engine
 ### Otonom Ajan İş Akışları ve Yönlendirme Altyapıları İçin Düşük Gecikmeli (<15 ms) Türkçe Karar Motoru
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -210,8 +210,8 @@ Model hem aşağıdaki 32 küresel alan arasında yönlendirme yapabilir hem de 
 | **DeepSeek-V4.1 Flash (MoE API)** | Autoregressive LLM | ~290 ms – 580 ms | Bulut / Çoklu GPU | Ayrıştırma Hatası Olası |
 | **GLM-5.3 (Zhipu AI)** | Autoregressive LLM | ~610 ms – 950 ms | Bulut / Çoklu GPU | Ayrıştırma Hatası Olası |
 | **Qwen 3.8-27B (vLLM Yerel)** | Autoregressive LLM | ~240 ms – 450 ms | 54 GB (bfloat16) | Ayrıştırma Hatası Olası |
-| **Turkish Decision Model (RTX PRO 6000)** | **Non-Autoregressive Encoder** | **11.4 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
-| **Turkish Decision Model (NVIDIA H200)** | **Non-Autoregressive Encoder** | **4.8 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
+| **Pusula (RTX PRO 6000)** | **Non-Autoregressive Encoder** | **11.4 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
+| **Pusula (NVIDIA H200)** | **Non-Autoregressive Encoder** | **4.8 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
 
 ---
 
@@ -229,7 +229,7 @@ python synthetic_generator.py
 python train.py
 ```
 
-Eğitim döngüsü `bfloat16` ve `FlashAttention-2` hızlandırmasıyla çalışır. Doğrulama kümesi üzerinde Platt Scaling uygulanarak Brier Skoru ve ECE (Expected Calibration Error) minimize edilir. Optimize edilen ağırlıklar `checkpoints/turkish_decision_model/best/` dizinine kaydedilir.
+Eğitim döngüsü `bfloat16` ve `FlashAttention-2` hızlandırmasıyla çalışır. Doğrulama kümesi üzerinde Platt Scaling uygulanarak Brier Skoru ve ECE (Expected Calibration Error) minimize edilir. Optimize edilen ağırlıklar `checkpoints/pusula/best/` dizinine kaydedilir.
 
 ---
 
@@ -238,11 +238,11 @@ Eğitim döngüsü `bfloat16` ve `FlashAttention-2` hızlandırmasıyla çalış
 Bu proje **Apache 2.0** lisansı altında açık kaynak olarak sunulmuştur. Hem ticari hem de akademik projelerde serbestçe kullanılabilir.
 
 ```bibtex
-@misc{turkish_decision_model_2026,
+@misc{pusula_2026,
   author = {Hasan Şahin},
-  title = {Turkish Decision Model: Low-Latency Universal Typed Decision Engine for Turkish AI Workflows},
+  title = {Pusula: Low-Latency Universal Typed Decision Engine for Autonomous Turkish Agent Workflows},
   year = {2026},
   publisher = {GitHub},
-  howpublished = {\url{https://github.com/hsnsahinhsn/turkish-decision-model}}
+  howpublished = {\url{https://github.com/hsnsahinhsn/pusula}}
 }
 ```

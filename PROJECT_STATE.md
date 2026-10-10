@@ -1,7 +1,7 @@
 # PROJECT STATE & PERSISTENCE RECORD
 
-**Project Name:** Turkish Decision Model (TDM)  
-**Repository:** https://github.com/hsnsahinhsn/turkish-decision-model.git  
+**Project Name:** Pusula: Turkish Decision Engine
+**Repository:** https://github.com/hsnsahinhsn/pusula.git  
 **Target Environment:** Cloud GPU (NVIDIA RTX PRO 6000 96GB / RTX 5090 32GB / RTX 4090 24GB / H200)  
 **Primary Goal:** Sub-15 ms latency, highly calibrated, single-pass non-autoregressive decision & triage engine for autonomous Turkish agent workflows.
 
@@ -78,8 +78,8 @@ To maximize marginal utility and eliminate cold-start bias, synthetic generation
 
 1. **Ortam Kurulumu:**
    ```bash
-   git clone https://github.com/hsnsahinhsn/turkish-decision-model.git
-   cd turkish-decision-model
+   git clone https://github.com/hsnsahinhsn/pusula.git
+   cd pusula
    pip install -r requirements.txt
    ```
 
