@@ -1,6 +1,6 @@
 """
 Sentetik Türkçe Karar Verisi Üretim Pipeline'ı
-Yerel LLM (Qwen 2.5 7B/14B - vLLM / Ollama) üzerinden Laya şablonuna uygun yüksek kaliteli veri üretir.
+Yerel LLM (Qwen 3.8 / 3.5 - vLLM / Ollama) üzerinden Türkçe Karar Modeli şablonuna uygun yüksek kaliteli veri üretir.
 """
 import asyncio
 import json
@@ -17,7 +17,7 @@ from config import GenerationConfig
 console = Console()
 
 class DecisionSample(BaseModel):
-    """Laya modeli için standart JSONL kayıt şeması"""
+    """Türkçe Karar Modeli için standart JSONL kayıt şeması"""
     context: str = Field(..., description="Kullanıcı mesajı, bilet veya sistem bağlamı")
     options: List[str] = Field(..., description="Aday karar seçenekleri listesi")
     choice: str = Field(..., description="Doğru/seçilen karar etiketi")

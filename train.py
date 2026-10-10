@@ -1,6 +1,6 @@
 """
-Türkçe Laya Tipli Karar Modeli Eğitim & Kalibrasyon Pipeline'ı
-NVIDIA RTX 4090 (24 GB VRAM) üzerinde bfloat16 ve Flash Attention desteğiyle çalışır.
+Türkçe Tipli Karar Modeli Eğitim & Kalibrasyon Pipeline'ı
+NVIDIA GPU sunucularında bfloat16 ve Flash Attention desteğiyle çalışır.
 """
 import json
 import os
@@ -16,11 +16,11 @@ from rich.console import Console
 from rich.table import Table
 
 from config import TrainingConfig, GenerationConfig
-from model import TurkishLayaDecisionModel
+from model import TurkishDecisionModel
 
 console = Console()
 
-class LayaDataset(Dataset):
+class DecisionDataset(Dataset):
     def __init__(
         self,
         jsonl_path: str,
@@ -94,7 +94,7 @@ def collate_fn(batch: List[Dict[str, Any]], tokenizer, max_length: int) -> Dict[
         "target_action": action_targets
     }
 
-class LayaTrainer:
+class DecisionTrainer:
     def __init__(self, train_cfg: TrainingConfig, gen_cfg: GenerationConfig):
         self.cfg = train_cfg
         self.gen_cfg = gen_cfg
@@ -118,7 +118,7 @@ class LayaTrainer:
             self.tokenizer = AutoTokenizer.from_pretrained(self.cfg.base_model_name)
             
         # Model Oluştur
-        self.model = TurkishLayaDecisionModel(
+        self.model = TurkishDecisionModel(
             base_model_name=self.cfg.base_model_name,
             options_vocabulary=self.all_options
         ).to(self.device)
@@ -309,16 +309,20 @@ class LayaTrainer:
             "base_model_name": self.cfg.base_model_name,
             "temperature_choice": self.model.temperature_choice.item(),
             "temperature_action": self.model.temperature_action.item()
-        }, os.path.join(save_path, "laya_turkish_model.pt"))
+        }, os.path.join(save_path, "turkish_decision_model.pt"))
         
         # Tokenizer'ı kaydet
         self.tokenizer.save_pretrained(save_path)
         console.print(f"[green]Model ve Tokenizer kaydedildi: {save_path}[/green]")
 
+# Geriye dönük uyumluluk alias'ları
+LayaDataset = DecisionDataset
+LayaTrainer = DecisionTrainer
+
 if __name__ == "__main__":
     t_cfg = TrainingConfig()
     g_cfg = GenerationConfig()
-    trainer = LayaTrainer(t_cfg, g_cfg)
+    trainer = DecisionTrainer(t_cfg, g_cfg)
     
     # data/train.jsonl mevcutsa eğitimi başlat
     if os.path.exists("data/train.jsonl"):

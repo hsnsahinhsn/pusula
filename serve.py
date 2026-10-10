@@ -1,6 +1,6 @@
 """
-Düşük Gecikmeli (<15 ms) Türkçe Laya Karar Servisi (FastAPI)
-NVIDIA RTX 4090 üzerinde tek geçişli çıkarım motoru.
+Düşük Gecikmeli (<15 ms) Türkçe Karar Servisi (FastAPI)
+NVIDIA GPU üzerinde tek geçişli tipli çıkarım motoru.
 """
 import os
 import time
@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer
 
-from model import TurkishLayaDecisionModel
+from model import TurkishDecisionModel
 
 # API İstek ve Yanıt Şemaları
 class DecisionRequest(BaseModel):
@@ -28,21 +28,25 @@ class DecisionResponse(BaseModel):
     latency_ms: float = Field(..., description="Model çıkarım gecikmesi (milisaniye)")
 
 app = FastAPI(
-    title="Türkçe Laya Karar Motoru API",
+    title="Türkçe Karar Motoru API",
     description="Agentic iş akışları ve yönlendirme katmanları için <20ms tipli karar servisi.",
     version="1.0.0"
 )
 
 # Global Model & Tokenizer Değişkenleri
-MODEL: Optional[TurkishLayaDecisionModel] = None
+MODEL: Optional[TurkishDecisionModel] = None
 TOKENIZER = None
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 @app.on_event("startup")
 def load_decision_engine():
     global MODEL, TOKENIZER
-    checkpoint_dir = os.getenv("CHECKPOINT_DIR", "checkpoints/laya_turkish_decision/best")
-    model_path = os.path.join(checkpoint_dir, "laya_turkish_model.pt")
+    checkpoint_dir = os.getenv("CHECKPOINT_DIR", "checkpoints/turkish_decision_model/best")
+    model_path = os.path.join(checkpoint_dir, "turkish_decision_model.pt")
+    if not os.path.exists(model_path):
+        legacy_path = os.path.join(checkpoint_dir, "laya_turkish_model.pt")
+        if os.path.exists(legacy_path):
+            model_path = legacy_path
 
     if os.path.exists(model_path):
         checkpoint = torch.load(model_path, map_location=DEVICE)
@@ -50,7 +54,7 @@ def load_decision_engine():
         base_model_name = checkpoint["base_model_name"]
         
         TOKENIZER = AutoTokenizer.from_pretrained(checkpoint_dir)
-        MODEL = TurkishLayaDecisionModel(
+        MODEL = TurkishDecisionModel(
             base_model_name=base_model_name,
             options_vocabulary=options_vocab
         )

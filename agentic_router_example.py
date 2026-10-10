@@ -1,27 +1,30 @@
 """
-Agentic İş Akışında Türkçe Laya Karar Modeli Entegrasyon Örneği
+Agentic İş Akışında Türkçe Karar Modeli Entegrasyon Örneği
 Büyük LLM çağrıları yerine ~15 ms içinde yerel yönlendirme ve araç seçimi yapar.
 """
 import requests
 import time
 
-LAYA_ENDPOINT = "http://localhost:8080/decide"
+DECISION_ENDPOINT = "http://localhost:8080/decide"
 
-def laya_route(context: str, options: list) -> dict:
-    """Laya Karar Motoruna hafif ve hızlı bir REST çağrısı yapar."""
+def decision_route(context: str, options: list) -> dict:
+    """Türkçe Karar Motoruna hafif ve hızlı bir REST çağrısı yapar."""
     payload = {
         "context": context,
         "options": options
     }
     t0 = time.perf_counter()
-    resp = requests.post(LAYA_ENDPOINT, json=payload, timeout=5)
+    resp = requests.post(DECISION_ENDPOINT, json=payload, timeout=5)
     t_elapsed = (time.perf_counter() - t0) * 1000
     if resp.status_code == 200:
         data = resp.json()
         data["roundtrip_ms"] = round(t_elapsed, 2)
         return data
     else:
-        raise RuntimeError(f"Laya Karar Motoru Hatası: {resp.text}")
+        raise RuntimeError(f"Karar Motoru Hatası: {resp.text}")
+
+# Geriye dönük uyumluluk alias'ı
+laya_route = decision_route
 
 def agentic_orchestrator(user_query: str):
     """Kullanıcı sorgusunu aşamalı olarak karar motorundan geçiren akıllı orkestratör."""
@@ -31,7 +34,7 @@ def agentic_orchestrator(user_query: str):
 
     # 1. ADIM: Güvenlik ve Guardrail Kontrolü (Tek Geçiş)
     security_options = ["guvenli_istek", "prompt_injection", "pii_veri_sizintisi", "zararli_icerik"]
-    sec_decision = laya_route(user_query, security_options)
+    sec_decision = decision_route(user_query, security_options)
     print(f"[1. Güvenlik Denetimi] Karar: {sec_decision['choice']} | Güven: {sec_decision['choice_confidence']} | Eylem Gerekli: {sec_decision['action_required']} ({sec_decision['latency_ms']} ms)")
 
     if sec_decision["choice"] != "guvenli_istek" and sec_decision["action_required"]:
@@ -40,7 +43,7 @@ def agentic_orchestrator(user_query: str):
 
     # 2. ADIM: Araç Seçimi ve Yönlendirme (Tool Routing)
     tool_options = ["web_search", "sql_query", "calculator", "calendar_booking", "human_handoff"]
-    tool_decision = laya_route(user_query, tool_options)
+    tool_decision = decision_route(user_query, tool_options)
     print(f"[2. Araç Seçimi] Seçilen Araç: {tool_decision['choice']} | Öncelik Skoru: {tool_decision['score']} ({tool_decision['latency_ms']} ms)")
 
     # 3. ADIM: Ajan Eylemi

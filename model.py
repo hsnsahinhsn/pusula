@@ -1,6 +1,6 @@
 """
-Türkçe Laya Tipli Karar Modeli (Typed Decision Model) Mimarisi
-ModernBERT-large veya mmBERT omurgası üzerine kurulu tek geçişli (single-pass) multi-task karar başlığı.
+Türkçe Tipli Karar Modeli (Turkish Typed Decision Model) Mimarisi
+Modern multi-task encoder omurgası üzerine kurulu tek geçişli (single-pass) tipli karar başlığı.
 """
 import torch
 import torch.nn as nn
@@ -8,7 +8,7 @@ from transformers import AutoModel, AutoConfig, PreTrainedModel
 from typing import Dict, List, Optional, Tuple
 
 class DecisionHead(nn.Module):
-    """Laya'nın özel Tipli Karar Başlığı (Typed Decision Head)
+    """Tipli Karar Başlığı (Typed Decision Head)
     
     Tek bir encoder geçişinden çıkan CLS/Mean pooling tensörünü alarak aynı anda:
     1. choice_logits: Aktif aday seçenekler üzerinde kategorik dağılım
@@ -54,7 +54,7 @@ class DecisionHead(nn.Module):
         return choice_logits, score_preds, action_logits
 
 
-class TurkishLayaDecisionModel(nn.Module):
+class TurkishDecisionModel(nn.Module):
     def __init__(
         self,
         base_model_name: str,
@@ -177,3 +177,6 @@ class TurkishLayaDecisionModel(nn.Module):
             "action_required": action_required,
             "action_probability": round(action_prob, 4)
         }
+
+# Geriye dönük uyumluluk alias'ı
+TurkishLayaDecisionModel = TurkishDecisionModel

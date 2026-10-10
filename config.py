@@ -344,7 +344,7 @@ class GenerationConfig:
 
 @dataclass
 class TrainingConfig:
-    # Model Omurgası (Türkçe ve 100+ dil için mmBERT omurgalı Laya)
+    # Model Omurgası (Türkçe ve 100+ dil için mmBERT çok dilli omurga)
     base_model_name: str = "convaiinnovations/laya-multilingual"
     fallback_model_name: str = "answerdotai/ModernBERT-large"
     
@@ -366,13 +366,13 @@ class TrainingConfig:
     mixed_precision: str = "bf16"
     use_flash_attention: bool = True
     torch_compile: bool = True
-    output_dir: str = "checkpoints/laya_turkish_decision"
+    output_dir: str = "checkpoints/turkish_decision_model"
     save_total_limit: int = 2
 
 
 @dataclass
 class InferenceConfig:
-    checkpoint_dir: str = "checkpoints/laya_turkish_decision/best"
+    checkpoint_dir: str = "checkpoints/turkish_decision_model/best"
     device: str = "cuda"
     host: str = "0.0.0.0"
     port: int = 8080

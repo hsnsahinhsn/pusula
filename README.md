@@ -1,32 +1,61 @@
-# Türkçe Karar Modeli (Laya) Eğitimi & Sentetik Veri Üretim Pipeline'ı
+# Türkçe Karar Modeli (Turkish Decision Model)
 
-Bu depo, **NVIDIA RTX 4090 (24 GB VRAM)** donanımı üzerinde agentic iş akışlarında, akıllı yönlendirme katmanlarında (routing) ve araç seçiminde (tool calling) kullanılmak üzere optimize edilmiş **düşük gecikmeli (~10-20 ms) Türkçe Tipli Karar Modeli (Laya)** eğitim ve sentetik veri üretim altyapısını içerir.
+Bu depo; agentic iş akışlarında, yönlendirme katmanlarında (routing), araç seçiminde (tool calling) ve triyaj sistemlerinde kullanılmak üzere tasarlanmış **düşük gecikmeli (~10-15 ms) Evrensel Türkçe Tipli Karar Modeli (Universal Turkish Decision Model)** eğitim ve sentetik veri üretim altyapısını içerir.
 
 ---
 
 ## 🎯 Proje Hedefi & Mimari
 
-Geleneksel üretken LLM'leri (GPT-4, Claude, Qwen) her karar veya yönlendirme adımında çalıştırmak yüksek gecikme (500 ms - 2000 ms) ve yüksek maliyet yaratır. 
+Geleneksel üretken LLM'leri (GPT-4, Claude, Qwen vb.) her karar, güvenlik denetimi veya yönlendirme adımında çalıştırmak yüksek gecikme (500 ms - 2000 ms) ve yüksek maliyet yaratır. 
 
-**Laya Mimarisi:**
-- **Omurga (Backbone):** ModernBERT-large (421M parametre) veya `convaiinnovations/laya-multilingual` (mmBERT-base, 100+ dil Türkçe dahil).
-- **Tipli Karar Başlığı (Typed Decision Head):** Tek bir forward pass içinde şu 3 çıktıyı üretir:
+**Türkçe Karar Modeli Mimarisi:**
+- **Omurga (Backbone):** Çok dilli encoder mimarisi (322M - 421M parametre).
+- **Tipli Karar Başlığı (Typed Decision Head):** Tek bir matris geçişinde (single pass) şu 3 çıktıyı üretir:
   1. `choice`: Aday seçenekler (`options`) arasından en uygun kategorik karar.
   2. `score`: 0.0 - 1.0 arası kalibre edilmiş güven / öncelik / risk skoru.
-  3. `action_required`: Boolean (true/false) eylem veya onay filtresi.
-- **Hız:** RTX 4090 üzerinde **<15 ms** çıkarım gecikmesi.
+  3. `action_required`: Boolean (true/false) eylem veya acil onay filtresi.
+- **Hız:** GPU üzerinde **<15 ms** çıkarım gecikmesi.
+- **Halüsinasyon Riski:** Sıfır (metin üretmez, doğrudan tensör sınıflandırması yapar).
+
+---
+
+## 🌐 23 Makro Alanı Kapsayan Evrensel Taksonomi
+
+1. **Evrensel Ana Yönlendirici (Master Router)**
+2. **Tüm Sınavlar:** SAT, ACT, ESAT, STEP, IMAT, BMAT, IELTS, TOEFL, PTE, GRE, GMAT, YKS (TYT/AYT), LGS, KPSS, ALES, DGS, TUS, DUS.
+3. **Sağlık, Tıp & Klinik Triyaj:** 112 acil durum, dahiliye, çocuk, ortopedi, psikiyatri, tahlil/lab, ilaç etkileşimi.
+4. **Hukuk & Adalet:** İçtihat/emsal karar, sözleşmeler, iş/tazminat, ceza, KVKK, resmi dilekçe taslağı.
+5. **Bankacılık, Finans & Kripto:** Fraud/dolandırıcılık alarmı, kredi faizleri, BIST hisse/fonlar, kripto varlıklar, makroekonomi.
+6. **Yazılım, BT & Yapay Zeka:** Debug/hata ayıklama, kod refactor, SQL/veritabanı, Docker/K8s/DevOps, PyTorch/MLOps, API entegrasyonu.
+7. **Temel Bilimler (İleri STEM):** İleri matematik, geometri ispatları, kuantum/klasik fizik, organik kimya, moleküler biyoloji/genetik.
+8. **Mühendislik & İmalat:** Elektrik-elektronik, makine/mekatronik/CAD, inşaat/statik/deprem, endüstri, TSE/ISO standartları.
+9. **E-Ticaret & Pazar Yerleri:** İade/cayma hakkı, kargo gecikmesi, mükerrer ödeme, stok/ürün sorgusu, pazar yeri operasyonları.
+10. **Emlak, Gayrimenkul & Tapu:** Kira artış oranı, tahliye taahhütnamesi, tapu/kadastro, konut değerleme rayici.
+11. **Otomotiv & Araç Bakımı:** Motor arıza lambası / OBD-II kodları, ekspertiz/tramer, kasko/trafik sigortası, periyodik bakım.
+12. **Kariyer, İK & İstihdam:** ATS uyumlu CV/LinkedIn, mülakat simülasyonu, maaş pazarlığı, istifa/ihbar süreçleri.
+13. **Seyahat, Turizm & Vize:** Schengen ve ABD vize evrakları, konsolosluk randevusu, uçak/otel rezervasyonu, gezi rotası.
+14. **Beslenme, Fitness & Spor:** Günlük kalori/makro hesabı, diyet programları, hipertrofi antrenman planı, sporcu takviyeleri.
+15. **Tarım, Ziraat & Veterinerlik:** Evcil hayvan acil zehirlenme, kedi/köpek bakımı, bitki hastalıkları ve tarımsal sulama.
+16. **Siyaset & Kamu Diplomasisi:** e-Devlet işlemleri, seçim/anayasa süreçleri, jeopolitik, tarafsız olgusal bilgi.
+17. **Dilbilim, Çeviri & Edebiyat:** Yeminli tercüme, yabancı dil öğrenimi, proofreading, yaratıcı metin yazarlığı.
+18. **Medya, Pazarlama & Tasarım:** SEO analizi, sosyal medya stratejisi, reklam kampanyaları (Google/Meta Ads), grafik tasarım.
+19. **Felsefe, Din, Etik & Sosyoloji:** Yapay zeka ve biyoetik ikilemleri, ilahiyat soruları, epistemoloji/ontoloji, toplum analizi.
+20. **Psikolojik Kriz & Acil Destek:** İntihar/kendine zarar riski (182 / 112 Acil), aile içi şiddet (183 KADES), panik atak ilk yardım.
+21. **Gündelik Sohbet (Chit-Chat):** Selamlaşma, hal-hatır, hafif sohbeti tanıyan ve ağır servislere gitmeyen vana.
+22. **Kişisel Verimlilik & Asistanlık:** Takvim kurma, e-posta taslağı, yapılacaklar listesi, uzun notları özetleme.
+23. **Güvenlik, Guardrails & Fallback:** Prompt injection, jailbreak, kredi kartı/TC PII ifşası ve anlamsız girdileri ayıklama.
 
 ---
 
 ## 📁 Proje Yapısı
 
 ```
-turkish_laya_pipeline/
-├── config.py                  # Dikey alanlar, model ve eğitim hiperparametreleri
+turkish-decision-model/
+├── config.py                  # 23 dikey alan, model ve eğitim hiperparametreleri
 ├── synthetic_generator.py     # Yerel Qwen LLM ile sentetik Türkçe JSONL veri üretici
-├── model.py                   # PyTorch Laya Decision Model & Typed Decision Head
+├── model.py                   # PyTorch Türkçe Tipli Karar Modeli Mimarisi
 ├── train.py                   # bfloat16 + Flash Attention eğitim ve kalibrasyon döngüsü
-├── serve.py                   # Düşük gecikmeli FastAPI mikroservisi
+├── serve.py                   # Düşük gecikmeli (<15 ms) FastAPI mikroservisi
 ├── agentic_router_example.py  # Agentic iş akışında kullanım örneği
 ├── requirements.txt           # Gerekli kütüphaneler
 └── data/                      # train.jsonl, val.jsonl, test.jsonl
@@ -34,11 +63,14 @@ turkish_laya_pipeline/
 
 ---
 
-## 🚀 RTX 4090 Kurulum ve Adım Adım Çalıştırma Rehberi
+## 🚀 Kurulum ve Adım Adım Çalıştırma Rehberi
 
 ### 1. Adım: Sanal Ortam ve Kütüphaneler
 
 ```bash
+git clone https://github.com/hsnsahinhsn/turkish-decision-model.git
+cd turkish-decision-model
+
 python -m venv venv
 # Linux / WSL:
 source venv/bin/activate
@@ -50,38 +82,35 @@ pip install -r requirements.txt
 
 ### 2. Adım: Yerel LLM Sunucusunun Başlatılması (Sentetik Veri İçin)
 
-Aynı RTX 4090 üzerinde **Qwen 2.5 7B** veya **14B** modelini vLLM ile başlatın (yaklaşık 12-14 GB VRAM kullanır):
+GPU sunucunuzda (RTX PRO 6000, 5090 veya 4090) **Qwen 3.8 27B** veya **Qwen 3.5 9B** modelini vLLM ile başlatın:
 
 ```bash
-# vLLM ile OpenAI uyumlu yerel sunucu:
 python -m vllm.entrypoints.openai.api_server \
-  --model Qwen/Qwen2.5-7B-Instruct \
+  --model Qwen/Qwen3.5-9B-Instruct \
   --port 8000 \
-  --gpu-memory-utilization 0.6 \
+  --gpu-memory-utilization 0.7 \
   --max-model-len 4096
 ```
 
-*(Alternatif olarak Ollama kullanıyorsanız: `ollama run qwen2.5:7b`)*
-
 ### 3. Adım: Sentetik Türkçe Veri Üretimi
 
-4 dikey alanda (Tool Calling, Müşteri Hizmetleri, Güvenlik Guardrails, Aciliyet Skorlama) doğrulanmış JSONL verisi üretmek için:
+23 dikey alanda doğrulanmış, yüksek kaliteli Türkçe JSONL verisi üretmek için:
 
 ```bash
 python synthetic_generator.py
 ```
-Bu script üretilen her veriyi Pydantic ile şema kontrolünden geçirir, kopyaları eler ve `data/train.jsonl`, `data/val.jsonl`, `data/test.jsonl` dosyalarını oluşturur.
+Bu script üretilen her örneği Pydantic ile şema kontrolünden geçirir, kopyaları eler ve `data/train.jsonl`, `data/val.jsonl`, `data/test.jsonl` dosyalarını hazırlar.
 
-### 4. Adım: Model Eğitimi & Sıcaklık Kalibrasyonu (RLCD)
+### 4. Adım: Model Eğitimi & Sıcaklık Kalibrasyonu
 
-Eğitimi başlatmadan önce vLLM sürecini durdurarak 24 GB VRAM'in tamamını eğitime ayırabilirsiniz (Model sadece 4-6 GB VRAM tüketir):
+Veri üretimi tamamlandıktan sonra vLLM sürecini durdurup tüm GPU belleğini karar modeline tahsis edebilirsiniz:
 
 ```bash
 python train.py
 ```
-- RTX 4090'ın `bfloat16` ve `FlashAttention-2` yeteneklerini tam kapasite kullanır.
-- Eğitim bitiminde **Platt Scaling (Sıcaklık Kalibrasyonu)** yaparak aşırı güveni (overconfidence) engeller ve Brier Skorunu optimize eder.
-- En iyi ağırlıklar `checkpoints/laya_turkish_decision/best/` dizinine kaydedilir.
+- GPU üzerinde `bfloat16` ve `FlashAttention-2` yeteneklerini kullanır (birkaç dakikada tamamlanır).
+- Eğitim sonunda **Platt Scaling (Sıcaklık Kalibrasyonu)** yaparak aşırı güveni (overconfidence) engeller ve Brier Skorunu optimize eder.
+- En iyi ağırlıklar `checkpoints/turkish_decision_model/best/` dizinine kaydedilir.
 
 ### 5. Adım: Çıkarım Servisi (Inference API)
 
@@ -96,14 +125,14 @@ curl -X POST "http://localhost:8080/decide" \
      -H "Content-Type: application/json" \
      -d '{
        "context": "Faturamda fazla kesinti var, derhal iade talep ediyorum.",
-       "options": ["muhasebe_finans", "teknik_destek", "lojistik_kargo"]
+       "options": ["bankacilik_finans_kripto", "e_ticaret_lojistik", "hukuk_adalet_mevzuat"]
      }'
 ```
 
 Yanıt (<15 ms):
 ```json
 {
-  "choice": "muhasebe_finans",
+  "choice": "bankacilik_finans_kripto",
   "choice_confidence": 0.9652,
   "score": 0.9410,
   "action_required": true,
