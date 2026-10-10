@@ -31,7 +31,8 @@ class TestPusulaConfig(unittest.TestCase):
         self.assertEqual(t_cfg.loss_weight_choice, 1.0)
         self.assertEqual(t_cfg.loss_weight_score, 0.5)
         self.assertEqual(t_cfg.loss_weight_action, 0.5)
-        self.assertEqual(t_cfg.max_length, 512)
+        self.assertEqual(t_cfg.max_length, 8192)
+        self.assertTrue(t_cfg.dynamic_padding)
 
     def test_inference_config_defaults(self):
         i_cfg = InferenceConfig()

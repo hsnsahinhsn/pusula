@@ -128,16 +128,17 @@ class TurkishDecisionModel(nn.Module):
         tokenizer,
         context: str,
         options: List[str],
-        device: torch.device
+        device: torch.device,
+        max_length: int = 8192
     ) -> Dict[str, any]:
-        """Tek bir istek için ~10-15 ms altında çıkarım yapar."""
+        """Tek bir istek için dinamik uzunlukla (<8192 token) çıkarım yapar."""
         self.eval()
         # Bağlamı ve seçenekleri formatla
         prompt = f"Bağlam: {context}\nSeçenekler: {', '.join(options)}"
         inputs = tokenizer(
             prompt,
-            max_length=512,
-            padding=True,
+            max_length=max_length,
+            padding=False,
             truncation=True,
             return_tensors="pt"
         ).to(device)
@@ -151,7 +152,7 @@ class TurkishDecisionModel(nn.Module):
                 candidate_mask[0, idx] = True
                 valid_indices.append(idx)
                 
-        with torch.no_grad():
+        with torch.inference_mode():
             outputs = self.forward(
                 input_ids=inputs["input_ids"],
                 attention_mask=inputs["attention_mask"],
