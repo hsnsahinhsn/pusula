@@ -23,11 +23,12 @@
 
 To maximize marginal utility and eliminate cold-start bias, synthetic generation targets **750 samples per category** (**24,000 samples total**):
 
-1. `banking_fintech`: EFT, kart blokaj, kredi, döviz, şüpheli işlem.
-2. `e_commerce_retail`: İade, kargo takibi, beden değişimi, ödeme hatası, kupon.
-3. `telecom_isp`: Kota aşımı, taahhüt, fiber arıza, fatura itirazı, numara taşıma.
-4. `healthcare_telemedicine`: Randevu iptali, reçete yenileme, lab sonucu, triyaj, sigorta onayı.
-5. `insurance_insurtech`: Kasko hasar bildirimi, poliçe zeyilname, acil sağlık teminatı.
+1. `banking_fintech`: FAST, EFT, POS komisyon/bloke, kredi/mevduat, chargeback (harcama itirazı), şüpheli işlem.
+2. `corporate_accounting_tax`: E-Fatura, E-Arşiv, E-İrsaliye, GİB portalı, KDV tevkifatı (5/10, 9/10), Muhtasar, Geçici Vergi, Ba-Bs mutabakatı, MT940 banka ekstre eşleme, bordro vergi dilimleri, KKEG, amortisman.
+3. `e_commerce_retail`: İade, kargo takibi, beden değişimi, ödeme hatası, kupon.
+4. `telecom_isp`: Kota aşımı, taahhüt, fiber arıza, fatura itirazı, numara taşıma.
+5. `healthcare_telemedicine`: Randevu iptali, reçete yenileme, lab sonucu, triyaj, sigorta onayı.
+6. `insurance_insurtech`: Kasko hasar bildirimi, poliçe zeyilname, acil sağlık teminatı.
 6. `legal_compliance`: KVKK talebi, cayma hakkı, sözleşme maddesi inceleme, tahkim.
 7. `airline_travel_hospitality`: Uçuş değişikliği, bagaj kaybı, check-in hatası, otel no-show.
 8. `utilities_energy`: Elektrik/doğalgaz arıza bildirimi, sayaç okuma, abonelik devir.

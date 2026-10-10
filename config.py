@@ -37,7 +37,8 @@ class GenerationConfig:
                 "akademik_ve_sinavlar",     # Sınavlar (SAT, ACT, ESAT, IMAT, YKS, IELTS vb.)
                 "saglik_tip_ve_klinik",     # Tıp, klinik branşlar, tahlil, ilaç
                 "hukuk_adalet_mevzuat",     # Yargı, dava, sözleşme, KVKK
-                "bankacilik_finans_kripto", # Finans, borsa, kripto, vergi
+                "bankacilik_finans_kripto", # Bankacılık, borsa, fonlar, kripto, POS
+                "muhasebe_vergi_maliye",    # E-fatura, KDV tevkifatı, beyannameler, bordro, Ba-Bs
                 "sigorta_ve_sosyal_guvenlik", # SGK, emeklilik, prim, DASK, kasko
                 "yazilim_bt_yapayzeka",     # Kodlama, hata ayıklama, veri tabanı, bulut
                 "temel_bilimler_stem",      # İleri matematik, fizik, kimya, biyoloji
@@ -118,17 +119,31 @@ class GenerationConfig:
             ]
         },
 
-        # 5. BANKACILIK, FİNANS, KRİPTO & EKONOMİ (Banking & Wealth)
+        # 5. BANKACILIK, FİNTEK, ÖDEMELER & PİYASALAR (Banking & Wealth)
         "banking_finance_crypto": {
-            "description": "Finansal işlemler, yatırımlar ve piyasa analizlerini yönlendirme.",
+            "description": "Bireysel ve kurumsal bankacılık, ödemeler, yatırımlar ve piyasa analizleri.",
             "options": [
-                "supheli_islem_ve_fraud",   # Çalıntı kart, izinsiz EFT (Acil Eylem!)
-                "kredi_faiz_ve_mevduat",    # Konut/ihtiyaç kredisi, vadeli mevduat faizi
-                "bist_hisse_ve_fonlar",     # Borsa İstanbul, fon portföyü, temettü
-                "kripto_ve_dijital_varlik", # Bitcoin, Ethereum, blockchain transferi
-                "makroekonomi_ve_enflasyon",# TÜFE, TCMB faiz kararları, döviz kurları
-                "fatura_vergi_ve_muhasebe", # Gelir vergisi, KDV iadesi, e-arşiv fatura
-                "pos_ve_sirket_tahsilati"   # Ticari bankacılık, bloke, çek/senet
+                "supheli_islem_ve_fraud",   # Çalıntı kart, izinsiz EFT/FAST (Acil Müdahale!)
+                "kredi_faiz_ve_mevduat",    # Konut/ihtiyaç/ticari kredi, vadeli mevduat, KMH hesabı
+                "bist_hisse_ve_fonlar",     # Borsa İstanbul, TEFAS fonları, eurobond, temettü
+                "kripto_ve_dijital_varlik", # Bitcoin, Ethereum, soğuk cüzdan, blockchain transferi
+                "makroekonomi_ve_doviz",    # TÜFE enflasyon, TCMB politika faizi, döviz kurları
+                "pos_tahsilat_ve_chargeback"# Sanal/fiziki POS bloke, kart komisyonu, harcama itirazı
+            ]
+        },
+
+        # 6. KURUMSAL MUHASEBE, VERGİ, E-DÖNÜŞÜM & MALİ MÜŞAVİRLİK (Corporate Accounting & Tax)
+        "corporate_accounting_and_tax": {
+            "description": "Ön ve genel muhasebe, GİB e-dönüşüm, vergi beyannameleri, tevkifat ve bordro.",
+            "options": [
+                "e_fatura_e_arsiv_irsaliye",  # E-fatura iptal/itiraz, GİB portalı, e-irsaliye sevk
+                "kdv_tevkifat_ve_stopaj",     # 5/10, 7/10, 9/10 tevkifat oranları, 2 no'lu KDV, kira stopajı
+                "beyanname_ve_gib_takvimi",   # KDV-1, Muhtasar ve Prim Hizmet (MPHB), Geçici Vergi, Kurumlar
+                "cari_hesap_ve_mutabakat",    # Ba-Bs formları, KEP mutabakat mektubu, bakiye uyuşmazlığı
+                "personel_bordro_ve_sgk",     # Ücret bordrosu, gelir vergisi dilimleri, kıdem/ihbar tavanı
+                "amortisman_ve_gider_kisitlamasi", # Binek araç gider kısıtlaması, demirbaş amortismanı, KKEG
+                "banka_ekstresi_mt940_esleme",# MT940 banka hareketlerinin otomatik muhasebeleştirilmesi
+                "mali_musavir_mevzuat_danismani" # VUK, TTK, resmi gazete tebliğleri ve vergi cezaları
             ]
         },
 
