@@ -15,13 +15,13 @@ class GenerationConfig:
     api_key: str = os.getenv("LLM_API_KEY", "EMPTY")
     # RTX PRO 6000 (96 GB) için Qwen 3.8 27B / 32B; RTX 4090 için Qwen 3.5 9B
     model_name: str = os.getenv("LLM_MODEL_NAME", "Qwen/Qwen3.5-9B-Instruct")
-    temperature: float = 0.75
-    top_p: float = 0.9
+    temperature: float = 0.82
+    top_p: float = 0.95
     max_tokens: int = 550
     request_timeout: int = 120
     
-    # 30 dikey alan x 350 örnek = ~10.500 adet zengin, dengeli ve doğrulanmış sentetik veri
-    samples_per_category: int = 350
+    # Maksimum Marjinal Fayda: 32 dikey alan x 750 örnek = 24.000 adet zengin sentetik veri
+    samples_per_category: int = 750
     batch_size: int = 16
     output_dir: str = "data"
     train_split: float = 0.8
