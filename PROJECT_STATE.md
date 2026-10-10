@@ -15,7 +15,7 @@
   2. `score`: Calibrated confidence / urgency / risk metric bounded in `[0.00, 1.00]`.
   3. `action_required`: Boolean intervention flag for agentic human-in-the-loop escalation or immediate tool execution.
 - **Calibration Engine:** Platt Scaling with learned temperature scaling ($T_{\text{choice}}, T_{\text{action}}$) optimized on validation set to minimize Expected Calibration Error (ECE) and Brier Score.
-- **Latency Target:** $< 15\text{ ms}$ on 512-token context under TensorRT / FP16 / BF16 execution.
+- **Latency & Context Target:** Native **8,192 token (8K)** long-context support with Dynamic Padding (<8 ms on standard queries, <35 ms on 8K-token enterprise contracts) under PyTorch / ONNX Runtime / TensorRT execution.
 
 ---
 
@@ -69,6 +69,7 @@ To maximize marginal utility and eliminate cold-start bias, synthetic generation
 | `train.py` | PyTorch + bfloat16 + FlashAttention-2 eğitim ve kalibrasyon döngüsü. |
 | `serve.py` | FastAPI tabanlı, sub-15ms yüksek throughput çıkarım servisi (`/decide`). |
 | `agentic_router_example.py` | LangGraph / CrewAI tarzı otonom karar orkestrasyonu demo kodu. |
+| `export.py` | ONNX Runtime ve NVIDIA TensorRT (<4 ms) derleme aracı (8K dinamik eksen). |
 | `pyproject.toml` | Modern Python paketleme (pip install -e .) ve bağımlılık standardı. |
 | `tests/` | Birim ve entegrasyon test süiti (config, model, server API). |
 | `.github/workflows/ci.yml` | Otomatik GitHub Actions test ve CI iş akışı. |
