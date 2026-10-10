@@ -1,39 +1,41 @@
 <div align="center">
 
 # Pusula: Turkish Decision Engine
-### Otonom Ajan İş Akışları ve Yönlendirme Altyapıları İçin Düşük Gecikmeli (<15 ms) Türkçe Karar Motoru
+### Sub-15 ms Typed Decision, Routing, and Triage Engine for Autonomous Turkish Agent Workflows
+
+[ English ](README.md) • [ Türkçe ](README_TR.md)
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-green.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.4%2B-red.svg)](https://pytorch.org/)
-[![Latency](https://img.shields.io/badge/Latency-%3C15ms-blue.svg)](#benchmark--performans)
-[![Architecture](https://img.shields.io/badge/Architecture-Non--Autoregressive-informational.svg)](#genel-bakis)
+[![Latency](https://img.shields.io/badge/Latency-%3C15ms-blue.svg)](#benchmark--performance)
+[![Architecture](https://img.shields.io/badge/Architecture-Non--Autoregressive-informational.svg)](#overview)
 
-[Genel Bakış](#genel-bakış) • [Hızlı Başlangıç](#hızlı-başlangıç) • [Python API](#python-api) • [Ajan Entegrasyonu](#ajan-entegrasyonu) • [32 Makro Alan](#32-makro-alan-taksonomisi) • [Benchmark](#benchmark--performans) • [Eğitim Altyapısı](#eğitim-ve-yeniden-üretilebilirlik)
+[Overview](#overview) • [Quickstart](#quickstart) • [Python API](#python-api) • [Agentic Workflow](#agentic-workflow-integration) • [Macro-Domain Taxonomy](#32-macro-domain-taxonomy) • [Benchmark](#benchmark--performance) • [Training & Reproducibility](#training--reproducibility)
 
 </div>
 
 ---
 
-## Genel Bakış
+## Overview
 
-Üretken büyük dil modellerini (GPT-6 Luna, Claude Opus 5.5, Gemini 3.8 Flash, DeepSeek-V4.1 Flash, GLM-5.3 vb.) yapay zeka ajanlarının her araç seçimi, departman yönlendirmesi veya güvenlik filtresi adımında çalıştırmak yüksek gecikme (350 ms – 1.800 ms), öngörülemeyen API maliyetleri ve JSON ayrıştırma (parse) hatalarına yol açar.
+Routing user queries, selecting tools, and enforcing policy guardrails using generative autoregressive large language models (such as GPT-6 Luna, Claude Opus 5.5, Gemini 3.8 Flash, DeepSeek-V4.1 Flash, or GLM-5.3) introduces severe operational bottlenecks: high latency (350 ms – 1,800 ms), compounding API expenses, and fragile JSON parsing failures.
 
-**Turkish Decision Model (TDM)**; token üretimi yapmayan (non-autoregressive), tek bir matris geçişinde üç temel kararı eşzamanlı üreten yüksek hızlı bir karar motorudur:
+**Pusula (Turkish Decision Engine)** is an open-source, non-autoregressive decision engine optimized for the Turkish language. Utilizing a single forward pass over an encoder backbone, Pusula simultaneously generates three calibrated decisions in under 15 milliseconds:
 
-| Metrik / Nitelik | Sektör Lideri LLM'ler (GPT-6 Luna, Claude Opus 5.5) | Hızlı Üretken Modeller (Gemini 3.8, DeepSeek-V4.1) | Turkish Decision Model (TDM) |
+| Metric / Capability | Frontier LLMs (GPT-6 Luna, Claude Opus 5.5) | Fast Generative Models (Gemini 3.8, DeepSeek-V4.1) | Pusula |
 | :--- | :---: | :---: | :---: |
-| **P95 Çıkarım Gecikmesi** | 500 ms – 2.000 ms | 200 ms – 600 ms | **8 ms – 15 ms** |
-| **Halüsinasyon Riski** | Mevcut | Yüksek | **%0 (Matematiksel olarak imkansız)** |
-| **Çıktı Tipi** | Serbest Metin / Ham JSON | Ham JSON (Kırılgan) | **Doğrudan Tipli Tensör (Typed Output)** |
-| **Olasılık Kalibrasyonu** | Kalibre Edilmemiş | Aşırı Güvenli (Overconfident) | **Platt Scaling ile Kalibre Edilmiş** |
-| **İşlem Başı Maliyet** | İstek Başına API Ücreti | Yüksek GPU Kaynağı | **Sıfır API Ücreti / Yerel Kaynak** |
+| **P95 Inference Latency** | 500 ms – 2,000 ms | 200 ms – 600 ms | **8 ms – 15 ms** |
+| **Hallucination Risk** | Present | High | **0.0% (Mathematically constrained)** |
+| **Output Type** | Freeform text / Unstructured JSON | Fragile JSON | **Direct Typed Tensors** |
+| **Probability Calibration** | Uncalibrated | Frequently Overconfident | **Calibrated via Platt Scaling** |
+| **Operational Cost** | Per-token commercial billing | High GPU memory footprint | **Zero per-request fee / Self-hosted** |
 
 ---
 
-## Çıktı Spesifikasyonu (Typed Decision Head)
+## Output Specification (Typed Decision Head)
 
-Model, tek bir forward pass ile GPU üzerinde anında şu yapılandırılmış çıktıyı döner:
+Pusula executes a multi-task projection over candidate representations and context embeddings to return a typed decision structure:
 
 ```json
 {
@@ -45,20 +47,20 @@ Model, tek bir forward pass ile GPU üzerinde anında şu yapılandırılmış �
 }
 ```
 
-- **choice:** Dinamik aday seçenekler (`options`) arasından seçilen en olası kategori veya araç.
-- **choice_confidence:** Platt Scaling ile kalibre edilmiş seçim güven olasılığı (0.00 – 1.00).
-- **score:** Girdinin aciliyet, risk veya önem derecesi (0.00 – 1.00 sürekli regresyon skoru).
-- **action_required:** Müdahale, harici araç çalıştırma veya onay gerekliliğini belirten boolean filtre.
+- **`choice`**: The selected categorical target or tool identifier chosen from dynamic candidate options.
+- **`choice_confidence`**: Empirically calibrated probability score (`0.00 – 1.00`) optimized via Platt temperature scaling.
+- **`score`**: Continuous priority, urgency, or risk regression scalar (`0.00 – 1.00`).
+- **`action_required`**: Deterministic boolean flag signaling mandatory human-in-the-loop escalation or immediate tool execution.
 
 ---
 
-## Hızlı Başlangıç
+## Quickstart
 
-### Kurulum
+### Installation
 
 ```bash
-git clone https://github.com/hsnsahinhsn/turkish-decision-model.git
-cd turkish-decision-model
+git clone https://github.com/hsnsahinhsn/pusula.git
+cd pusula
 pip install -r requirements.txt
 ```
 
@@ -72,20 +74,20 @@ from transformers import AutoTokenizer
 from model import TurkishDecisionModel
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-checkpoint_dir = "checkpoints/turkish_decision_model/best"
+checkpoint_dir = "checkpoints/pusula/best"
 
-# Model ve Tokenizer Yükleme
+# Load model and tokenizer
 model = TurkishDecisionModel.from_pretrained(checkpoint_dir).to(device)
 tokenizer = AutoTokenizer.from_pretrained(checkpoint_dir)
 
-# Karar İsteği
+# Single inference request
 context = "Hesabımdan bilgim dışında 15.000 TL çekim yapılmış, kartımı acilen bloke edin."
 options = ["bankacilik_finans_kripto", "e_ticaret_pazaryerleri", "hukuk_adalet_mevzuat"]
 
-result = model.predict_single(tokenizer, context=context, options=options, device=device)
+decision = model.predict_single(tokenizer, context=context, options=options, device=device)
 
-print(result)
-# Çıktı:
+print(decision)
+# Output:
 # {
 #   'choice': 'bankacilik_finans_kripto',
 #   'choice_confidence': 0.9912,
@@ -97,46 +99,46 @@ print(result)
 
 ---
 
-## Ajan Entegrasyonu
+## Agentic Workflow Integration
 
-Geleneksel LLM çağrılarından önce girdileri mikrosaniyeler içinde filtreleyen ve yönlendiren mimari şablon:
+Pusula functions as a zero-latency triage and routing gatekeeper in autonomous multi-agent pipelines (LangGraph, CrewAI, AutoGen):
 
 ```python
 from agentic_router_example import decision_route
 
-def agent_router_pipeline(user_input: str) -> dict:
-    # 1. Aşama: Güvenlik ve Guardrail Doğrulaması (<10 ms)
-    security_check = decision_route(
-        context=user_input,
+def agent_triage_pipeline(user_prompt: str) -> dict:
+    # Phase 1: Security and Guardrail Verification (<10 ms)
+    security_eval = decision_route(
+        context=user_prompt,
         options=["guvenli_mesru_istek", "prompt_injection_saldirisi", "pii_kisisel_veri_ifsa"]
     )
-    if security_check["choice"] != "guvenli_mesru_istek" and security_check["action_required"]:
-        return {"status": "blocked", "reason": security_check["choice"]}
+    if security_eval["choice"] != "guvenli_mesru_istek" and security_eval["action_required"]:
+        return {"status": "rejected", "reason": security_eval["choice"]}
 
-    # 2. Aşama: Uzman Ajan / Araç Seçimi (<12 ms)
-    candidate_tools = ["sql_database_agent", "web_search_agent", "calendar_booking", "human_support"]
-    tool_decision = decision_route(context=user_input, options=candidate_tools)
+    # Phase 2: Autonomous Tool / Specialized Agent Selection (<12 ms)
+    candidate_agents = ["sql_database_agent", "web_search_agent", "calendar_booking", "human_support"]
+    routing_eval = decision_route(context=user_prompt, options=candidate_agents)
     
     return {
         "status": "routed",
-        "target_tool": tool_decision["choice"],
-        "priority_score": tool_decision["score"]
+        "target_agent": routing_eval["choice"],
+        "priority_score": routing_eval["score"]
     }
 ```
 
 ---
 
-## REST API Servisi (FastAPI)
+## REST API Microservice (FastAPI)
 
-Modeli düşük gecikmeli bir mikroservis olarak çalıştırmak için:
+Deploy Pusula as an enterprise inference microservice:
 
 ```bash
 python serve.py
 ```
 
-Servis `http://localhost:8080` üzerinde asenkron olarak ayağa kalkar.
+The service launches asynchronously on `http://localhost:8080`.
 
-**cURL Örneği:**
+**cURL Request:**
 ```bash
 curl -X POST "http://localhost:8080/decide" \
      -H "Content-Type: application/json" \
@@ -146,7 +148,7 @@ curl -X POST "http://localhost:8080/decide" \
      }'
 ```
 
-**JSON Yanıtı (<15 ms):**
+**JSON Response (<15 ms):**
 ```json
 {
   "choice": "kisisel_asistanlik",
@@ -159,83 +161,83 @@ curl -X POST "http://localhost:8080/decide" \
 
 ---
 
-## 32 Makro Alan Taksonomisi
+## 32 Macro-Domain Taxonomy
 
-Model hem aşağıdaki 32 küresel alan arasında yönlendirme yapabilir hem de çalışma anında verilen dinamik seçenekler (`dynamic candidate options`) arasından seçim gerçekleştirebilir:
+Pusula natively handles arbitrary runtime candidate labels (`dynamic candidate options`) while offering fine-tuned calibration across 32 universal enterprise domains:
 
-1. **Global Master Router:** Genel alan sınıflandırıcısı
-2. **Akademik & Sınavlar:** SAT, ACT, ESAT, STEP, IMAT, BMAT, IELTS, TOEFL, GRE, GMAT, YKS, LGS, KPSS, ALES, TUS, DUS
-3. **Sağlık, Tıp & Triyaj:** 112 Acil triyajı, dahiliye, çocuk sağlığı, tahlil/MR, ilaç etkileşimi
-4. **Hukuk & Adalet:** Yargıtay/Danıştay içtihat, sözleşmeler hukuku, iş/tazminat, ceza, KVKK, resmi dilekçe
-5. **Bankacılık, Finans & Kripto:** Şüpheli işlem alarmı, kredi faizleri, BIST hisse/fon, kripto varlıklar
-6. **Sigortacılık & SGK:** Emeklilik hesabı, prim günleri, DASK, kasko/trafik hasar tazminatı, BES
-7. **Yazılım, BT & Yapay Zeka:** Hata ayıklama, kod refactor, SQL/veritabanı, DevOps/K8s, PyTorch/MLOps
-8. **Temel Bilimler (İleri STEM):** İleri matematik/kalkülüs, geometri ispatları, kuantum/klasik fizik, organik kimya
-9. **Mühendislik & İmalat:** Elektrik-elektronik, makine/mekatronik/CAD, inşaat/statik/deprem, TSE/ISO
-10. **E-Ticaret & Pazar Yerleri:** İade/cayma, kargo gecikmesi, mükerrer ödeme, pazar yeri operasyonları
-11. **Lojistik & Gümrük:** Uluslararası navlun, konşimento, GTİP kodu tespiti, gümrükleme, antrepo
-12. **Emlak, Gayrimenkul & Tapu:** Kira artış oranı, tahliye davaları, tapu/kadastro, konut rayiç bedeli
-13. **Otomotiv & Araç Bakımı:** Motor arıza lambası / OBD-II kodları, ekspertiz/tramer, kasko, bakım
-14. **Kariyer & İK:** ATS uyumlu CV/LinkedIn, mülakat simülasyonu, maaş pazarlığı, istifa süreçleri
-15. **Seyahat & Vize:** Schengen ve ABD vize evrakları, konsolosluk randevusu, uçak/otel, gezi rotası
-16. **Gastronomi & Mutfak:** Yemek tarifleri, pişirme teknikleri, gıda güvenliği ve botulizm riski, alerjenler
-17. **Beslenme & Fitness:** Günlük kalori hesabı, diyet programları, antrenman planı, takviyeler
-18. **Ebeveynlik & Çocuk Gelişimi:** Bebek beslenmesi, dil/motor gelişimi, ergenlik krizleri, ekran bağımlılığı
-19. **Tarım & Veterinerlik:** Evcil hayvan acil zehirlenme, kedi/köpek bakımı, bitki hastalıkları ve sulama
-20. **Çevre & Temiz Enerji:** Çatı GES/Güneş enerjisi, karbon ayak izi, sıfır atık, ÇED raporları
-21. **Siyaset & Diplomasi:** e-Devlet işlemleri, seçim/anayasa süreçleri, jeopolitik, tarafsız bilgi
-22. **Tarih & Arkeoloji:** Osmanlı/Selçuklu, Cumhuriyet inkılapları, Antik Anadolu, dünya savaşları
-23. **Dilbilim & Çeviri:** Yeminli tercüme, yabancı dil öğrenimi, proofreading, yaratıcı metin yazarlığı
-24. **Sanat, Müzik & Sinema:** Müzik teorisi/armoni, film tahlili/dramaturji, resim teknikleri, tiyatro
-25. **Oyun & E-Spor:** Unreal/Unity script, oyun mekanikleri/level design, rekabetçi e-spor, FPS ayarı
-26. **Medya & Tasarım:** SEO analizi, sosyal medya stratejisi, reklam kampanyaları (Google/Meta), grafik tasarım
-27. **Moda & Kişisel Bakım:** Cilt bakımı aktif içerikler (retinol/C vitamini), saç dökülmesi, kumaş türleri
-28. **Felsefe, Din & Etik:** Yapay zeka ve biyoetik ikilemleri, ilahiyat soruları, epistemoloji/ontoloji
-29. **Psikolojik Kriz Destek:** İntihar/kendine zarar riski (182/112 Acil), aile içi şiddet (183 KADES)
-30. **Gündelik Sohbet (Chit-Chat):** Selamlaşma, hal-hatır, hafif sohbeti tanıyan ve filtreleyen vana
-31. **Kişisel Verimlilik:** Takvim kurma, e-posta taslağı, yapılacaklar listesi, uzun notları özetleme
-32. **Güvenlik Guardrails & Fallback:** Prompt injection, jailbreak, kredi kartı/TC PII ifşası ve anlamsız girdiler
+1. **Global Master Router:** Universal domain triage and root-level dispatch
+2. **Academia & Standardized Testing:** SAT, ACT, ESAT, STEP, IMAT, IELTS, TOEFL, GRE, GMAT, YKS, ALES
+3. **Healthcare, Medicine & Triage:** Emergency department triage, lab report interpretation, clinical escalation
+4. **Law, Justice & Statutory Compliance:** Jurisprudence search, contract analysis, criminal law, KVKK/GDPR
+5. **Banking, Fintech & Digital Assets:** Fraud detection, credit risk, equity trading, crypto transactions
+6. **Insurance & Social Security:** Pension calculation, claims processing, actuarial policy modifications
+7. **Software Engineering, IT & DevOps:** Bug resolution, code refactoring, SQL optimization, CI/CD, MLOps
+8. **Fundamental Sciences (Advanced STEM):** Multivariable calculus, quantum mechanics, organic chemistry
+9. **Engineering & Manufacturing:** Mechatronics, CAD designs, structural civil analysis, ISO/TSE standards
+10. **E-Commerce & Digital Marketplaces:** Returns processing, logistics exceptions, billing disputes
+11. **Logistics & Customs Clearance:** Freight manifests, bill of lading, HS tariff classification, bonded storage
+12. **Real Estate & Property Management:** Lease negotiation, title deed transactions, appraisal audits
+13. **Automotive & Fleet Diagnostics:** OBD-II fault diagnostics, fleet telematics, telemetric roadside triage
+14. **Human Resources & Talent Acquisition:** ATS resume screening, technical interview rubrics, payroll queries
+15. **Travel, Aviation & Consular Services:** Visa document validation, consular workflows, itinerary booking
+16. **Gastronomy & Food Safety:** Recipe scaling, commercial kitchen hygiene, allergen compliance
+17. **Nutrition & Sports Science:** Caloric macronutrient tracking, periodized programming, sports rehabilitation
+18. **Pedagogy & Child Development:** Developmental milestones, educational behavioral interventions
+19. **Agriculture & Veterinary Medicine:** Animal toxicology, veterinary triage, agronomic pest control
+20. **Environmental Engineering & Clean Energy:** Solar PV installations, carbon footprint metrics, EIA reporting
+21. **Public Administration & Civic Governance:** Digital government authentication, municipal services, civic compliance
+22. **History & Archival Research:** Archival paleography, Ottoman/Seljuk documentation, historiographical queries
+23. **Linguistics & Translation:** Sworn technical translation, localisation, syntactic proofreading
+24. **Fine Arts, Music & Media Production:** Music theory, cinematography analysis, dramatic structure
+25. **Interactive Media & Esports:** Game engine scripting (Unreal/Unity), competitive latency optimization
+26. **Digital Media & Marketing Strategy:** Paid advertising campaigns (Google/Meta), technical SEO diagnostics
+27. **Dermatology & Personal Care:** Cosmetic active formulation, dermatology triage, material textiles
+28. **Philosophy, Ethics & Applied AI Ethics:** Bioethics dilemmas, epistemological analysis, deontological AI ethics
+29. **Psychological Crisis & Support Triage:** Crisis hotline escalation (Emergency 112/182), intervention routing
+30. **Conversational Chitchat Filter:** Politeness filtering and conversational deflection gatekeeping
+31. **Personal Productivity:** Agenda management, email synthesis, action item extraction
+32. **Security Guardrails & Fallbacks:** Prompt injection protection, jailbreak filtering, PII data leak prevention
 
 ---
 
-## Benchmark & Performans
+## Benchmark & Performance
 
-*NVIDIA H200 SXM (141 GB HBM3e) ve NVIDIA RTX PRO 6000 (96 GB) veri merkezi donanımları üzerinde 512 token bağlam uzunluğu ile test edilmiştir.*
+*Evaluated on enterprise data-center infrastructure (NVIDIA H200 SXM 141 GB HBM3e and NVIDIA RTX PRO 6000 96 GB) with a 512-token context window.*
 
-| Model | Mimari Tipi | P95 Gecikme (Latency) | GPU VRAM Tüketimi | Çıktı Determinizmi |
+| Model | Architecture | P95 Latency | GPU VRAM Footprint | Output Determinism |
 | :--- | :---: | :---: | :---: | :---: |
-| **GPT-6 Luna (OpenAI API)** | Autoregressive LLM | ~920 ms – 1.750 ms | Bulut Tabanlı | Ayrıştırma Hatası Olası |
-| **Claude Opus 5.5 (Anthropic API)** | Autoregressive LLM | ~980 ms – 1.820 ms | Bulut Tabanlı | Ayrıştırma Hatası Olası |
-| **Gemini 3.8 Flash (Google API)** | Autoregressive LLM | ~320 ms – 650 ms | Bulut Tabanlı | Ayrıştırma Hatası Olası |
-| **DeepSeek-V4.1 Flash (MoE API)** | Autoregressive LLM | ~290 ms – 580 ms | Bulut / Çoklu GPU | Ayrıştırma Hatası Olası |
-| **GLM-5.3 (Zhipu AI)** | Autoregressive LLM | ~610 ms – 950 ms | Bulut / Çoklu GPU | Ayrıştırma Hatası Olası |
-| **Qwen 3.8-27B (vLLM Yerel)** | Autoregressive LLM | ~240 ms – 450 ms | 54 GB (bfloat16) | Ayrıştırma Hatası Olası |
-| **Pusula (RTX PRO 6000)** | **Non-Autoregressive Encoder** | **11.4 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
-| **Pusula (NVIDIA H200)** | **Non-Autoregressive Encoder** | **4.8 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
+| **GPT-6 Luna (OpenAI API)** | Autoregressive LLM | ~920 ms – 1,750 ms | Cloud Hosted | Parse Error Prone |
+| **Claude Opus 5.5 (Anthropic API)** | Autoregressive LLM | ~980 ms – 1,820 ms | Cloud Hosted | Parse Error Prone |
+| **Gemini 3.8 Flash (Google API)** | Autoregressive LLM | ~320 ms – 650 ms | Cloud Hosted | Parse Error Prone |
+| **DeepSeek-V4.1 Flash (MoE API)** | Autoregressive LLM | ~290 ms – 580 ms | Cloud / Multi-GPU | Parse Error Prone |
+| **GLM-5.3 (Zhipu AI)** | Autoregressive LLM | ~610 ms – 950 ms | Cloud / Multi-GPU | Parse Error Prone |
+| **Qwen 3.8-27B (Local vLLM)** | Autoregressive LLM | ~240 ms – 450 ms | 54 GB (bfloat16) | Parse Error Prone |
+| **Pusula (RTX PRO 6000)** | **Non-Autoregressive Encoder** | **11.4 ms** | **~1.2 GB** | **100% Typed & Deterministic** |
+| **Pusula (NVIDIA H200)** | **Non-Autoregressive Encoder** | **4.8 ms** | **~1.2 GB** | **100% Typed & Deterministic** |
 
 ---
 
-## Eğitim ve Yeniden Üretilebilirlik
+## Training & Reproducibility
 
-Modeli sıfırdan eğitmek veya özel kurumsal verilerinizle ince ayar yapmak için:
+To train Pusula from scratch or fine-tune on domain-specific proprietary corpora:
 
-### 1. Sentetik Veri Üretimi (24.000 Örnek Hedefi)
+### 1. Synthetic Data Generation (24,000 Samples)
 ```bash
 python synthetic_generator.py
 ```
 
-### 2. Model Eğitimi & Sıcaklık Kalibrasyonu
+### 2. Training Loop & Platt Scaling Calibration
 ```bash
 python train.py
 ```
 
-Eğitim döngüsü `bfloat16` ve `FlashAttention-2` hızlandırmasıyla çalışır. Doğrulama kümesi üzerinde Platt Scaling uygulanarak Brier Skoru ve ECE (Expected Calibration Error) minimize edilir. Optimize edilen ağırlıklar `checkpoints/pusula/best/` dizinine kaydedilir.
+The training pipeline uses `bfloat16` and `FlashAttention-2`. Platt Scaling optimizes temperature scaling on the validation split to minimize Expected Calibration Error (ECE) and Brier Score. Weights are serialized to `checkpoints/pusula/best/`.
 
 ---
 
-## Lisans ve Alıntı
+## Citation & License
 
-Bu proje **Apache 2.0** lisansı altında açık kaynak olarak sunulmuştur. Hem ticari hem de akademik projelerde serbestçe kullanılabilir.
+This project is licensed under the **Apache 2.0** License. Permitted for both commercial and academic usage.
 
 ```bibtex
 @misc{pusula_2026,
