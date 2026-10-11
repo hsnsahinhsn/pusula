@@ -38,19 +38,22 @@ class Item:
 
 
 def build_items(examples: list[Example], decider, label_source: str, rng: Optional[random.Random],
-                max_prompts: int = 0) -> list[Item]:
+                max_prompts: int = 0, weights: Optional[dict[str, float]] = None) -> list[Item]:
     from .d3model import render, shuffled_order
 
     pairs = [(ex, name) for ex in examples for name in ex.labels.get(label_source, {})]
     if max_prompts and len(pairs) > max_prompts and rng is not None:
-        # balance question names: equal share each, leftovers filled at random
+        # balance question names: a share proportional to each name's weight (default 1), leftovers at random
         by_name = defaultdict(list)
         for p in pairs:
             by_name[p[1]].append(p)
-        share = max_prompts // len(by_name)
+        w = {name: (weights or {}).get(name, 1.0) for name in by_name}
+        total = sum(w.values())
         chosen, rest = [], []
-        for rows in by_name.values():
+        for name in sorted(by_name):
+            rows = by_name[name]
             rng.shuffle(rows)
+            share = int(max_prompts * w[name] / total)
             chosen += rows[:share]
             rest += rows[share:]
         rng.shuffle(rest)
@@ -150,7 +153,9 @@ def train(a) -> None:
     decider.readout.requires_grad_(True)
     rng = random.Random(a.seed)
     t0 = time.time()
-    train_items = build_items(read_examples(Path(a.data) / "train.jsonl"), decider, "final", rng, a.max_prompts)
+    weights = {name: a.focus_weight for name in a.focus.split(",") if name} if a.focus else None
+    train_items = build_items(read_examples(Path(a.data) / "train.jsonl"), decider, "final", rng, a.max_prompts,
+                              weights)
     val_items = build_items(read_examples(Path(a.data) / "val.jsonl"), decider, "final", None, a.max_val)
     say(f"[cyan]{len(train_items)} eğitim / {len(val_items)} doğrulama sorusu "
         f"({time.time() - t0:.0f}s tokenizasyon), {world} GPU[/cyan]")
@@ -252,6 +257,9 @@ def main(argv=None) -> None:
     t.add_argument("--data", required=True, help="directory with train.jsonl / val.jsonl")
     t.add_argument("--out", required=True)
     t.add_argument("--max-prompts", type=int, default=40000, help="training questions (0 = all)")
+    t.add_argument("--focus", default="", help="comma-separated question names that get a larger share "
+                                                 "of --max-prompts (e.g. where base d3 is weakest)")
+    t.add_argument("--focus-weight", type=float, default=2.0)
     t.add_argument("--max-val", type=int, default=1500)
     t.add_argument("--epochs", type=int, default=1)
     t.add_argument("--lora-rank", type=int, default=32)

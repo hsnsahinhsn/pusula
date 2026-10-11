@@ -81,6 +81,21 @@ def test_max_prompts_balances_question_names(example):
     assert names == set(rows[0].labels["final"])
 
 
+def test_max_prompts_weights_focus_names(example):
+    rows = []
+    for i in range(40):
+        ex = example.model_copy(deep=True)
+        ex.id = f"e{i}"
+        ex.labels["final"] = dict(ex.labels["generator"])
+        rows.append(ex)
+    names = sorted(rows[0].labels["final"])
+    n = 2 * (len(names) + 1)  # focus name weight 2 -> 4 prompts, every other name 2
+    items = build_items(rows, FakeDecider(), "final", random.Random(0), max_prompts=n, weights={"aciliyet": 2.0})
+    counts = {name: sum(it.name == name for it in items) for name in names}
+    assert len(items) == n and counts["aciliyet"] == 4
+    assert all(c == 2 for name, c in counts.items() if name != "aciliyet")
+
+
 def test_teacher_labels_every_question(example):
     torch = __import__("pytest").importorskip("torch")
     from pusula.teacher import label_chunk
