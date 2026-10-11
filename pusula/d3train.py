@@ -1,4 +1,4 @@
-"""Turkish fine-tuning of Decision 3.0 (vllm-sr/d3) with QLoRA, and evaluation of base vs fine-tuned.
+"""Turkish fine-tuning of Decision 3.0 (vllm-sr/d3) with LoRA (BF16) or QLoRA (4-bit), and evaluation.
 
     # train LoRA adapters + the code readout on the consensus Turkish data
     python -m pusula.d3train train --d3 ~/hf/d3 --data runs/full/final --out runs/full/pusula-d3
@@ -112,6 +112,10 @@ def evaluate(decider, items: list[Item], token_budget: int) -> dict:
             "micro_acc": round(sum(ok_all) / max(len(ok_all), 1), 4), "ece": round(ece, 4), "acc": acc}
 
 
+def _precision(a) -> Optional[bool]:
+    return {"4bit": True, "bf16": False}.get(a.precision)  # "auto" -> None (decided by GPU memory)
+
+
 def train(a) -> None:
     import torch
 
@@ -121,7 +125,7 @@ def train(a) -> None:
     last = out / "last"
     resume = (last / "trainer_state.json").exists()
     decider = D3Decider.load(a.d3, adapter=str(last) if resume else None, lora_rank=a.lora_rank,
-                             gradient_checkpointing=True)
+                             gradient_checkpointing=True, load_in_4bit=_precision(a))
     decider.readout.requires_grad_(True)
     rng = random.Random(a.seed)
     t0 = time.time()
@@ -193,7 +197,7 @@ def train(a) -> None:
 def run_eval(a) -> None:
     from .d3model import D3Decider
 
-    decider = D3Decider.load(a.d3, adapter=a.adapter)
+    decider = D3Decider.load(a.d3, adapter=a.adapter, load_in_4bit=_precision(a))
     decider.backbone.eval()
     examples = read_examples(a.data)
     source = a.label_source or ("gold" if any("gold" in ex.labels for ex in examples) else "final")
@@ -224,6 +228,8 @@ def main(argv=None) -> None:
     t.add_argument("--log-every", type=int, default=10)
     t.add_argument("--save-every", type=int, default=200)
     t.add_argument("--seed", type=int, default=17)
+    t.add_argument("--precision", choices=["auto", "4bit", "bf16"], default="auto",
+                   help="d3 weights: bf16 (LoRA, needs ~80 GB GPU) or 4bit (QLoRA); auto picks by GPU memory")
     e = sub.add_parser("eval")
     e.add_argument("--d3", required=True)
     e.add_argument("--adapter", default=None)
@@ -231,6 +237,7 @@ def main(argv=None) -> None:
     e.add_argument("--label-source", default=None)
     e.add_argument("--token-budget", type=int, default=16384)
     e.add_argument("--out", required=True)
+    e.add_argument("--precision", choices=["auto", "4bit", "bf16"], default="auto")
     a = p.parse_args(argv)
     train(a) if a.cmd == "train" else run_eval(a)
 

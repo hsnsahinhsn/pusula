@@ -65,10 +65,12 @@ class D3Engine(BaseEngine):
         self._lock = threading.Lock()
 
     @classmethod
-    def load(cls, base: str, adapter: Optional[str] = None, device: str = "cuda:0") -> "D3Engine":
+    def load(cls, base: str, adapter: Optional[str] = None, device: str = "cuda:0",
+             load_in_4bit: Optional[bool] = None) -> "D3Engine":
+        """`load_in_4bit=None` picks BF16 on GPUs with >= 80 GB, else 4-bit (PUSULA_D3_4BIT overrides)."""
         from .d3model import D3Decider
 
-        decider = D3Decider.load(base, adapter=adapter, device=device)
+        decider = D3Decider.load(base, adapter=adapter, device=device, load_in_4bit=load_in_4bit)
         decider.backbone.eval()
         engine = cls(decider)
         if adapter is None:

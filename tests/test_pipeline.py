@@ -65,6 +65,9 @@ def test_judge_lettering_roundtrip(example):
     ("score", ["1", "2", "2"], "2"),
     ("score", ["0", "3", "3"], "3"),
     ("score", ["0", "2", "3"], None),
+    ("score", ["1", "2"], None),
+    ("score", ["2", "2"], "2"),
+    ("choice", ["a", "b"], None),
 ])
 def test_consensus_rules(qtype, votes, expected):
     from pusula.schema import Question

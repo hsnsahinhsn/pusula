@@ -110,6 +110,20 @@ def enable_noncausal_full_attention(text_model) -> None:
     text_model.register_forward_pre_hook(mask_inputs, with_kwargs=True)
 
 
+def default_4bit() -> bool:
+    """4-bit unless the GPU can hold the BF16 weights (~52 GB) with room to spare; PUSULA_D3_4BIT=0/1 overrides."""
+    import os
+
+    import torch
+
+    env = os.getenv("PUSULA_D3_4BIT")
+    if env is not None:
+        return env.strip() not in ("0", "false", "no")
+    if not torch.cuda.is_available():
+        return True
+    return torch.cuda.get_device_properties(0).total_memory < 80 * 2**30
+
+
 LORA_TARGETS = r".*language_model.*\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj|in_proj_qkvz|in_proj_ba|in_proj_qkv|in_proj_z|out_proj)$"
 
 
@@ -125,7 +139,7 @@ class D3Decider:
         self.pad_id = tokenizer.pad_token_id
 
     @classmethod
-    def load(cls, model_dir: str, adapter: Optional[str] = None, load_in_4bit: bool = True,
+    def load(cls, model_dir: str, adapter: Optional[str] = None, load_in_4bit: Optional[bool] = None,
              lora_rank: int = 0, device: str = "cuda:0", gradient_checkpointing: bool = False) -> "D3Decider":
         """Load d3 from a local snapshot. `adapter`: a trained Pusula adapter dir (LoRA + readout).
         `lora_rank` > 0 adds fresh trainable LoRA layers (training from the base)."""
@@ -134,6 +148,8 @@ class D3Decider:
         from transformers import AutoTokenizer, BitsAndBytesConfig
         from transformers.models.qwen3_5.modeling_qwen3_5 import Qwen3_5Model
 
+        if load_in_4bit is None:
+            load_in_4bit = default_4bit()
         quant = None
         if load_in_4bit:
             quant = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",

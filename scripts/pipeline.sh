@@ -73,7 +73,9 @@ for stage in $STAGES; do
     teach)
       python -m pusula.teacher --d3 "$D3_DIR" --inp "$DIR/judged.jsonl" --out "$DIR/labeled.jsonl"         --sample "${D3_SAMPLE:-2000}" ;;
     build)
-      python -m pusula.dataset --inp "$DIR/labeled.jsonl" --out-dir "$DIR/final" ;;
+      # with d3 votes when the teach stage ran, otherwise generator + judge must agree
+      inp="$DIR/labeled.jsonl"; [[ -f $inp ]] || inp="$DIR/judged.jsonl"
+      python -m pusula.dataset --inp "$inp" --out-dir "$DIR/final" ;;
     curate)
       python -m pusula.curate --data "$DIR/final" --out "$DIR/curated" ;;
     gold)

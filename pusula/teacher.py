@@ -75,7 +75,7 @@ def run(args) -> None:
     with JsonlWriter(args.out) as writer:
         if to_label:
             console.print(f"[cyan]d3 yükleniyor ({args.d3}, 4-bit)...[/cyan]")
-            decider = D3Decider.load(args.d3)
+            decider = D3Decider.load(args.d3, load_in_4bit={"4bit": True, "bf16": False}.get(args.precision))
             decider.backbone.eval()
             console.print(f"[cyan]d3: {len(to_label)} örnek etiketlenecek (önceden {labeled})[/cyan]")
             for start in range(0, len(to_label), args.chunk):
@@ -97,6 +97,7 @@ def main(argv=None) -> None:
     p.add_argument("--out", required=True)
     p.add_argument("--chunk", type=int, default=64, help="examples per write")
     p.add_argument("--token-budget", type=int, default=24576, help="padded tokens per forward pass")
+    p.add_argument("--precision", choices=["auto", "4bit", "bf16"], default="auto")
     p.add_argument("--sample", type=int, default=0, help="label only the first N examples with d3 (0 = all)")
     run(p.parse_args(argv))
 

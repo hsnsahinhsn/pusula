@@ -1,7 +1,8 @@
 """Stage 4: consensus labels, soft targets and train/val/test splits.
 
-Votes per question come from the generator, the judge and the d3 teacher. A question is kept when at
-least two votes agree (for score questions: when all votes lie within one level, taking the median).
+Votes per question come from the generator, the judge and (when the teach stage ran) the d3 teacher. A
+question is kept when at least two votes agree; with only two voters both must agree exactly (for score
+questions with three voters: all votes within one level, taking the median).
 The kept label goes to ``labels["final"]``; d3's distribution stays in ``teacher`` as the soft target
 when d3 agrees with the final label. Questions without consensus go to ``contested.jsonl``, the most
 informative pool for gold labeling.
@@ -30,6 +31,8 @@ def consensus(q: Question, votes: list[str]) -> Optional[str]:
         return None
     if len(votes) == 1:
         return None  # a single vote is not a consensus
+    if q.type == "score" and len(votes) == 2:
+        return votes[0] if votes[0] == votes[1] else None  # two voters must agree exactly
     if q.type == "score":
         levels = sorted(int(v) for v in votes)
         if levels[-1] - levels[0] <= 1:
