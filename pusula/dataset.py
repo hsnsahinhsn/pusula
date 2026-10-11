@@ -4,7 +4,7 @@ Votes per question come from the generator, the judge and the d3 teacher. A ques
 least two votes agree (for score questions: when all votes lie within one level, taking the median).
 The kept label goes to ``labels["final"]``; d3's distribution stays in ``teacher`` as the soft target
 when d3 agrees with the final label. Questions without consensus go to ``contested.jsonl``, the most
-informative pool for human (gold) labeling.
+informative pool for gold labeling.
 
     python -m pusula.dataset --inp runs/full/labeled.jsonl --out-dir runs/full/final
 """

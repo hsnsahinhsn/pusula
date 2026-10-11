@@ -1,14 +1,17 @@
-"""Gold set: export candidates for human labeling and import the labels back.
+"""Gold set: blind candidates for an independent annotator, and importing their labels.
 
-    python -m pusula.gold export --final runs/full/final --n 400 --out runs/full/gold/candidates.json
-    python -m pusula.gold import --candidates runs/full/gold/candidates.json \
+    python -m pusula.gold export --final runs/full/final --n 400 --out runs/full/gold
+    # -> gold/blind.json (state + extra questions only, no labels) and gold/candidates.jsonl
+    python -m pusula.gold import --candidates runs/full/gold/candidates.jsonl \
         --labels runs/full/gold/labels.json --out runs/full/gold/gold.jsonl
 
 Candidates mix a domain-stratified sample of the test split with contested examples (where the
-generator, judge and d3 disagreed). The labeling UI rebuilds routing questions from the taxonomy,
-so a human who changes ``alan`` gets the matching ``alt_alan`` / ``niyet`` options.
+generator, judge and d3 disagreed). The annotator (a strong model from a different family than the
+generator and teacher, or a person) sees only the blind file and answers the taxonomy's routing
+questions, the universal questions and each example's extra questions.
 
-labels.json: ``[{"id": ..., "labels": {question: option_key}, "skipped": false}, ...]``
+labels.json: ``[{"id": ..., "labels": {question: option_key}, "drop": false, "confidence": "high"}, ...]``
+Entries with ``drop`` or ``skipped`` set are left out.
 """
 from __future__ import annotations
 
@@ -23,15 +26,21 @@ from .llm import console
 from .schema import Example, Question
 from .taxonomy import Q_DOMAIN, Q_INTENT, Q_SUBDOMAIN, ROUTING_QUESTIONS, load_taxonomy
 
+GOLD = "gold"
 
-def _suggestion(ex: Example) -> dict[str, str]:
-    out = {}
-    for name in ex.questions:
-        for source in ("final", "d3", "judge", "generator"):
-            if name in ex.labels.get(source, {}):
-                out[name] = ex.labels[source][name]
-                break
-    return out
+
+def extra_questions(ex: Example) -> dict[str, Question]:
+    """Questions that are neither taxonomy routing nor universal (e.g. ad-hoc ones)."""
+    universal = load_taxonomy().universal
+    return {k: q for k, q in ex.questions.items() if k not in ROUTING_QUESTIONS and k not in universal}
+
+
+def blind_rows(examples: list[Example]) -> list[dict]:
+    return [{
+        "id": ex.id,
+        "state": ex.state,
+        "extra_questions": {k: q.model_dump(exclude_none=True) for k, q in extra_questions(ex).items()},
+    } for ex in examples]
 
 
 def _stratified(examples: list[Example], n: int, rng: random.Random) -> list[Example]:
@@ -48,61 +57,53 @@ def _stratified(examples: list[Example], n: int, rng: random.Random) -> list[Exa
     return picked
 
 
-def export(final_dir: str, n: int, out: str, contested_share: float = 0.3, seed: int = 11) -> int:
+def export(final_dir: str, n: int, out_dir: str, contested_share: float = 0.3, seed: int = 11) -> int:
     rng = random.Random(seed)
     final = Path(final_dir)
     test = read_examples(final / "test.jsonl")
     contested = read_examples(final / "contested.jsonl") if (final / "contested.jsonl").exists() else []
+    test_ids = {ex.id for ex in test}
+    contested = [ex for ex in contested if ex.id not in test_ids]
     n_cont = min(int(n * contested_share), len(contested))
     rng.shuffle(contested)
     chosen = _stratified(test, n - n_cont, rng) + contested[:n_cont]
     rng.shuffle(chosen)
-    rows = []
-    for ex in chosen:
-        sug = _suggestion(ex)
-        rows.append({
-            "id": ex.id,
-            "state": ex.state,
-            "source": "contested" if ex.meta.get("contested") else "test",
-            "suggestion": sug,
-            "extra_questions": {
-                name: q.model_dump(exclude_none=True)
-                for name, q in ex.questions.items()
-                if name not in ROUTING_QUESTIONS and name not in load_taxonomy().universal
-            },
-            "example": ex.model_dump(exclude_none=True),
-        })
-    Path(out).parent.mkdir(parents=True, exist_ok=True)
-    Path(out).write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
-    console.print(f"[green]{len(rows)} aday → {out} ({n_cont} tartışmalı)[/green]")
-    return len(rows)
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    write_examples(out / "candidates.jsonl", chosen)
+    (out / "blind.json").write_text(json.dumps(blind_rows(chosen), ensure_ascii=False, indent=1), encoding="utf-8")
+    console.print(f"[green]{len(chosen)} aday → {out} ({n_cont} tartışmalı)[/green]")
+    return len(chosen)
 
 
 def import_labels(candidates: str, labels: str, out: str) -> int:
     tax = load_taxonomy()
-    cands = {c["id"]: c for c in json.loads(Path(candidates).read_text(encoding="utf-8"))}
+    cands = {ex.id: ex for ex in read_examples(candidates)}
     gold = []
     for row in json.loads(Path(labels).read_text(encoding="utf-8")):
-        if row.get("skipped") or row["id"] not in cands:
+        if row.get("drop") or row.get("skipped") or row["id"] not in cands:
             continue
-        human = row["labels"]
-        ex = Example(**cands[row["id"]]["example"])
+        given = row["labels"]
+        ex = cands[row["id"]]
         try:
-            path = tax.path(human[Q_DOMAIN], human[Q_SUBDOMAIN], human[Q_INTENT])
+            path = tax.path(given[Q_DOMAIN], given[Q_SUBDOMAIN], given[Q_INTENT])
         except KeyError:
-            console.print(f"[yellow]{row['id']}: geçersiz yol, atlandı[/yellow]")
+            console.print(f"[yellow]{row['id']}: geçersiz taksonomi yolu, atlandı[/yellow]")
             continue
         questions: dict[str, Question] = tax.questions_for(path)
-        questions.update({k: Question(**q) for k, q in cands[row["id"]]["extra_questions"].items()})
-        # Other sources stay comparable only on questions that are identical to the gold ones.
-        labels_out = {"human": {k: v for k, v in human.items() if k in questions}}
+        questions.update(extra_questions(ex))
+        gold_labels = {k: v for k, v in given.items() if k in questions and v in questions[k].option_keys()}
+        # Other sources stay comparable only on questions identical to the gold ones
+        # (alt_alan / niyet questions change when the gold domain differs).
+        labels_out = {GOLD: gold_labels}
         for source, votes in ex.labels.items():
             kept = {k: v for k, v in votes.items() if k in questions and ex.questions.get(k) == questions[k]}
-            if kept and source != "human":
+            if kept and source != GOLD:
                 labels_out[source] = kept
         teacher = {k: p for k, p in ex.teacher.items() if k in questions and ex.questions.get(k) == questions[k]}
-        gold.append(Example(id=ex.id, state=ex.state, questions=questions,
-                            meta={**ex.meta, "gold": True}, labels=labels_out, teacher=teacher))
+        meta = {**ex.meta, "gold_confidence": row.get("confidence"), "gold_note": row.get("note")}
+        gold.append(Example(id=ex.id, state=ex.state, questions=questions, meta=meta,
+                            labels=labels_out, teacher=teacher))
     n = write_examples(out, gold)
     console.print(f"[green]{n} altın örnek → {out}[/green]")
     return n
@@ -114,7 +115,7 @@ def main(argv=None) -> None:
     e = sub.add_parser("export")
     e.add_argument("--final", required=True)
     e.add_argument("--n", type=int, default=400)
-    e.add_argument("--out", required=True)
+    e.add_argument("--out", required=True, help="output directory")
     e.add_argument("--contested-share", type=float, default=0.3)
     i = sub.add_parser("import")
     i.add_argument("--candidates", required=True)

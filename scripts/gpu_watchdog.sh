@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Keeps a long LLM stage moving on a shared (time-sliced) GPU.
+#
+# On shared GPUs a long-lived process can lose the device to another tenant and stay blocked for a
+# long time, while a fresh process gets it back within seconds. This watchdog watches the stage's
+# output files; when they stop growing for STALL seconds it restarts the server and the stage
+# (both resumable), then gives them GRACE seconds to start before checking again.
+#
+#   bash scripts/gpu_watchdog.sh <done-marker> <server-cmd> <stage-cmd> <output-file>...
+#
+# Environment: STALL (default 240), GRACE (default 300), CHECK (default 20), LOG (default stdout).
+set -uo pipefail
+
+DONE=$1; SERVER_CMD=$2; STAGE_CMD=$3; shift 3
+OUTPUTS=("$@")
+STALL=${STALL:-240}; GRACE=${GRACE:-300}; CHECK=${CHECK:-20}
+
+log() { echo "[$(date -u +%F' '%T)] $*"; }
+lines() { cat "${OUTPUTS[@]}" 2>/dev/null | wc -l; }
+
+restart() {
+  log "restart: $1"
+  tmux kill-session -t stage 2>/dev/null
+  tmux kill-session -t server 2>/dev/null
+  pkill -f "vllm serve" 2>/dev/null; sleep 5; pkill -9 -f "VLLM::EngineCore" 2>/dev/null; sleep 2
+  tmux new-session -d -s server "$SERVER_CMD"
+  tmux new-session -d -s stage "$STAGE_CMD"
+}
+
+tmux has-session -t server 2>/dev/null || restart "start"
+last=$(lines); since=$(( $(date +%s) + GRACE ))
+restarts=0
+while [[ ! -f $DONE ]]; do
+  sleep "$CHECK"
+  now=$(date +%s); cur=$(lines)
+  if [[ $cur != "$last" ]]; then
+    last=$cur; since=$now
+  elif (( now - since > STALL )); then
+    restarts=$((restarts + 1))
+    restart "no progress for $((now - since))s at $cur lines (restart #$restarts)"
+    since=$(( $(date +%s) + GRACE ))
+  fi
+done
+log "done marker found: $DONE ($restarts restarts)"

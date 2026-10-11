@@ -1,6 +1,6 @@
 """Stage 6: evaluate a trained model on labeled splits and measure latency.
 
-For each file, the reference label source is ``human`` when present (gold set), else ``final``.
+For each file, the reference label source is ``gold`` when present (gold set), else ``final``.
 On the gold set the other sources (generator, judge, d3) are scored too, so the student can be
 compared with its teacher.
 
@@ -34,7 +34,7 @@ def _ece(conf: list[float], ok: list[int], bins: int = 15) -> float:
 
 
 def evaluate_file(engine, examples: list[Example], batch_size: int = 16) -> dict:
-    ref_source = "human" if any("human" in ex.labels for ex in examples) else "final"
+    ref_source = "gold" if any("gold" in ex.labels for ex in examples) else "final"
     per_q = defaultdict(lambda: {"n": 0, "ok": 0, "brier": 0.0, "abs_err": 0.0})
     others = {s: defaultdict(lambda: [0, 0]) for s in OTHER_SOURCES}
     conf, oks = [], []
@@ -78,7 +78,7 @@ def evaluate_file(engine, examples: list[Example], batch_size: int = 16) -> dict
         "ece": round(_ece(conf, oks), 4),
         "questions": questions,
     }
-    if ref_source == "human":
+    if ref_source == "gold":
         report["sources"] = {
             s: {n: round(ok / tot, 4) for n, (tot, ok) in sorted(v.items()) if tot}
             for s, v in others.items()

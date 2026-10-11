@@ -63,7 +63,7 @@ for stage in $STAGES; do
     build)
       python -m pusula.dataset --inp "$DIR/labeled.jsonl" --out-dir "$DIR/final" ;;
     gold)
-      python -m pusula.gold export --final "$DIR/final" --out "$DIR/gold/candidates.json" ;;
+      python -m pusula.gold export --final "$DIR/final" --out "$DIR/gold" ;;
     train)
       python -m pusula.train --data "$DIR/final" --out "$DIR/model" ;;
     evaluate)

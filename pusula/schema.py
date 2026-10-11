@@ -78,7 +78,7 @@ class Question(BaseModel):
 class Example(BaseModel):
     """One state with its questions and every label source collected so far.
 
-    ``labels[source][question] = option key``; sources: generator, judge, d3, final, human.
+    ``labels[source][question] = option key``; sources: generator, judge, d3, final, gold.
     ``teacher[question]`` = d3 probabilities in ``option_keys()`` order.
     """
 

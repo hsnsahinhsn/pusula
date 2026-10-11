@@ -103,14 +103,17 @@ def test_build_and_gold_roundtrip(tmp_path, example):
     if ex0:
         assert "duygu" not in ex0.teacher and ex0.labels["final"]["duygu"] == "endiseli"
 
-    n = gold.export(str(tmp_path / "final"), 10, str(tmp_path / "gold" / "candidates.json"))
-    cands = json.loads((tmp_path / "gold" / "candidates.json").read_text(encoding="utf-8"))
-    assert n == len(cands) and all(c["suggestion"] for c in cands)
-    labels = [{"id": c["id"], "labels": c["suggestion"]} for c in cands]
-    labels[0]["skipped"] = True
+    n = gold.export(str(tmp_path / "final"), 10, str(tmp_path / "gold"))
+    blind = json.loads((tmp_path / "gold" / "blind.json").read_text(encoding="utf-8"))
+    assert n == len(blind) and all("labels" not in b and "suggestion" not in b for b in blind)
+    cands = read_examples(tmp_path / "gold" / "candidates.jsonl")
+    labels = [{"id": c.id, "labels": c.labels["generator"], "confidence": "high"} for c in cands]
+    labels[0]["drop"] = True
+    labels[1]["labels"] = {**labels[1]["labels"], "alan": "yok"}  # invalid path -> skipped
     (tmp_path / "gold" / "labels.json").write_text(json.dumps(labels), encoding="utf-8")
-    m = gold.import_labels(str(tmp_path / "gold" / "candidates.json"), str(tmp_path / "gold" / "labels.json"),
+    m = gold.import_labels(str(tmp_path / "gold" / "candidates.jsonl"), str(tmp_path / "gold" / "labels.json"),
                            str(tmp_path / "gold" / "gold.jsonl"))
-    assert m == n - 1
+    assert m == n - 2
     g = read_examples(tmp_path / "gold" / "gold.jsonl")[0]
-    assert g.labels["human"] and g.meta["gold"]
+    assert g.labels["gold"] and g.meta["gold_confidence"] == "high"
+    assert g.labels["generator"]["alan"] == g.labels["gold"]["alan"]

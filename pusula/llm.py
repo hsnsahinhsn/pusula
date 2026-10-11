@@ -32,8 +32,15 @@ async def chat_json(
     max_tokens: int = 2048,
     retries: int = 3,
 ) -> Optional[dict[str, Any]]:
-    """One structured completion; returns the parsed object, or None after `retries` failures."""
-    for attempt in range(retries):
+    """One structured completion; returns the parsed object, or None after `retries` failures.
+
+    Connection failures (the server restarting, e.g. after a watchdog restart on a shared GPU) do not
+    use up retries: the call waits for the server to come back and tries again.
+    """
+    from openai import APIConnectionError
+
+    attempt = 0
+    while attempt < retries:
         try:
             resp = await client.chat.completions.create(
                 model=model,
@@ -52,11 +59,14 @@ async def chat_json(
             if choice.finish_reason == "length":
                 raise ValueError("output truncated")
             return json.loads(choice.message.content)
-        except Exception as exc:  # network hiccup, invalid JSON, truncation
-            if attempt == retries - 1:
+        except APIConnectionError:
+            await wait_for_server(str(client.base_url).rstrip("/"))
+        except Exception as exc:  # invalid JSON, truncation, server-side error
+            attempt += 1
+            if attempt == retries:
                 console.print(f"[yellow]LLM isteği başarısız ({type(exc).__name__}: {exc})[/yellow]")
                 return None
-            await asyncio.sleep(1.5 * (attempt + 1))
+            await asyncio.sleep(1.5 * attempt)
     return None
 
 
