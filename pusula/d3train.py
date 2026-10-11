@@ -70,6 +70,20 @@ def build_items(examples: list[Example], decider, label_source: str, rng: Option
     return [Item(n, t, i, lab, c) for i, (n, t, lab, c) in zip(ids, meta)]
 
 
+def smoothed_ce(logits, labels, counts, eps: float):
+    """Cross-entropy with label smoothing spread over each question's OWN options only.
+
+    torch's built-in label_smoothing also puts mass on the padded (-1e4) codes of shorter questions, which
+    explodes the loss and pushes every real code down."""
+    import torch
+
+    logp = torch.log_softmax(logits.float(), dim=-1)
+    valid = torch.arange(logits.shape[1], device=logits.device)[None] < torch.as_tensor(counts, device=logits.device)[:, None]
+    nll = -logp.gather(1, labels[:, None]).squeeze(1)
+    smooth = -(logp.masked_fill(~valid, 0.0).sum(1) / valid.sum(1))
+    return ((1 - eps) * nll + eps * smooth).mean()
+
+
 def micro_batches(items: list[Item], token_budget: int, rng: Optional[random.Random]) -> list[list[Item]]:
     rows = list(items)
     if rng is not None:
@@ -146,6 +160,7 @@ def train(a) -> None:
     main = rank == 0
     say = console.print if main else (lambda *x, **k: None)
     out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
     last = out / "last"
     resume = (last / "trainer_state.json").exists()
     decider = D3Decider.load(a.d3, adapter=str(last) if resume else None, lora_rank=a.lora_rank,
@@ -156,7 +171,9 @@ def train(a) -> None:
     weights = {name: a.focus_weight for name in a.focus.split(",") if name} if a.focus else None
     train_items = build_items(read_examples(Path(a.data) / "train.jsonl"), decider, "final", rng, a.max_prompts,
                               weights)
-    val_items = build_items(read_examples(Path(a.data) / "val.jsonl"), decider, "final", None, a.max_val)
+    val_items = build_items(read_examples(Path(a.data) / "val.jsonl"), decider, "final", None)
+    if a.max_val and len(val_items) > a.max_val:  # fixed subset so every evaluation is comparable
+        val_items = random.Random(0).sample(val_items, a.max_val)
     say(f"[cyan]{len(train_items)} eğitim / {len(val_items)} doğrulama sorusu "
         f"({time.time() - t0:.0f}s tokenizasyon), {world} GPU[/cyan]")
 
@@ -187,7 +204,7 @@ def train(a) -> None:
             with torch.autocast("cuda", dtype=torch.bfloat16):
                 logits = decider.logits([it.ids for it in batch], [it.count for it in batch])
             labels = torch.tensor([it.label for it in batch], device=decider.device)
-            loss = torch.nn.functional.cross_entropy(logits, labels, label_smoothing=a.label_smoothing)
+            loss = smoothed_ce(logits, labels, [it.count for it in batch], a.label_smoothing)
             (loss / len(step_batches)).backward()
             running += loss.item() / len(step_batches)
         if world > 1:

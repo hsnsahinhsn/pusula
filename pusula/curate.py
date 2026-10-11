@@ -1,7 +1,7 @@
 """TabiBERT-assisted curation of the Turkish training data before d3 fine-tuning.
 
-1. Semantic de-duplication: states whose TabiBERT embeddings are near-identical (cosine >= --dup)
-   are dropped, keeping the first.
+1. De-duplication: states whose character 4-gram vectors are near-identical (cosine >= --dup) are dropped,
+   keeping the first.
 2. Label-noise detection: the TabiBERT cross-encoder is trained on k-1 folds and scores the held-out
    fold; a label the model rejects with high confidence (label prob < --noise-label while its own top
    choice has prob > --noise-top) is removed from `labels.final` (recorded in `meta.noisy`).
@@ -47,14 +47,37 @@ def embed(texts: list[str], model_name: str = BASE_MODEL, batch: int = 64, max_l
     return torch.cat(out)
 
 
-def dedup(examples: list[Example], emb, threshold: float) -> list[int]:
-    """Indices to keep: an example is dropped if it is >= threshold similar to an earlier kept one."""
+_FOLD = str.maketrans("çğıöşüâîû", "cgiosuaiu")  # Turkish letters with/without diacritics count as copies
+
+
+def char_ngram_vectors(texts: list[str], n: int = 4, dim: int = 1 << 16):
+    """L2-normalized hashed character n-gram count vectors [N, dim] (torch): surface-form similarity."""
+    import zlib
+
     import torch
 
-    kept = torch.empty((len(examples), emb.shape[1]), dtype=emb.dtype, device=emb.device)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    out = torch.zeros((len(texts), dim), dtype=torch.float32, device=device)
+    for i, t in enumerate(texts):
+        t = "".join(c if c.isalnum() else " " for c in t.lower().translate(_FOLD))
+        t = " ".join(t.split())
+        idx = [zlib.crc32(t[k:k + n].encode()) % dim for k in range(max(1, len(t) - n + 1))]
+        out[i].index_add_(0, torch.tensor(idx, device=device), torch.ones(len(idx), device=device))
+    return torch.nn.functional.normalize(out, dim=-1)
+
+
+def dedup(examples: list[Example], vecs, threshold: float) -> list[int]:
+    """Indices to keep: an example is dropped if it is >= threshold similar to an earlier kept one.
+
+    Uses character n-gram vectors, not TabiBERT embeddings: raw BERT embeddings score unrelated Turkish
+    messages written in the same style (e.g. without diacritics) as ~0.98 similar, which would delete
+    diverse data. Surface overlap only flags genuine (near-)copies."""
+    import torch
+
+    kept = torch.empty((len(examples), vecs.shape[1]), dtype=vecs.dtype, device=vecs.device)
     keep: list[int] = []
     for i in range(len(examples)):
-        v = emb[i]
+        v = vecs[i]
         if keep and (kept[: len(keep)] @ v).max().item() >= threshold:
             continue
         kept[len(keep)] = v
@@ -75,6 +98,9 @@ def add_hard_question(examples: list[Example], emb, k: int = 5) -> int:
         if not true:
             continue
         sub = ex.labels["final"].get("alt_alan")
+        true_desc = next((descs[j] for j, p in enumerate(paths) if p.intent == true and p.subdomain == sub), None)
+        if true_desc is None:  # subdomain label contested or removed: the route is not certain, no hard question
+            continue
         order = sims[i].argsort(descending=True).tolist()
         options = {}
         for j in order:
@@ -86,7 +112,6 @@ def add_hard_question(examples: list[Example], emb, k: int = 5) -> int:
             options[p.intent] = descs[j]
             if len(options) == k:
                 break
-        true_desc = next(descs[j] for j, p in enumerate(paths) if p.intent == true and p.subdomain == sub)
         options[true] = true_desc
         keys = list(options)
         random.Random(ex.id).shuffle(keys)
@@ -147,7 +172,8 @@ def curate(a) -> dict:
         examples = read_examples(data / f"{split}.jsonl")
         n0 = len(examples)
         emb = embed([ex.state for ex in examples])
-        keep = dedup(examples, emb, a.dup) if split == "train" else list(range(n0))
+        keep = (dedup(examples, char_ngram_vectors([ex.state for ex in examples]), a.dup)
+                if split == "train" else list(range(n0)))
         examples = [examples[i] for i in keep]
         emb = emb[keep]
         flagged = 0
@@ -167,7 +193,7 @@ def main(argv=None) -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--data", required=True, help="consensus split directory (train/val/test.jsonl)")
     p.add_argument("--out", required=True)
-    p.add_argument("--dup", type=float, default=0.95, help="cosine similarity treated as duplicate")
+    p.add_argument("--dup", type=float, default=0.9, help="character 4-gram cosine treated as a duplicate")
     p.add_argument("--folds", type=int, default=3, help="noise-detection folds (1 disables)")
     p.add_argument("--noise-epochs", type=int, default=1)
     p.add_argument("--noise-label", type=float, default=0.05)

@@ -17,6 +17,14 @@ def test_dedup_drops_near_duplicates(example):
     assert keep == [0, 1, 3]
 
 
+def test_char_ngram_dedup_keeps_same_style_different_messages(example):
+    texts = ["merhaba siparisim 3 gundur kargoda gorunmuyor ne zaman gelir",
+             "merhaba siparisim 3 gündür kargoda görünmüyor, ne zaman gelir?",
+             "merhaba yurt disinda oldugum icin imar durumu sorgusunu yapamiyorum"]
+    keep = curate.dedup([example] * 3, curate.char_ngram_vectors(texts), threshold=0.9)
+    assert keep == [0, 2]  # the punctuation/diacritics variant is a copy, the other message is not
+
+
 def test_hard_question_mixes_other_subdomains(monkeypatch, example, tax):
     n_intents = len(list(tax.intent_paths()))
     monkeypatch.setattr(curate, "embed", lambda texts, **k: _unit(len(texts), seed=len(texts)))

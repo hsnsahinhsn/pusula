@@ -114,3 +114,15 @@ def test_teacher_labels_every_question(example):
     for name, q in ex.questions.items():
         assert ex.labels["d3"][name] == q.option_keys()[-1]
         assert abs(sum(ex.teacher[name]) - 1) < 1e-5
+
+
+def test_smoothed_ce_ignores_padded_codes():
+    torch = __import__("pytest").importorskip("torch")
+    from pusula.d3train import smoothed_ce
+
+    logits = torch.tensor([[2.0, 0.0, -1e4, -1e4], [0.0, 1.0, 0.5, 3.0]])
+    labels = torch.tensor([0, 3])
+    loss = smoothed_ce(logits, labels, [2, 4], 0.1)
+    ref = (torch.nn.functional.cross_entropy(logits[:1, :2], labels[:1], label_smoothing=0.1)
+           + torch.nn.functional.cross_entropy(logits[1:], labels[1:], label_smoothing=0.1)) / 2
+    assert torch.allclose(loss, ref, atol=1e-5) and loss.item() < 2
