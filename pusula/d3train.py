@@ -146,7 +146,7 @@ def train(a) -> None:
     last = out / "last"
     resume = (last / "trainer_state.json").exists()
     decider = D3Decider.load(a.d3, adapter=str(last) if resume else None, lora_rank=a.lora_rank,
-                             gradient_checkpointing=True, load_in_4bit=_precision(a), device=device)
+                             gradient_checkpointing=not a.no_grad_ckpt, load_in_4bit=_precision(a), device=device)
     decider.readout.requires_grad_(True)
     rng = random.Random(a.seed)
     t0 = time.time()
@@ -260,6 +260,9 @@ def main(argv=None) -> None:
     t.add_argument("--label-smoothing", type=float, default=0.05)
     t.add_argument("--token-budget", type=int, default=8192, help="padded tokens per micro-batch")
     t.add_argument("--accum", type=int, default=8, help="micro-batches per optimizer step")
+    t.add_argument("--no-grad-ckpt", action="store_true",
+                   help="keep activations instead of recomputing them (faster, needs more GPU memory; pair with a "
+                        "smaller --token-budget and a larger --accum to keep the same tokens per step)")
     t.add_argument("--log-every", type=int, default=10)
     t.add_argument("--save-every", type=int, default=200)
     t.add_argument("--seed", type=int, default=17)
