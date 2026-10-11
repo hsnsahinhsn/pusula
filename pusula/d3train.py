@@ -200,21 +200,23 @@ def train(a) -> None:
     running, t_step = 0.0, time.time()
     while step < steps_total:
         step_batches = schedule[step * a.accum:(step + 1) * a.accum]
+        step_loss = 0.0
         for batch in step_batches[rank::world]:
             with torch.autocast("cuda", dtype=torch.bfloat16):
                 logits = decider.logits([it.ids for it in batch], [it.count for it in batch])
             labels = torch.tensor([it.label for it in batch], device=decider.device)
             loss = smoothed_ce(logits, labels, [it.count for it in batch], a.label_smoothing)
             (loss / len(step_batches)).backward()
-            running += loss.item() / len(step_batches)
+            step_loss += loss.item() / len(step_batches)
         if world > 1:
             for p in params:
                 if p.grad is None:
                     p.grad = torch.zeros_like(p)
                 dist.all_reduce(p.grad)  # sum of per-GPU partial means = mean over the step's micro-batches
-            t = torch.tensor([running], device=decider.device)
-            dist.all_reduce(t)
-            running = t.item()
+            t = torch.tensor([step_loss], device=decider.device)
+            dist.all_reduce(t)  # only this step's partial losses: the running sum must not be reduced again
+            step_loss = t.item()
+        running += step_loss
         torch.nn.utils.clip_grad_norm_(params, 1.0)
         opt.step()
         sched.step()
