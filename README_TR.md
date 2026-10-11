@@ -36,10 +36,11 @@ Bugünkü karar modelleri (Decision 3.0, Jev, Laya, ...) İngilizce için kurulm
 
 | Model | Boyut | Çalıştığı yer | Ne için |
 |---|---|---|---|
-| **Pusula** (Türkçe Decision 3.0) | 26B, 4-bit yüklenir (`vllm-sr/d3` üzerine LoRA adaptörü) | ≥ 24 GB GPU | En iyi Türkçe karar kalitesi |
-| **Pusula Small** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | Herhangi bir GPU veya CPU | Yüksek hacim, düşük gecikme, uç cihazlar |
+| **Pusula** (Türkçe Decision 3.0) | 26B (`vllm-sr/d3` üzerine LoRA adaptörü) | GPU: BF16'da ≥ 64 GB, 4-bit'te ≥ 24 GB | En iyi Türkçe karar kalitesi; anlık özel sorularda da akıl yürütür |
+| **Pusula Mini** *(yakında)* | ~0.8B | CPU (karar başına ~1 sn) veya herhangi bir GPU | GPU olmadan iyi denge |
+| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | Herhangi bir GPU veya CPU | Yüksek hacim, düşük gecikme, uç cihazlar, ilk eleme |
 
-İkisi de birebir aynı istekleri cevaplar.
+Hepsi birebir aynı istekleri cevaplar.
 
 ---
 
@@ -67,7 +68,7 @@ hf download vllm-sr/d3 --local-dir ~/d3 --exclude "assets/*"     # temel Decisio
 
 `serve` eki PyTorch, Transformers ve FastAPI'yi; `d3` eki 4-bit model için PEFT ve bitsandbytes'ı kurar.
 Önce PyTorch'un CUDA sürümünü kurun ([pytorch.org](https://pytorch.org/get-started/locally/)).
-Pusula Small için yalnızca `serve` eki yeterlidir.
+Pusula Nano için yalnızca `serve` eki yeterlidir.
 
 ## Temel kavramlar
 
@@ -133,7 +134,7 @@ Yukarıdaki isteğin cevabı (değerler örnek amaçlıdır):
 from pusula.inference import D3Engine, DecisionEngine
 
 engine = D3Engine.load("~/d3", adapter="path/to/pusula")      # Pusula (Türkçe Decision 3.0)
-# engine = DecisionEngine.load("path/to/pusula-small")        # Pusula Small (GPU veya CPU)
+# engine = DecisionEngine.load("path/to/pusula-nano")        # Pusula Nano (GPU veya CPU)
 
 answers = engine.decide(
     "Siparişim 5 gündür kargoda, hâlâ gelmedi. Artık iptal etmek istiyorum.",
@@ -168,7 +169,7 @@ Sunucuyu başlatın:
 
 ```bash
 PUSULA_D3_BASE=~/d3 PUSULA_MODEL_DIR=path/to/pusula pusula-serve --port 8080   # Pusula
-PUSULA_MODEL_DIR=path/to/pusula-small pusula-serve --port 8080                  # Pusula Small
+PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve --port 8080                  # Pusula Nano
 ```
 
 | Metot | Yol | Açıklama |
@@ -196,7 +197,7 @@ Geçersiz sorular HTTP 422 ve sebebiyle döner. Ayarlar (ortam değişkenleri):
 | Değişken | Varsayılan | Anlamı |
 |---|---|---|
 | `PUSULA_D3_BASE` | — | Temel `vllm-sr/d3` dizini; Pusula'yı sunmak için ayarlayın (`PUSULA_MODEL_DIR` adaptör olur) |
-| `PUSULA_MODEL_DIR` | — | Pusula adaptör dizini ya da Pusula Small model dizini |
+| `PUSULA_MODEL_DIR` | — | Pusula adaptör dizini ya da Pusula Nano model dizini |
 | `PUSULA_DEVICE` | otomatik | `cuda`, `cuda:1`, `cpu`… |
 | `PUSULA_CORS_ORIGINS` | yok | Tarayıcı istemcileri için virgülle ayrılmış izinli origin'ler |
 | `PUSULA_MAX_QUESTIONS` | 32 | İstek başına soru sayısı |

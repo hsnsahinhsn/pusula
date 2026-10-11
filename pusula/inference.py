@@ -107,7 +107,7 @@ class D3Engine(BaseEngine):
 
 
 class DecisionEngine(BaseEngine):
-    """Small and fast: a TabiBERT cross-encoder distilled from the Turkish decision data."""
+    """Pusula Nano, small and fast: a TabiBERT cross-encoder distilled from the Turkish decision data."""
     def __init__(self, model: PusulaModel, tokenizer, max_length: int = 1024,
                  device: Optional[torch.device] = None, max_pairs_per_pass: int = 256):
         self.model = model

@@ -35,10 +35,11 @@ decision models (Decision 3.0, Jev, Laya, ...) are built for English and stumble
 
 | Model | Size | Runs on | Use it for |
 |---|---|---|---|
-| **Pusula** (Turkish Decision 3.0) | 26B, loaded in 4-bit (LoRA adapter on top of `vllm-sr/d3`) | GPU with ≥ 24 GB | Best Turkish decision quality |
-| **Pusula Small** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | Any GPU or CPU | High volume, low latency, edge |
+| **Pusula** (Turkish Decision 3.0) | 26B (LoRA adapter on top of `vllm-sr/d3`) | GPU: ≥ 64 GB in BF16, ≥ 24 GB in 4-bit | Best Turkish decision quality; reasons over any ad-hoc question |
+| **Pusula Mini** *(coming soon)* | ~0.8B | CPU (~1 s per decision) or any GPU | Good balance without a GPU |
+| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | Any GPU or CPU | High volume, low latency, edge, first-pass filtering |
 
-Both answer exactly the same requests.
+All of them answer exactly the same requests.
 
 ---
 
@@ -66,7 +67,7 @@ hf download vllm-sr/d3 --local-dir ~/d3 --exclude "assets/*"     # base Decision
 
 The `serve` extra installs PyTorch, Transformers and FastAPI; `d3` adds PEFT and bitsandbytes for the
 4-bit model. Install a CUDA build of PyTorch first ([pytorch.org](https://pytorch.org/get-started/locally/)).
-Pusula Small needs only the `serve` extra.
+Pusula Nano needs only the `serve` extra.
 
 ## Concepts
 
@@ -132,7 +133,7 @@ Answer for the request above (illustrative values):
 from pusula.inference import D3Engine, DecisionEngine
 
 engine = D3Engine.load("~/d3", adapter="path/to/pusula")      # Pusula (Turkish Decision 3.0)
-# engine = DecisionEngine.load("path/to/pusula-small")        # Pusula Small (GPU or CPU)
+# engine = DecisionEngine.load("path/to/pusula-nano")        # Pusula Nano (GPU or CPU)
 
 answers = engine.decide(
     "Siparişim 5 gündür kargoda, hâlâ gelmedi. Artık iptal etmek istiyorum.",
@@ -167,7 +168,7 @@ Start the server:
 
 ```bash
 PUSULA_D3_BASE=~/d3 PUSULA_MODEL_DIR=path/to/pusula pusula-serve --port 8080   # Pusula
-PUSULA_MODEL_DIR=path/to/pusula-small pusula-serve --port 8080                  # Pusula Small
+PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve --port 8080                  # Pusula Nano
 ```
 
 | Method | Path | Description |
@@ -195,7 +196,7 @@ Invalid questions return HTTP 422 with the reason. Configuration (environment va
 | Variable | Default | Meaning |
 |---|---|---|
 | `PUSULA_D3_BASE` | — | Base `vllm-sr/d3` directory; set it to serve Pusula (then `PUSULA_MODEL_DIR` is the adapter) |
-| `PUSULA_MODEL_DIR` | — | Pusula adapter directory, or a Pusula Small model directory |
+| `PUSULA_MODEL_DIR` | — | Pusula adapter directory, or a Pusula Nano model directory |
 | `PUSULA_DEVICE` | auto | `cuda`, `cuda:1`, `cpu`… |
 | `PUSULA_CORS_ORIGINS` | none | Comma-separated allowed origins for browser clients |
 | `PUSULA_MAX_QUESTIONS` | 32 | Questions per request |

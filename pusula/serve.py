@@ -2,8 +2,8 @@
 
     # Pusula (Turkish Decision 3.0): base d3 snapshot + Pusula adapter
     PUSULA_D3_BASE=~/d3 PUSULA_MODEL_DIR=path/to/pusula-d3 pusula-serve
-    # small TabiBERT model
-    PUSULA_MODEL_DIR=path/to/pusula-small pusula-serve
+    # Pusula Nano (TabiBERT)
+    PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve
 
 Endpoints:
     POST /v1/systemone        {"state": str, "questions": {name: {type, instructions, criteria}}}
