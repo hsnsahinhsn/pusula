@@ -59,8 +59,8 @@ LENGTHS = [
 ]
 
 DUYGU_WEIGHTS = {
-    "notr": 0.30, "memnun": 0.08, "endiseli": 0.20, "hayal_kirikligi": 0.18,
-    "ofkeli": 0.14, "caresiz_kriz": 0.10,
+    "notr": 0.28, "memnun": 0.08, "endiseli": 0.18, "uzgun": 0.06, "hayal_kirikligi": 0.17,
+    "ofkeli": 0.13, "caresiz_kriz": 0.10,
 }
 
 

@@ -250,7 +250,7 @@ Evrensel sorular (her mesaja sorulur):
 | `eylem_gerekli` | noul | Somut bir işlem (kayıt, iptal, iade, bloke, araç çağrısı) gerekiyor mu? |
 | `insana_devret` | noul | Bir insan uzman devralmalı mı? |
 | `guvenlik` | choice | `guvenli`, `prompt_enjeksiyonu`, `jailbreak_rol_yapma`, `zararli_veya_yasadisi`, `yetkisiz_islem_talebi`, `spam_anlamsiz` |
-| `duygu` | choice | `notr`, `memnun`, `endiseli`, `hayal_kirikligi`, `ofkeli`, `caresiz_kriz` |
+| `duygu` | choice | `notr`, `memnun`, `endiseli`, `uzgun`, `hayal_kirikligi`, `ofkeli`, `caresiz_kriz` |
 | `kisisel_veri` | noul | Kişisel veya hassas veri içeriyor mu? |
 
 Tüm alt alanlar ve niyetlerle birlikte taksonominin tamamı

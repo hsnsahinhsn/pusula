@@ -249,7 +249,7 @@ Universal questions (asked of every message):
 | `eylem_gerekli` | noul | Does it need a concrete action (ticket, cancel, refund, block, tool call)? |
 | `insana_devret` | noul | Should a human expert take over? |
 | `guvenlik` | choice | `guvenli`, `prompt_enjeksiyonu`, `jailbreak_rol_yapma`, `zararli_veya_yasadisi`, `yetkisiz_islem_talebi`, `spam_anlamsiz` |
-| `duygu` | choice | `notr`, `memnun`, `endiseli`, `hayal_kirikligi`, `ofkeli`, `caresiz_kriz` |
+| `duygu` | choice | `notr`, `memnun`, `endiseli`, `uzgun`, `hayal_kirikligi`, `ofkeli`, `caresiz_kriz` |
 | `kisisel_veri` | noul | Does it contain personal or sensitive data? |
 
 The full taxonomy with every subdomain and intent is in
