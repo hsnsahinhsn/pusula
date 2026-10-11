@@ -124,6 +124,8 @@ def default_4bit() -> bool:
     return torch.cuda.get_device_properties(0).total_memory < 80 * 2**30
 
 
+D3_FORMAT_FILES = ("decision_config.json", "tokenizer.json", "tokenizer_config.json", "vocab.json", "merges.txt",
+                   "chat_template.jinja", "special_tokens_map.json")
 LORA_TARGETS = r".*language_model.*\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj|in_proj_qkvz|in_proj_ba|in_proj_qkv|in_proj_z|out_proj)$"
 
 
@@ -140,9 +142,11 @@ class D3Decider:
 
     @classmethod
     def load(cls, model_dir: str, adapter: Optional[str] = None, load_in_4bit: Optional[bool] = None,
-             lora_rank: int = 0, device: str = "cuda:0", gradient_checkpointing: bool = False) -> "D3Decider":
-        """Load d3 from a local snapshot. `adapter`: a trained Pusula adapter dir (LoRA + readout).
-        `lora_rank` > 0 adds fresh trainable LoRA layers (training from the base)."""
+             lora_rank: int = 0, device: str = "cuda:0", gradient_checkpointing: bool = False,
+             full_finetune: bool = False) -> "D3Decider":
+        """Load d3 (or a d3-format model such as Pusula Mini) from a local directory. `adapter`: a trained
+        Pusula adapter dir (LoRA + readout). `lora_rank` > 0 adds fresh trainable LoRA layers (training from
+        the base). `full_finetune` keeps FP32 master weights and trains the whole language model instead."""
         import torch
         from safetensors.torch import load_file
         from transformers import AutoTokenizer, BitsAndBytesConfig
@@ -155,7 +159,10 @@ class D3Decider:
             quant = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
                                        bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True,
                                        llm_int8_skip_modules=["visual", "lm_head"])
-        backbone = Qwen3_5Model.from_pretrained(model_dir, dtype=torch.bfloat16, attn_implementation="sdpa",
+        if full_finetune and (load_in_4bit or adapter or lora_rank):
+            raise ValueError("full fine-tuning is BF16/FP32 only, without adapters")
+        backbone = Qwen3_5Model.from_pretrained(model_dir, dtype=torch.float32 if full_finetune else torch.bfloat16,
+                                                attn_implementation="sdpa",
                                                 quantization_config=quant, device_map={"": device})
         enable_noncausal_full_attention(backbone.language_model)
         readout_path = Path(adapter or model_dir) / "readout.safetensors"
@@ -175,10 +182,15 @@ class D3Decider:
             backbone = get_peft_model(backbone, LoraConfig(
                 r=lora_rank, lora_alpha=2 * lora_rank, lora_dropout=0.05, target_modules=LORA_TARGETS,
                 bias="none"))
+        for name, param in backbone.named_parameters():  # base weights train only in full fine-tuning
+            if not trainable:
+                param.requires_grad_(full_finetune and name.startswith("language_model."))
         if gradient_checkpointing and not load_in_4bit:
             backbone.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
         tokenizer = AutoTokenizer.from_pretrained(model_dir)
-        return cls(backbone, readout, tokenizer, load_codes(model_dir), torch.device(device))
+        decider = cls(backbone, readout, tokenizer, load_codes(model_dir), torch.device(device))
+        decider.model_dir = Path(model_dir)
+        return decider
 
     def encode(self, prompts: Sequence[str]) -> list[list[int]]:
         return self.tokenizer(list(prompts), add_special_tokens=False)["input_ids"]
@@ -205,7 +217,19 @@ class D3Decider:
 
         path = Path(path)
         path.mkdir(parents=True, exist_ok=True)
-        self.backbone.save_pretrained(str(path))
+        if hasattr(self.backbone, "peft_config"):
+            self.backbone.save_pretrained(str(path))
+        else:  # full model (Pusula Mini): BF16 weights plus everything needed to load it as a d3-format model
+            import shutil
+
+            import torch
+
+            state = {k: v.detach().to(torch.bfloat16) for k, v in self.backbone.state_dict().items()}
+            self.backbone.save_pretrained(str(path), state_dict=state)
+            for name in D3_FORMAT_FILES:
+                src = self.model_dir / name
+                if src.exists() and src.resolve() != (path / name).resolve():
+                    shutil.copy2(src, path / name)
         save_file({"weight": self.readout.detach().float().cpu().contiguous()}, str(path / "readout.safetensors"))
         (path / "pusula_d3.json").write_text(json.dumps({"format_id": "d3-code-readout-v1", **(meta or {})},
                                                         ensure_ascii=False, indent=2), encoding="utf-8")
