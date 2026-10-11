@@ -1,77 +1,82 @@
-"""
-Integration tests for Pusula FastAPI server endpoints.
-"""
-import unittest
+import pytest
 
-try:
-    from fastapi.testclient import TestClient
-    from serve import app
-    HAS_SERVER_DEPS = True
-except ImportError:
-    HAS_SERVER_DEPS = False
+pytest.importorskip("fastapi")
+from fastapi.testclient import TestClient  # noqa: E402
+
+from pusula.schema import answer_from_probs  # noqa: E402
+from pusula.serve import create_app  # noqa: E402
 
 
-class TestPusulaServer(unittest.TestCase):
+class FakeEngine:
+    model_name = "fake"
 
-    def setUp(self):
-        if HAS_SERVER_DEPS:
-            self.client = TestClient(app)
+    def decide_many(self, requests):
+        out = []
+        for _, qs in requests:
+            out.append({n: answer_from_probs(q, [1.0] + [0.0] * (len(q.option_keys()) - 1))
+                        for n, q in qs.items()})
+        return out
 
-    @unittest.skipUnless(HAS_SERVER_DEPS, "FastAPI and testclient are required for server tests")
-    def test_health_endpoint(self):
-        response = self.client.get("/health")
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertEqual(data["status"], "healthy")
-        self.assertEqual(data["service"], "pusula-decision-engine")
-        self.assertIn("version", data)
+    def decide(self, state, questions):
+        return self.decide_many([(state, questions)])[0]
 
-    @unittest.skipUnless(HAS_SERVER_DEPS, "FastAPI and testclient are required for server tests")
-    def test_taxonomies_endpoint(self):
-        response = self.client.get("/taxonomies")
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertGreaterEqual(data["total_domains"], 30)
-        self.assertIn("corporate_accounting_and_tax", data["domains"])
-
-    @unittest.skipUnless(HAS_SERVER_DEPS, "FastAPI and testclient are required for server tests")
-    def test_decide_endpoint_contract(self):
-        payload = {
-            "context": "Kartımdan bilgim dışında para çekilmiş acil bloke edin.",
-            "options": ["supheli_islem_ve_fraud", "kredi_faiz_ve_mevduat", "genel_bilgi"]
-        }
-        response = self.client.post("/decide", json=payload)
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertIn("choice", data)
-        self.assertIn("choice_confidence", data)
-        self.assertIn("score", data)
-        self.assertIn("action_required", data)
-        self.assertIn("latency_ms", data)
-        self.assertIsInstance(data["action_required"], bool)
-        self.assertTrue(0.0 <= data["score"] <= 1.0)
-
-    @unittest.skipUnless(HAS_SERVER_DEPS, "FastAPI and testclient are required for server tests")
-    def test_batch_decide_endpoint(self):
-        payload = {
-            "items": [
-                {
-                    "context": "Yarın için şirket toplantı odasını ayırt.",
-                    "options": ["takvim_ayarla", "e_posta_gonder"]
-                },
-                {
-                    "context": "E-faturadaki tevkifat oranını kontrol et.",
-                    "options": ["muhasebe_tevkifat", "kargo_takibi"]
-                }
-            ]
-        }
-        response = self.client.post("/batch-decide", json=payload)
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertIn("results", data)
-        self.assertEqual(len(data["results"]), 2)
-        self.assertIn("total_latency_ms", data)
+    def route(self, state, universal=True):
+        return {"path": "genel_sohbet.sohbet.selamlasma", "answers": {}}
 
 
-if __name__ == "__main__":
-    unittest.main()
+BODY = {
+    "state": "Kartım çalındı, hemen bloke edin!",
+    "questions": {
+        "ekip": {"type": "choice", "instructions": "Hangi ekip?",
+                 "criteria": {"kart": "Kart işlemleri", "kredi": "Kredi"}},
+        "acil": {"type": "noul", "instructions": "Acil mi?"},
+    },
+}
+
+
+@pytest.fixture
+def client():
+    return TestClient(create_app(engine=FakeEngine()))
+
+
+def test_health_and_ready(client):
+    assert client.get("/health").json()["model_loaded"] is True
+    assert client.get("/ready").status_code == 200
+
+
+def test_not_ready_without_model(monkeypatch):
+    monkeypatch.delenv("PUSULA_MODEL_DIR", raising=False)
+    c = TestClient(create_app())
+    assert c.get("/health").status_code == 200
+    assert c.get("/ready").status_code == 503
+    assert c.post("/v1/systemone", json=BODY).status_code == 503
+
+
+def test_systemone_contract(client):
+    r = client.post("/v1/systemone", json=BODY)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["answers"]["ekip"]["choice"] == "kart"
+    assert data["answers"]["acil"]["type"] == "noul"
+    assert data["latency_ms"] >= 0
+
+
+def test_batch_and_route(client):
+    r = client.post("/v1/systemone/batch", json={"requests": [BODY, BODY]})
+    assert r.status_code == 200 and len(r.json()["results"]) == 2
+    assert client.post("/v1/route", json={"state": "merhaba"}).json()["path"].count(".") == 2
+
+
+@pytest.mark.parametrize("bad", [
+    {"state": "x", "questions": {}},
+    {"state": "", "questions": BODY["questions"]},
+    {"state": "x", "questions": {"q": {"type": "choice", "instructions": "?", "criteria": {"tek": None}}}},
+    {"state": "x", "questions": {"q": {"type": "maybe", "instructions": "?"}}},
+])
+def test_validation_errors(client, bad):
+    assert client.post("/v1/systemone", json=bad).status_code == 422
+
+
+def test_taxonomy_endpoint(client):
+    data = client.get("/v1/taxonomy").json()
+    assert "domains" in data and "universal" in data

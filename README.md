@@ -1,251 +1,291 @@
 <div align="center">
 
-# Pusula: Turkish Decision Engine
-### Sub-15 ms Typed Decision, Routing, and Triage Engine for Autonomous Turkish Agent Workflows
+# Pusula
 
-[ English ](README.md) • [ Türkçe ](README_TR.md)
+### Fast, calibrated decisions on Turkish text
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[English](README.md) • [Türkçe](README_TR.md)
+
 [![CI](https://github.com/hsnsahinhsn/pusula/actions/workflows/ci.yml/badge.svg)](https://github.com/hsnsahinhsn/pusula/actions)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-green.svg)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.4%2B-red.svg)](https://pytorch.org/)
-[![Latency](https://img.shields.io/badge/Latency-%3C15ms-blue.svg)](#benchmark--performance)
-[![Architecture](https://img.shields.io/badge/Architecture-Non--Autoregressive-informational.svg)](#overview)
-
-[Overview](#overview) • [Quickstart](#quickstart) • [Python API](#python-api) • [Agentic Workflow](#agentic-workflow-integration) • [Macro-Domain Taxonomy](#32-macro-domain-taxonomy) • [Benchmark](#benchmark--performance) • [Training & Reproducibility](#training--reproducibility)
 
 </div>
 
+Pusula answers **questions you define** about any Turkish text (a customer message, a ticket, an
+agent's context) and returns a **probability for every option**, without generating text. Use it
+wherever an agent or workflow needs a quick, typed decision: routing, triage, tool selection,
+guardrails, escalation.
+
+- **Any options, at request time.** Options are read as text, so you are not limited to a fixed label set.
+- **Three question types.** `choice` (pick one), `noul` (yes/no), `score` (ordered levels).
+- **Calibrated probabilities.** Confidence values are temperature-calibrated, so you can set thresholds.
+- **Built-in Turkish taxonomy.** 20 domains → 86 subdomains → 299 intents, plus six universal checks
+  (urgency, action needed, human handoff, security risk, emotion, personal data).
+- **d3-compatible API.** Same request and answer format as
+  [vllm-sr/d3](https://huggingface.co/vllm-sr/d3)'s `/v1/systemone`, so it can be used as a drop-in replacement.
+- **Small and local.** A 149M-parameter encoder ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT));
+  runs on your own GPU or CPU with no per-request fees.
+
+> **Status:** pre-release. The API and code are stable; trained model weights will be published on
+> Hugging Face with measured accuracy and latency.
+
 ---
 
-## Overview
+## Contents
 
-Routing user queries, selecting tools, and enforcing policy guardrails using generative autoregressive large language models (such as GPT-6 Luna, Claude Opus 5.5, Gemini 3.8 Flash, DeepSeek-V4.1 Flash, or GLM-5.3) introduces severe operational bottlenecks: high latency (350 ms – 1,800 ms), compounding API expenses, and fragile JSON parsing failures.
-
-**Pusula (Turkish Decision Engine)** is an open-source, non-autoregressive decision engine optimized for the Turkish language. Utilizing a single forward pass over an encoder backbone, Pusula simultaneously generates three calibrated decisions in under 15 milliseconds:
-
-| Metric / Capability | Frontier LLMs (GPT-6 Luna, Claude Opus 5.5) | Fast Generative Models (Gemini 3.8, DeepSeek-V4.1) | Pusula |
-| :--- | :---: | :---: | :---: |
-| **P95 Inference Latency** | 500 ms – 2,000 ms | 200 ms – 600 ms | **8 ms – 15 ms** |
-| **Hallucination Risk** | Present | High | **0.0% (Mathematically constrained)** |
-| **Output Type** | Freeform text / Unstructured JSON | Fragile JSON | **Direct Typed Tensors** |
-| **Probability Calibration** | Uncalibrated | Frequently Overconfident | **Calibrated via Platt Scaling** |
-| **Operational Cost** | Per-token commercial billing | High GPU memory footprint | **Zero per-request fee / Self-hosted** |
+- [Installation](#installation)
+- [Concepts](#concepts)
+- [Python API](#python-api)
+- [HTTP API](#http-api)
+- [Built-in taxonomy and routing](#built-in-taxonomy-and-routing)
+- [Writing good questions](#writing-good-questions)
+- [Using confidence](#using-confidence)
+- [Examples](#examples)
+- [Training your own model](#training-your-own-model)
+- [License and acknowledgements](#license-and-acknowledgements)
 
 ---
 
-## Output Specification (Typed Decision Head)
+## Installation
 
-Pusula executes a multi-task projection over candidate representations and context embeddings to return a typed decision structure:
+```bash
+pip install "pusula[serve] @ git+https://github.com/hsnsahinhsn/pusula"
+```
+
+The `serve` extra installs PyTorch, Transformers and FastAPI. For GPU inference, install a CUDA build
+of PyTorch first ([pytorch.org](https://pytorch.org/get-started/locally/)).
+
+## Concepts
+
+A request has a **state** and named **questions**:
 
 ```json
 {
-  "choice": "bankacilik_finans_kripto",
-  "choice_confidence": 0.9842,
-  "score": 0.9410,
-  "action_required": true,
-  "latency_ms": 11.2
+  "state": "Kartımdan bilgim dışında 4.500 TL çekilmiş, hemen bloke edin!",
+  "questions": {
+    "ekip": {
+      "type": "choice",
+      "instructions": "Bu talebi hangi ekip ele almalı?",
+      "criteria": {
+        "dolandiricilik": "Şüpheli işlem ve dolandırıcılık",
+        "kart_islemleri": "Kart başvurusu, limit ve şifre",
+        "genel_destek": "Diğer sorular"
+      }
+    },
+    "acil": { "type": "noul", "instructions": "Hemen müdahale gerekiyor mu?" },
+    "risk": {
+      "type": "score",
+      "instructions": "Finansal risk ne düzeyde?",
+      "criteria": ["Düşük", "Orta", "Yüksek"]
+    }
+  }
 }
 ```
 
-- **`choice`**: The selected categorical target or tool identifier chosen from dynamic candidate options.
-- **`choice_confidence`**: Empirically calibrated probability score (`0.00 – 1.00`) optimized via Platt temperature scaling.
-- **`score`**: Continuous priority, urgency, or risk regression scalar (`0.00 – 1.00`).
-- **`action_required`**: Deterministic boolean flag signaling mandatory human-in-the-loop escalation or immediate tool execution.
+| Type | `criteria` | Answer |
+|---|---|---|
+| `choice` | Object mapping option keys to descriptions (`null` allowed) | `choice`, `probabilities`, `confidence` |
+| `noul` | Optional; may describe `"false"` and `"true"` | `noul` = probability of *true* |
+| `score` | Ordered list of 2–10 levels, lowest first | `score` = expected level (0…n-1), `probabilities`, `confidence`, `legend` |
 
----
+Answer for the request above (illustrative values):
 
-## Quickstart
-
-### Installation
-
-```bash
-git clone https://github.com/hsnsahinhsn/pusula.git
-cd pusula
-pip install -r requirements.txt
+```json
+{
+  "answers": {
+    "ekip": {
+      "type": "choice",
+      "choice": "dolandiricilik",
+      "probabilities": {"dolandiricilik": 0.94, "kart_islemleri": 0.05, "genel_destek": 0.01},
+      "confidence": 0.94
+    },
+    "acil": {"type": "noul", "noul": 0.97},
+    "risk": {
+      "type": "score",
+      "score": 1.86,
+      "probabilities": {"0": 0.02, "1": 0.10, "2": 0.88},
+      "confidence": 0.88,
+      "legend": {"0": "Düşük", "1": "Orta", "2": "Yüksek"}
+    }
+  },
+  "model": "pusula",
+  "latency_ms": 9.8
+}
 ```
-
----
 
 ## Python API
 
 ```python
-import torch
-from transformers import AutoTokenizer
-from model import TurkishDecisionModel
+from pusula.inference import DecisionEngine
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-checkpoint_dir = "checkpoints/pusula/best"
+engine = DecisionEngine.load("path/to/pusula-model")   # GPU if available, else CPU
 
-# Load model and tokenizer
-model = TurkishDecisionModel.from_pretrained(checkpoint_dir).to(device)
-tokenizer = AutoTokenizer.from_pretrained(checkpoint_dir)
-
-# Single inference request
-context = "Hesabımdan bilgim dışında 15.000 TL çekim yapılmış, kartımı acilen bloke edin."
-options = ["bankacilik_finans_kripto", "e_ticaret_pazaryerleri", "hukuk_adalet_mevzuat"]
-
-decision = model.predict_single(tokenizer, context=context, options=options, device=device)
-
-print(decision)
-# Output:
-# {
-#   'choice': 'bankacilik_finans_kripto',
-#   'choice_confidence': 0.9912,
-#   'score': 0.9850,
-#   'action_required': True,
-#   'latency_ms': 11.4
-# }
+answers = engine.decide(
+    "Siparişim 5 gündür kargoda, hâlâ gelmedi. Artık iptal etmek istiyorum.",
+    {
+        "niyet": {
+            "type": "choice",
+            "instructions": "Müşteri ne istiyor?",
+            "criteria": {
+                "kargo_takip": "Gönderinin nerede olduğunu öğrenmek",
+                "iptal": "Siparişi iptal etmek",
+                "iade": "Teslim alınan ürünü iade etmek",
+            },
+        },
+        "temsilci": {"type": "noul", "instructions": "Bir insan temsilciye aktarılmalı mı?"},
+    },
+)
+print(answers["niyet"]["choice"], answers["niyet"]["confidence"])
+print(answers["temsilci"]["noul"])
 ```
 
----
-
-## Agentic Workflow Integration
-
-Pusula functions as a zero-latency triage and routing gatekeeper in autonomous multi-agent pipelines (LangGraph, CrewAI, AutoGen):
+Many requests at once (packed into as few forward passes as possible):
 
 ```python
-from agentic_router_example import decision_route
-
-def agent_triage_pipeline(user_prompt: str) -> dict:
-    # Phase 1: Security and Guardrail Verification (<10 ms)
-    security_eval = decision_route(
-        context=user_prompt,
-        options=["guvenli_mesru_istek", "prompt_injection_saldirisi", "pii_kisisel_veri_ifsa"]
-    )
-    if security_eval["choice"] != "guvenli_mesru_istek" and security_eval["action_required"]:
-        return {"status": "rejected", "reason": security_eval["choice"]}
-
-    # Phase 2: Autonomous Tool / Specialized Agent Selection (<12 ms)
-    candidate_agents = ["sql_database_agent", "web_search_agent", "calendar_booking", "human_support"]
-    routing_eval = decision_route(context=user_prompt, options=candidate_agents)
-    
-    return {
-        "status": "routed",
-        "target_agent": routing_eval["choice"],
-        "priority_score": routing_eval["score"]
-    }
+results = engine.decide_many([(text, questions) for text in messages])
 ```
 
----
+Questions can be plain dicts as above or `pusula.Question` objects.
 
-## REST API Microservice (FastAPI)
+## HTTP API
 
-Deploy Pusula as an enterprise inference microservice:
+Start the server:
 
 ```bash
-python serve.py
+PUSULA_MODEL_DIR=path/to/pusula-model pusula-serve --port 8080
 ```
 
-The service launches asynchronously on `http://localhost:8080`.
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/v1/systemone` | One `{state, questions}` request (d3-compatible) |
+| `POST` | `/v1/systemone/batch` | `{"requests": [...]}`, up to 64 requests |
+| `POST` | `/v1/route` | Route a message through the built-in taxonomy |
+| `GET` | `/v1/taxonomy` | The built-in taxonomy as JSON |
+| `GET` | `/health` | Liveness; always 200 |
+| `GET` | `/ready` | 200 once the model is loaded, otherwise 503 |
 
-**cURL Request:**
 ```bash
-curl -X POST "http://localhost:8080/decide" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "context": "Yarın saat 14:00 için şirket toplantı odasını ayırt.",
-       "options": ["kisisel_asistanlik", "hukuk_adalet_mevzuat", "akademik_ve_sinavlar"]
-     }'
+curl -s localhost:8080/v1/systemone -H 'Content-Type: application/json' -d '{
+  "state": "Faturama kullanmadığım bir paket için 450 TL yansıtılmış.",
+  "questions": {
+    "departman": {"type": "choice", "instructions": "Hangi departman?",
+                  "criteria": {"fatura": "Fatura ve ödeme", "teknik": "Arıza ve teknik destek"}},
+    "iade": {"type": "noul", "instructions": "Müşteri para iadesi istiyor mu?"}
+  }
+}'
 ```
 
-**JSON Response (<15 ms):**
+Invalid questions return HTTP 422 with the reason. Configuration (environment variables):
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `PUSULA_MODEL_DIR` | — | Model directory to load at startup |
+| `PUSULA_DEVICE` | auto | `cuda`, `cuda:1`, `cpu`… |
+| `PUSULA_CORS_ORIGINS` | none | Comma-separated allowed origins for browser clients |
+| `PUSULA_MAX_QUESTIONS` | 32 | Questions per request |
+| `PUSULA_MAX_BATCH` | 64 | Requests per batch call |
+| `PUSULA_MAX_STATE_CHARS` | 60000 | Maximum state length |
+
+## Built-in taxonomy and routing
+
+`POST /v1/route` (or `engine.route(text)`) routes a message in three steps — **alan** (domain) →
+**alt_alan** (subdomain) → **niyet** (intent) — and also answers the universal questions:
+
 ```json
 {
-  "choice": "kisisel_asistanlik",
-  "choice_confidence": 0.9840,
-  "score": 0.7200,
-  "action_required": true,
-  "latency_ms": 11.8
+  "path": "finans_bankacilik.itiraz_ve_dolandiricilik.supheli_islem",
+  "answers": {
+    "alan": {"choice": "finans_bankacilik", "confidence": 0.97, "...": "..."},
+    "aciliyet": {"type": "score", "score": 2.8, "...": "..."},
+    "insana_devret": {"type": "noul", "noul": 0.71}
+  }
 }
 ```
 
----
+| Domain key | Domain | Subdomains | Intents |
+|---|---|---:|---:|
+| `finans_bankacilik` | Finans ve Bankacılık | 6 | 26 |
+| `muhasebe_vergi` | Muhasebe ve Vergi | 5 | 20 |
+| `hukuk_uyum` | Hukuk ve Mevzuat Uyumu | 5 | 20 |
+| `saglik` | Sağlık | 5 | 15 |
+| `sigorta_sosyal_guvenlik` | Sigorta ve Sosyal Güvenlik | 3 | 12 |
+| `ticaret_eticaret` | Ticaret ve E-Ticaret | 5 | 19 |
+| `lojistik_tedarik` | Lojistik ve Tedarik Zinciri | 5 | 21 |
+| `abonelik_hizmetleri` | Telekom ve Enerji Abonelikleri | 3 | 13 |
+| `teknoloji_bt` | Teknoloji ve Bilgi İşlem | 6 | 22 |
+| `insan_kaynaklari` | İnsan Kaynakları | 5 | 17 |
+| `kamu_hizmetleri` | Kamu Hizmetleri | 4 | 13 |
+| `egitim` | Eğitim | 4 | 13 |
+| `seyahat_konaklama` | Seyahat ve Konaklama | 4 | 13 |
+| `gayrimenkul` | Gayrimenkul | 3 | 10 |
+| `otomotiv_mobilite` | Otomotiv ve Mobilite | 4 | 11 |
+| `sanayi_uretim_tarim` | Sanayi, Üretim ve Tarım | 4 | 15 |
+| `kisisel_verimlilik` | Kişisel Verimlilik ve Ofis | 4 | 12 |
+| `medya_eglence` | Medya ve Eğlence | 4 | 10 |
+| `kriz_destek` | Kriz ve Psikososyal Destek | 3 | 9 |
+| `genel_sohbet` | Genel ve Kapsam Dışı | 4 | 8 |
 
-## 32 Macro-Domain Taxonomy
+Universal questions (asked of every message):
 
-Pusula natively handles arbitrary runtime candidate labels (`dynamic candidate options`) while offering fine-tuned calibration across 32 universal enterprise domains:
+| Name | Type | Options |
+|---|---|---|
+| `aciliyet` | score | Rutin · Yakın · Yüksek · Kritik |
+| `eylem_gerekli` | noul | Does it need a concrete action (ticket, cancel, refund, block, tool call)? |
+| `insana_devret` | noul | Should a human expert take over? |
+| `guvenlik` | choice | `guvenli`, `prompt_enjeksiyonu`, `jailbreak_rol_yapma`, `zararli_veya_yasadisi`, `yetkisiz_islem_talebi`, `spam_anlamsiz` |
+| `duygu` | choice | `notr`, `memnun`, `endiseli`, `hayal_kirikligi`, `ofkeli`, `caresiz_kriz` |
+| `kisisel_veri` | noul | Does it contain personal or sensitive data? |
 
-1. **Global Master Router:** Universal domain triage and root-level dispatch
-2. **Academia & Standardized Testing:** SAT, ACT, ESAT, STEP, IMAT, IELTS, TOEFL, GRE, GMAT, YKS, ALES
-3. **Healthcare, Medicine & Triage:** Emergency department triage, lab report interpretation, clinical escalation
-4. **Law, Justice & Statutory Compliance:** Jurisprudence search, contract analysis, criminal law, KVKK/GDPR
-5. **Banking, Fintech & Digital Assets:** Fraud detection, credit risk, equity trading, crypto transactions
-6. **Insurance & Social Security:** Pension calculation, claims processing, actuarial policy modifications
-7. **Software Engineering, IT & DevOps:** Bug resolution, code refactoring, SQL optimization, CI/CD, MLOps
-8. **Fundamental Sciences (Advanced STEM):** Multivariable calculus, quantum mechanics, organic chemistry
-9. **Engineering & Manufacturing:** Mechatronics, CAD designs, structural civil analysis, ISO/TSE standards
-10. **E-Commerce & Digital Marketplaces:** Returns processing, logistics exceptions, billing disputes
-11. **Logistics & Customs Clearance:** Freight manifests, bill of lading, HS tariff classification, bonded storage
-12. **Real Estate & Property Management:** Lease negotiation, title deed transactions, appraisal audits
-13. **Automotive & Fleet Diagnostics:** OBD-II fault diagnostics, fleet telematics, telemetric roadside triage
-14. **Human Resources & Talent Acquisition:** ATS resume screening, technical interview rubrics, payroll queries
-15. **Travel, Aviation & Consular Services:** Visa document validation, consular workflows, itinerary booking
-16. **Gastronomy & Food Safety:** Recipe scaling, commercial kitchen hygiene, allergen compliance
-17. **Nutrition & Sports Science:** Caloric macronutrient tracking, periodized programming, sports rehabilitation
-18. **Pedagogy & Child Development:** Developmental milestones, educational behavioral interventions
-19. **Agriculture & Veterinary Medicine:** Animal toxicology, veterinary triage, agronomic pest control
-20. **Environmental Engineering & Clean Energy:** Solar PV installations, carbon footprint metrics, EIA reporting
-21. **Public Administration & Civic Governance:** Digital government authentication, municipal services, civic compliance
-22. **History & Archival Research:** Archival paleography, Ottoman/Seljuk documentation, historiographical queries
-23. **Linguistics & Translation:** Sworn technical translation, localisation, syntactic proofreading
-24. **Fine Arts, Music & Media Production:** Music theory, cinematography analysis, dramatic structure
-25. **Interactive Media & Esports:** Game engine scripting (Unreal/Unity), competitive latency optimization
-26. **Digital Media & Marketing Strategy:** Paid advertising campaigns (Google/Meta), technical SEO diagnostics
-27. **Dermatology & Personal Care:** Cosmetic active formulation, dermatology triage, material textiles
-28. **Philosophy, Ethics & Applied AI Ethics:** Bioethics dilemmas, epistemological analysis, deontological AI ethics
-29. **Psychological Crisis & Support Triage:** Crisis hotline escalation (Emergency 112/182), intervention routing
-30. **Conversational Chitchat Filter:** Politeness filtering and conversational deflection gatekeeping
-31. **Personal Productivity:** Agenda management, email synthesis, action item extraction
-32. **Security Guardrails & Fallbacks:** Prompt injection protection, jailbreak filtering, PII data leak prevention
+The full taxonomy with every subdomain and intent is in
+[`pusula/data/taxonomy.yaml`](pusula/data/taxonomy.yaml) and at `GET /v1/taxonomy`. You can also
+reuse any of these questions in your own requests:
 
----
+```python
+from pusula import load_taxonomy
+tax = load_taxonomy()
+questions = {"alan": tax.domain_question(), **tax.universal, "my_question": {...}}
+```
 
-## Benchmark & Performance
+## Writing good questions
 
-*Evaluated on enterprise data-center infrastructure (NVIDIA H200 SXM 141 GB HBM3e and NVIDIA RTX PRO 6000 96 GB) with a 512-token context window.*
+- **Describe every option.** The model reads the description; `"iade": "Teslim alınan ürünü geri göndermek"`
+  works much better than a bare key.
+- **Keep options mutually exclusive.** When two options overlap, say where the line is
+  (`"Kapsamaz: ..."` / "does not cover").
+- **Write instructions and options in Turkish.** That is what the model is trained on.
+- **Prefer up to ~20 options per question.** For larger label sets, ask hierarchically
+  (category first, then the options inside it), like `/v1/route` does.
+- **Use the right type.** Yes/no → `noul`; ordered levels → `score` (lowest first); everything else → `choice`.
+- **Add a catch-all** (`"diger": "Yukarıdakilerin hiçbiri"`) when the input may fall outside your options.
 
-| Model | Architecture | P95 Latency | GPU VRAM Footprint | Output Determinism |
-| :--- | :---: | :---: | :---: | :---: |
-| **GPT-6 Luna (OpenAI API)** | Autoregressive LLM | ~920 ms – 1,750 ms | Cloud Hosted | Parse Error Prone |
-| **Claude Opus 5.5 (Anthropic API)** | Autoregressive LLM | ~980 ms – 1,820 ms | Cloud Hosted | Parse Error Prone |
-| **Gemini 3.8 Flash (Google API)** | Autoregressive LLM | ~320 ms – 650 ms | Cloud Hosted | Parse Error Prone |
-| **DeepSeek-V4.1 Flash (MoE API)** | Autoregressive LLM | ~290 ms – 580 ms | Cloud / Multi-GPU | Parse Error Prone |
-| **GLM-5.3 (Zhipu AI)** | Autoregressive LLM | ~610 ms – 950 ms | Cloud / Multi-GPU | Parse Error Prone |
-| **Qwen 3.8-27B (Local vLLM)** | Autoregressive LLM | ~240 ms – 450 ms | 54 GB (bfloat16) | Parse Error Prone |
-| **Pusula (RTX PRO 6000)** | **Non-Autoregressive Encoder** | **11.4 ms** | **~1.2 GB** | **100% Typed & Deterministic** |
-| **Pusula (NVIDIA H200)** | **Non-Autoregressive Encoder** | **4.8 ms** | **~1.2 GB** | **100% Typed & Deterministic** |
+## Using confidence
 
----
+- `choice` / `score`: `confidence` is the probability of the chosen option.
+- `noul`: the answer itself is a probability; pick your own threshold (e.g. `> 0.5`, or `> 0.8` for risky actions).
+- A typical pattern: act automatically above a high threshold, ask for confirmation in the middle band,
+  hand over to a human below it. Tune the thresholds on a sample of your own traffic.
 
-## Training & Reproducibility
+## Examples
 
-To train Pusula from scratch or fine-tune on domain-specific proprietary corpora:
+- [`examples/agentic_router.py`](examples/agentic_router.py) — guardrail check, tool selection, approval
+  and urgency for an agent, in a single call.
 
-### 1. Synthetic Data Generation (24,000 Samples)
+## Training your own model
+
+Everything used to build Pusula is in this repository. The pipeline generates labeled Turkish data with a
+local LLM, labels it with a teacher decision model, and distills it into the TabiBERT cross-encoder:
+
 ```bash
-python synthetic_generator.py
+pip install -e ".[train,generate,teacher]"
+bash scripts/pipeline.sh my-run            # generate → judge → teach → build → gold → train → evaluate
 ```
 
-### 2. Training Loop & Platt Scaling Calibration
-```bash
-python train.py
-```
+Each stage is resumable. See the module docstrings in [`pusula/`](pusula/) for options.
 
-The training pipeline uses `bfloat16` and `FlashAttention-2`. Platt Scaling optimizes temperature scaling on the validation split to minimize Expected Calibration Error (ECE) and Brier Score. Weights are serialized to `checkpoints/pusula/best/`.
+## License and acknowledgements
 
----
-
-## Citation & License
-
-This project is licensed under the **Apache 2.0** License. Permitted for both commercial and academic usage.
-
-```bibtex
-@misc{pusula_2026,
-  author = {Hasan Şahin},
-  title = {Pusula: Low-Latency Universal Typed Decision Engine for Autonomous Turkish Agent Workflows},
-  year = {2026},
-  publisher = {GitHub},
-  howpublished = {\url{https://github.com/hsnsahinhsn/pusula}}
-}
-```
+Apache 2.0. Pusula builds on
+[TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) (Boğaziçi University TABILAB),
+[vllm-sr/d3](https://huggingface.co/vllm-sr/d3) (vLLM Semantic Router) and
+[Qwen3.8](https://huggingface.co/Qwen/Qwen3.8-27B), all Apache 2.0.

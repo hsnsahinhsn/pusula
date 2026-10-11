@@ -1,251 +1,290 @@
 <div align="center">
 
-# Pusula: Turkish Decision Engine
-### Otonom Ajan İş Akışları ve Yönlendirme Altyapıları İçin Düşük Gecikmeli (<15 ms) Türkçe Karar Motoru
+# Pusula
 
-[ English ](README.md) • [ Türkçe ](README_TR.md)
+### Türkçe metinler için hızlı ve kalibre karar motoru
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[English](README.md) • [Türkçe](README_TR.md)
+
 [![CI](https://github.com/hsnsahinhsn/pusula/actions/workflows/ci.yml/badge.svg)](https://github.com/hsnsahinhsn/pusula/actions)
+[![Lisans: Apache 2.0](https://img.shields.io/badge/Lisans-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-green.svg)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.4%2B-red.svg)](https://pytorch.org/)
-[![Latency](https://img.shields.io/badge/Latency-%3C15ms-blue.svg)](#benchmark--performans)
-[![Architecture](https://img.shields.io/badge/Architecture-Non--Autoregressive-informational.svg)](#genel-bakis)
-
-[Genel Bakış](#genel-bakış) • [Hızlı Başlangıç](#hızlı-başlangıç) • [Python API](#python-api) • [Ajan Entegrasyonu](#ajan-entegrasyonu) • [32 Makro Alan](#32-makro-alan-taksonomisi) • [Benchmark](#benchmark--performans) • [Eğitim Altyapısı](#eğitim-ve-yeniden-üretilebilirlik)
 
 </div>
 
+Pusula, herhangi bir Türkçe metin (müşteri mesajı, destek kaydı, bir ajanın bağlamı) hakkında
+**sizin tanımladığınız sorulara** cevap verir ve metin üretmeden **her seçenek için bir olasılık**
+döndürür. Bir ajanın ya da iş akışının hızlı ve tipli bir karara ihtiyaç duyduğu her yerde
+kullanılabilir: yönlendirme, triyaj, araç seçimi, güvenlik denetimi, insana devir.
+
+- **İstek anında istediğiniz seçenekler.** Seçenekler metin olarak okunur; sabit bir etiket kümesine bağlı değilsiniz.
+- **Üç soru tipi.** `choice` (birini seç), `noul` (evet/hayır), `score` (sıralı seviyeler).
+- **Kalibre olasılıklar.** Güven değerleri sıcaklık ölçeklemesiyle kalibre edilir; eşik koyabilirsiniz.
+- **Hazır Türkçe taksonomi.** 20 alan → 86 alt alan → 299 niyet ve altı evrensel kontrol
+  (aciliyet, eylem gerekli mi, insana devir, güvenlik riski, duygu, kişisel veri).
+- **d3 uyumlu API.** [vllm-sr/d3](https://huggingface.co/vllm-sr/d3)'ün `/v1/systemone` istek ve cevap
+  biçimiyle birebir aynıdır; doğrudan yerine kullanılabilir.
+- **Küçük ve yerel.** 149M parametreli bir kodlayıcı ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT));
+  kendi GPU'nuzda ya da CPU'da, istek başı ücret olmadan çalışır.
+
+> **Durum:** ön sürüm. API ve kod kararlı; eğitilmiş model ağırlıkları ölçülmüş doğruluk ve gecikme
+> değerleriyle birlikte Hugging Face'te yayınlanacak.
+
 ---
 
-## Genel Bakış
+## İçindekiler
 
-Üretken büyük dil modellerini (GPT-6 Luna, Claude Opus 5.5, Gemini 3.8 Flash, DeepSeek-V4.1 Flash, GLM-5.3 vb.) yapay zeka ajanlarının her araç seçimi, departman yönlendirmesi veya güvenlik filtresi adımında çalıştırmak yüksek gecikme (350 ms – 1.800 ms), öngörülemeyen API maliyetleri ve JSON ayrıştırma (parse) hatalarına yol açar.
-
-**Pusula (Turkish Decision Engine)**; token üretimi yapmayan (non-autoregressive), tek bir matris geçişinde üç temel kararı eşzamanlı üreten yüksek hızlı bir karar motorudur:
-
-| Metrik / Nitelik | Sektör Lideri LLM'ler (GPT-6 Luna, Claude Opus 5.5) | Hızlı Üretken Modeller (Gemini 3.8, DeepSeek-V4.1) | Pusula |
-| :--- | :---: | :---: | :---: |
-| **P95 Çıkarım Gecikmesi** | 500 ms – 2.000 ms | 200 ms – 600 ms | **8 ms – 15 ms** |
-| **Halüsinasyon Riski** | Mevcut | Yüksek | **%0 (Matematiksel olarak imkansız)** |
-| **Çıktı Tipi** | Serbest Metin / Ham JSON | Ham JSON (Kırılgan) | **Doğrudan Tipli Tensör (Typed Output)** |
-| **Olasılık Kalibrasyonu** | Kalibre Edilmemiş | Aşırı Güvenli (Overconfident) | **Platt Scaling ile Kalibre Edilmiş** |
-| **İşlem Başı Maliyet** | İstek Başına API Ücreti | Yüksek GPU Kaynağı | **Sıfır API Ücreti / Yerel Kaynak** |
+- [Kurulum](#kurulum)
+- [Temel kavramlar](#temel-kavramlar)
+- [Python API](#python-api)
+- [HTTP API](#http-api)
+- [Hazır taksonomi ve yönlendirme](#hazır-taksonomi-ve-yönlendirme)
+- [İyi soru yazmak](#iyi-soru-yazmak)
+- [Güven değerini kullanmak](#güven-değerini-kullanmak)
+- [Örnekler](#örnekler)
+- [Kendi modelinizi eğitmek](#kendi-modelinizi-eğitmek)
+- [Lisans ve teşekkürler](#lisans-ve-teşekkürler)
 
 ---
 
-## Çıktı Spesifikasyonu (Typed Decision Head)
+## Kurulum
 
-Model, tek bir forward pass ile GPU üzerinde anında şu yapılandırılmış çıktıyı döner:
+```bash
+pip install "pusula[serve] @ git+https://github.com/hsnsahinhsn/pusula"
+```
+
+`serve` eki PyTorch, Transformers ve FastAPI'yi kurar. GPU'da çalıştırmak için önce PyTorch'un CUDA
+sürümünü kurun ([pytorch.org](https://pytorch.org/get-started/locally/)).
+
+## Temel kavramlar
+
+Bir istek bir **durum** (`state`) ve adlandırılmış **sorulardan** (`questions`) oluşur:
 
 ```json
 {
-  "choice": "bankacilik_finans_kripto",
-  "choice_confidence": 0.9842,
-  "score": 0.9410,
-  "action_required": true,
-  "latency_ms": 11.2
+  "state": "Kartımdan bilgim dışında 4.500 TL çekilmiş, hemen bloke edin!",
+  "questions": {
+    "ekip": {
+      "type": "choice",
+      "instructions": "Bu talebi hangi ekip ele almalı?",
+      "criteria": {
+        "dolandiricilik": "Şüpheli işlem ve dolandırıcılık",
+        "kart_islemleri": "Kart başvurusu, limit ve şifre",
+        "genel_destek": "Diğer sorular"
+      }
+    },
+    "acil": { "type": "noul", "instructions": "Hemen müdahale gerekiyor mu?" },
+    "risk": {
+      "type": "score",
+      "instructions": "Finansal risk ne düzeyde?",
+      "criteria": ["Düşük", "Orta", "Yüksek"]
+    }
+  }
 }
 ```
 
-- **choice:** Dinamik aday seçenekler (`options`) arasından seçilen en olası kategori veya araç.
-- **choice_confidence:** Platt Scaling ile kalibre edilmiş seçim güven olasılığı (0.00 – 1.00).
-- **score:** Girdinin aciliyet, risk veya önem derecesi (0.00 – 1.00 sürekli regresyon skoru).
-- **action_required:** Müdahale, harici araç çalıştırma veya onay gerekliliğini belirten boolean filtre.
+| Tip | `criteria` | Cevap |
+|---|---|---|
+| `choice` | Seçenek anahtarlarını açıklamalara eşleyen nesne (`null` olabilir) | `choice`, `probabilities`, `confidence` |
+| `noul` | İsteğe bağlı; `"false"` ve `"true"`yu açıklayabilir | `noul` = *evet* olasılığı |
+| `score` | Düşükten yükseğe sıralı 2–10 seviyelik liste | `score` = beklenen seviye (0…n-1), `probabilities`, `confidence`, `legend` |
 
----
+Yukarıdaki isteğin cevabı (değerler örnek amaçlıdır):
 
-## Hızlı Başlangıç
-
-### Kurulum
-
-```bash
-git clone https://github.com/hsnsahinhsn/pusula.git
-cd pusula
-pip install -r requirements.txt
+```json
+{
+  "answers": {
+    "ekip": {
+      "type": "choice",
+      "choice": "dolandiricilik",
+      "probabilities": {"dolandiricilik": 0.94, "kart_islemleri": 0.05, "genel_destek": 0.01},
+      "confidence": 0.94
+    },
+    "acil": {"type": "noul", "noul": 0.97},
+    "risk": {
+      "type": "score",
+      "score": 1.86,
+      "probabilities": {"0": 0.02, "1": 0.10, "2": 0.88},
+      "confidence": 0.88,
+      "legend": {"0": "Düşük", "1": "Orta", "2": "Yüksek"}
+    }
+  },
+  "model": "pusula",
+  "latency_ms": 9.8
+}
 ```
-
----
 
 ## Python API
 
 ```python
-import torch
-from transformers import AutoTokenizer
-from model import TurkishDecisionModel
+from pusula.inference import DecisionEngine
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-checkpoint_dir = "checkpoints/pusula/best"
+engine = DecisionEngine.load("path/to/pusula-model")   # varsa GPU, yoksa CPU
 
-# Model ve Tokenizer Yükleme
-model = TurkishDecisionModel.from_pretrained(checkpoint_dir).to(device)
-tokenizer = AutoTokenizer.from_pretrained(checkpoint_dir)
-
-# Karar İsteği
-context = "Hesabımdan bilgim dışında 15.000 TL çekim yapılmış, kartımı acilen bloke edin."
-options = ["bankacilik_finans_kripto", "e_ticaret_pazaryerleri", "hukuk_adalet_mevzuat"]
-
-result = model.predict_single(tokenizer, context=context, options=options, device=device)
-
-print(result)
-# Çıktı:
-# {
-#   'choice': 'bankacilik_finans_kripto',
-#   'choice_confidence': 0.9912,
-#   'score': 0.9850,
-#   'action_required': True,
-#   'latency_ms': 11.4
-# }
+answers = engine.decide(
+    "Siparişim 5 gündür kargoda, hâlâ gelmedi. Artık iptal etmek istiyorum.",
+    {
+        "niyet": {
+            "type": "choice",
+            "instructions": "Müşteri ne istiyor?",
+            "criteria": {
+                "kargo_takip": "Gönderinin nerede olduğunu öğrenmek",
+                "iptal": "Siparişi iptal etmek",
+                "iade": "Teslim alınan ürünü iade etmek",
+            },
+        },
+        "temsilci": {"type": "noul", "instructions": "Bir insan temsilciye aktarılmalı mı?"},
+    },
+)
+print(answers["niyet"]["choice"], answers["niyet"]["confidence"])
+print(answers["temsilci"]["noul"])
 ```
 
----
-
-## Ajan Entegrasyonu
-
-Geleneksel LLM çağrılarından önce girdileri mikrosaniyeler içinde filtreleyen ve yönlendiren mimari şablon:
+Birden çok isteği tek seferde (mümkün olan en az ileri geçişle) çalıştırmak için:
 
 ```python
-from agentic_router_example import decision_route
-
-def agent_router_pipeline(user_input: str) -> dict:
-    # 1. Aşama: Güvenlik ve Guardrail Doğrulaması (<10 ms)
-    security_check = decision_route(
-        context=user_input,
-        options=["guvenli_mesru_istek", "prompt_injection_saldirisi", "pii_kisisel_veri_ifsa"]
-    )
-    if security_check["choice"] != "guvenli_mesru_istek" and security_check["action_required"]:
-        return {"status": "blocked", "reason": security_check["choice"]}
-
-    # 2. Aşama: Uzman Ajan / Araç Seçimi (<12 ms)
-    candidate_tools = ["sql_database_agent", "web_search_agent", "calendar_booking", "human_support"]
-    tool_decision = decision_route(context=user_input, options=candidate_tools)
-    
-    return {
-        "status": "routed",
-        "target_tool": tool_decision["choice"],
-        "priority_score": tool_decision["score"]
-    }
+results = engine.decide_many([(metin, sorular) for metin in mesajlar])
 ```
 
----
+Sorular yukarıdaki gibi sözlük ya da `pusula.Question` nesnesi olabilir.
 
-## REST API Servisi (FastAPI)
+## HTTP API
 
-Modeli düşük gecikmeli bir mikroservis olarak çalıştırmak için:
+Sunucuyu başlatın:
 
 ```bash
-python serve.py
+PUSULA_MODEL_DIR=path/to/pusula-model pusula-serve --port 8080
 ```
 
-Servis `http://localhost:8080` üzerinde asenkron olarak ayağa kalkar.
+| Metot | Yol | Açıklama |
+|---|---|---|
+| `POST` | `/v1/systemone` | Tek `{state, questions}` isteği (d3 uyumlu) |
+| `POST` | `/v1/systemone/batch` | `{"requests": [...]}`, en fazla 64 istek |
+| `POST` | `/v1/route` | Mesajı hazır taksonomide yönlendirir |
+| `GET` | `/v1/taxonomy` | Hazır taksonominin JSON hâli |
+| `GET` | `/health` | Canlılık; her zaman 200 |
+| `GET` | `/ready` | Model yüklenince 200, öncesinde 503 |
 
-**cURL Örneği:**
 ```bash
-curl -X POST "http://localhost:8080/decide" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "context": "Yarın saat 14:00 için şirket toplantı odasını ayırt.",
-       "options": ["kisisel_asistanlik", "hukuk_adalet_mevzuat", "akademik_ve_sinavlar"]
-     }'
+curl -s localhost:8080/v1/systemone -H 'Content-Type: application/json' -d '{
+  "state": "Faturama kullanmadığım bir paket için 450 TL yansıtılmış.",
+  "questions": {
+    "departman": {"type": "choice", "instructions": "Hangi departman?",
+                  "criteria": {"fatura": "Fatura ve ödeme", "teknik": "Arıza ve teknik destek"}},
+    "iade": {"type": "noul", "instructions": "Müşteri para iadesi istiyor mu?"}
+  }
+}'
 ```
 
-**JSON Yanıtı (<15 ms):**
+Geçersiz sorular HTTP 422 ve sebebiyle döner. Ayarlar (ortam değişkenleri):
+
+| Değişken | Varsayılan | Anlamı |
+|---|---|---|
+| `PUSULA_MODEL_DIR` | — | Açılışta yüklenecek model dizini |
+| `PUSULA_DEVICE` | otomatik | `cuda`, `cuda:1`, `cpu`… |
+| `PUSULA_CORS_ORIGINS` | yok | Tarayıcı istemcileri için virgülle ayrılmış izinli origin'ler |
+| `PUSULA_MAX_QUESTIONS` | 32 | İstek başına soru sayısı |
+| `PUSULA_MAX_BATCH` | 64 | Toplu çağrıdaki istek sayısı |
+| `PUSULA_MAX_STATE_CHARS` | 60000 | En uzun durum metni |
+
+## Hazır taksonomi ve yönlendirme
+
+`POST /v1/route` (ya da `engine.route(metin)`) mesajı üç adımda yönlendirir: **alan** →
+**alt_alan** → **niyet**. Evrensel soruları da aynı anda cevaplar:
+
 ```json
 {
-  "choice": "kisisel_asistanlik",
-  "choice_confidence": 0.9840,
-  "score": 0.7200,
-  "action_required": true,
-  "latency_ms": 11.8
+  "path": "finans_bankacilik.itiraz_ve_dolandiricilik.supheli_islem",
+  "answers": {
+    "alan": {"choice": "finans_bankacilik", "confidence": 0.97, "...": "..."},
+    "aciliyet": {"type": "score", "score": 2.8, "...": "..."},
+    "insana_devret": {"type": "noul", "noul": 0.71}
+  }
 }
 ```
 
----
+| Alan anahtarı | Alan | Alt alan | Niyet |
+|---|---|---:|---:|
+| `finans_bankacilik` | Finans ve Bankacılık | 6 | 26 |
+| `muhasebe_vergi` | Muhasebe ve Vergi | 5 | 20 |
+| `hukuk_uyum` | Hukuk ve Mevzuat Uyumu | 5 | 20 |
+| `saglik` | Sağlık | 5 | 15 |
+| `sigorta_sosyal_guvenlik` | Sigorta ve Sosyal Güvenlik | 3 | 12 |
+| `ticaret_eticaret` | Ticaret ve E-Ticaret | 5 | 19 |
+| `lojistik_tedarik` | Lojistik ve Tedarik Zinciri | 5 | 21 |
+| `abonelik_hizmetleri` | Telekom ve Enerji Abonelikleri | 3 | 13 |
+| `teknoloji_bt` | Teknoloji ve Bilgi İşlem | 6 | 22 |
+| `insan_kaynaklari` | İnsan Kaynakları | 5 | 17 |
+| `kamu_hizmetleri` | Kamu Hizmetleri | 4 | 13 |
+| `egitim` | Eğitim | 4 | 13 |
+| `seyahat_konaklama` | Seyahat ve Konaklama | 4 | 13 |
+| `gayrimenkul` | Gayrimenkul | 3 | 10 |
+| `otomotiv_mobilite` | Otomotiv ve Mobilite | 4 | 11 |
+| `sanayi_uretim_tarim` | Sanayi, Üretim ve Tarım | 4 | 15 |
+| `kisisel_verimlilik` | Kişisel Verimlilik ve Ofis | 4 | 12 |
+| `medya_eglence` | Medya ve Eğlence | 4 | 10 |
+| `kriz_destek` | Kriz ve Psikososyal Destek | 3 | 9 |
+| `genel_sohbet` | Genel ve Kapsam Dışı | 4 | 8 |
 
-## 32 Makro Alan Taksonomisi
+Evrensel sorular (her mesaja sorulur):
 
-Model hem aşağıdaki 32 küresel alan arasında yönlendirme yapabilir hem de çalışma anında verilen dinamik seçenekler (`dynamic candidate options`) arasından seçim gerçekleştirebilir:
+| Ad | Tip | Seçenekler |
+|---|---|---|
+| `aciliyet` | score | Rutin · Yakın · Yüksek · Kritik |
+| `eylem_gerekli` | noul | Somut bir işlem (kayıt, iptal, iade, bloke, araç çağrısı) gerekiyor mu? |
+| `insana_devret` | noul | Bir insan uzman devralmalı mı? |
+| `guvenlik` | choice | `guvenli`, `prompt_enjeksiyonu`, `jailbreak_rol_yapma`, `zararli_veya_yasadisi`, `yetkisiz_islem_talebi`, `spam_anlamsiz` |
+| `duygu` | choice | `notr`, `memnun`, `endiseli`, `hayal_kirikligi`, `ofkeli`, `caresiz_kriz` |
+| `kisisel_veri` | noul | Kişisel veya hassas veri içeriyor mu? |
 
-1. **Global Master Router:** Genel alan sınıflandırıcısı
-2. **Akademik & Sınavlar:** SAT, ACT, ESAT, STEP, IMAT, BMAT, IELTS, TOEFL, GRE, GMAT, YKS, LGS, KPSS, ALES, TUS, DUS
-3. **Sağlık, Tıp & Triyaj:** 112 Acil triyajı, dahiliye, çocuk sağlığı, tahlil/MR, ilaç etkileşimi
-4. **Hukuk & Adalet:** Yargıtay/Danıştay içtihat, sözleşmeler hukuku, iş/tazminat, ceza, KVKK, resmi dilekçe
-5. **Bankacılık, Finans & Kripto:** Şüpheli işlem alarmı, kredi faizleri, BIST hisse/fon, kripto varlıklar
-6. **Sigortacılık & SGK:** Emeklilik hesabı, prim günleri, DASK, kasko/trafik hasar tazminatı, BES
-7. **Yazılım, BT & Yapay Zeka:** Hata ayıklama, kod refactor, SQL/veritabanı, DevOps/K8s, PyTorch/MLOps
-8. **Temel Bilimler (İleri STEM):** İleri matematik/kalkülüs, geometri ispatları, kuantum/klasik fizik, organik kimya
-9. **Mühendislik & İmalat:** Elektrik-elektronik, makine/mekatronik/CAD, inşaat/statik/deprem, TSE/ISO
-10. **E-Ticaret & Pazar Yerleri:** İade/cayma, kargo gecikmesi, mükerrer ödeme, pazar yeri operasyonları
-11. **Lojistik & Gümrük:** Uluslararası navlun, konşimento, GTİP kodu tespiti, gümrükleme, antrepo
-12. **Emlak, Gayrimenkul & Tapu:** Kira artış oranı, tahliye davaları, tapu/kadastro, konut rayiç bedeli
-13. **Otomotiv & Araç Bakımı:** Motor arıza lambası / OBD-II kodları, ekspertiz/tramer, kasko, bakım
-14. **Kariyer & İK:** ATS uyumlu CV/LinkedIn, mülakat simülasyonu, maaş pazarlığı, istifa süreçleri
-15. **Seyahat & Vize:** Schengen ve ABD vize evrakları, konsolosluk randevusu, uçak/otel, gezi rotası
-16. **Gastronomi & Mutfak:** Yemek tarifleri, pişirme teknikleri, gıda güvenliği ve botulizm riski, alerjenler
-17. **Beslenme & Fitness:** Günlük kalori hesabı, diyet programları, antrenman planı, takviyeler
-18. **Ebeveynlik & Çocuk Gelişimi:** Bebek beslenmesi, dil/motor gelişimi, ergenlik krizleri, ekran bağımlılığı
-19. **Tarım & Veterinerlik:** Evcil hayvan acil zehirlenme, kedi/köpek bakımı, bitki hastalıkları ve sulama
-20. **Çevre & Temiz Enerji:** Çatı GES/Güneş enerjisi, karbon ayak izi, sıfır atık, ÇED raporları
-21. **Siyaset & Diplomasi:** e-Devlet işlemleri, seçim/anayasa süreçleri, jeopolitik, tarafsız bilgi
-22. **Tarih & Arkeoloji:** Osmanlı/Selçuklu, Cumhuriyet inkılapları, Antik Anadolu, dünya savaşları
-23. **Dilbilim & Çeviri:** Yeminli tercüme, yabancı dil öğrenimi, proofreading, yaratıcı metin yazarlığı
-24. **Sanat, Müzik & Sinema:** Müzik teorisi/armoni, film tahlili/dramaturji, resim teknikleri, tiyatro
-25. **Oyun & E-Spor:** Unreal/Unity script, oyun mekanikleri/level design, rekabetçi e-spor, FPS ayarı
-26. **Medya & Tasarım:** SEO analizi, sosyal medya stratejisi, reklam kampanyaları (Google/Meta), grafik tasarım
-27. **Moda & Kişisel Bakım:** Cilt bakımı aktif içerikler (retinol/C vitamini), saç dökülmesi, kumaş türleri
-28. **Felsefe, Din & Etik:** Yapay zeka ve biyoetik ikilemleri, ilahiyat soruları, epistemoloji/ontoloji
-29. **Psikolojik Kriz Destek:** İntihar/kendine zarar riski (182/112 Acil), aile içi şiddet (183 KADES)
-30. **Gündelik Sohbet (Chit-Chat):** Selamlaşma, hal-hatır, hafif sohbeti tanıyan ve filtreleyen vana
-31. **Kişisel Verimlilik:** Takvim kurma, e-posta taslağı, yapılacaklar listesi, uzun notları özetleme
-32. **Güvenlik Guardrails & Fallback:** Prompt injection, jailbreak, kredi kartı/TC PII ifşası ve anlamsız girdiler
+Tüm alt alanlar ve niyetlerle birlikte taksonominin tamamı
+[`pusula/data/taxonomy.yaml`](pusula/data/taxonomy.yaml) dosyasında ve `GET /v1/taxonomy` adresinde.
+Bu soruları kendi isteklerinizde de kullanabilirsiniz:
 
----
+```python
+from pusula import load_taxonomy
+tax = load_taxonomy()
+sorular = {"alan": tax.domain_question(), **tax.universal, "benim_sorum": {...}}
+```
 
-## Benchmark & Performans
+## İyi soru yazmak
 
-*NVIDIA H200 SXM (141 GB HBM3e) ve NVIDIA RTX PRO 6000 (96 GB) veri merkezi donanımları üzerinde 512 token bağlam uzunluğu ile test edilmiştir.*
+- **Her seçeneği açıklayın.** Model açıklamayı okur; `"iade": "Teslim alınan ürünü geri göndermek"`
+  çıplak bir anahtardan çok daha iyi çalışır.
+- **Seçenekler birbirini dışlasın.** İki seçenek örtüşüyorsa sınırı açıklamada belirtin (`"Kapsamaz: ..."`).
+- **Talimat ve seçenekleri Türkçe yazın.** Model bunun üzerine eğitilmiştir.
+- **Soru başına en fazla ~20 seçenek tercih edin.** Daha büyük etiket kümelerinde, `/v1/route`'un yaptığı
+  gibi hiyerarşik sorun (önce kategori, sonra kategorinin içindeki seçenekler).
+- **Doğru tipi seçin.** Evet/hayır → `noul`; sıralı seviyeler → `score` (düşükten yükseğe); diğer her şey → `choice`.
+- **Gerekirse bir "diğer" seçeneği ekleyin** (`"diger": "Yukarıdakilerin hiçbiri"`).
 
-| Model | Mimari Tipi | P95 Gecikme (Latency) | GPU VRAM Tüketimi | Çıktı Determinizmi |
-| :--- | :---: | :---: | :---: | :---: |
-| **GPT-6 Luna (OpenAI API)** | Autoregressive LLM | ~920 ms – 1.750 ms | Bulut Tabanlı | Ayrıştırma Hatası Olası |
-| **Claude Opus 5.5 (Anthropic API)** | Autoregressive LLM | ~980 ms – 1.820 ms | Bulut Tabanlı | Ayrıştırma Hatası Olası |
-| **Gemini 3.8 Flash (Google API)** | Autoregressive LLM | ~320 ms – 650 ms | Bulut Tabanlı | Ayrıştırma Hatası Olası |
-| **DeepSeek-V4.1 Flash (MoE API)** | Autoregressive LLM | ~290 ms – 580 ms | Bulut / Çoklu GPU | Ayrıştırma Hatası Olası |
-| **GLM-5.3 (Zhipu AI)** | Autoregressive LLM | ~610 ms – 950 ms | Bulut / Çoklu GPU | Ayrıştırma Hatası Olası |
-| **Qwen 3.8-27B (vLLM Yerel)** | Autoregressive LLM | ~240 ms – 450 ms | 54 GB (bfloat16) | Ayrıştırma Hatası Olası |
-| **Pusula (RTX PRO 6000)** | **Non-Autoregressive Encoder** | **11.4 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
-| **Pusula (NVIDIA H200)** | **Non-Autoregressive Encoder** | **4.8 ms** | **~1.2 GB** | **%100 Tipli ve Deterministik** |
+## Güven değerini kullanmak
 
----
+- `choice` / `score`: `confidence`, seçilen seçeneğin olasılığıdır.
+- `noul`: cevabın kendisi bir olasılıktır; eşiği siz seçin (ör. `> 0.5`, riskli işlemlerde `> 0.8`).
+- Sık kullanılan desen: yüksek eşiğin üstünde otomatik işlem, orta bantta onay isteme, altında insana devir.
+  Eşikleri kendi trafiğinizden bir örneklem üzerinde ayarlayın.
 
-## Eğitim ve Yeniden Üretilebilirlik
+## Örnekler
 
-Modeli sıfırdan eğitmek veya özel kurumsal verilerinizle ince ayar yapmak için:
+- [`examples/agentic_router.py`](examples/agentic_router.py): Bir ajan için güvenlik denetimi, araç seçimi,
+  onay ve aciliyet kararlarını tek çağrıda verir.
 
-### 1. Sentetik Veri Üretimi (24.000 Örnek Hedefi)
+## Kendi modelinizi eğitmek
+
+Pusula'yı oluşturmak için kullanılan her şey bu depoda. Pipeline, yerel bir LLM ile etiketli Türkçe veri
+üretir, bir öğretmen karar modeliyle etiketler ve TabiBERT cross-encoder'a damıtır:
+
 ```bash
-python synthetic_generator.py
+pip install -e ".[train,generate,teacher]"
+bash scripts/pipeline.sh benim-kosum      # generate → judge → teach → build → gold → train → evaluate
 ```
 
-### 2. Model Eğitimi & Sıcaklık Kalibrasyonu
-```bash
-python train.py
-```
+Her aşama kaldığı yerden devam eder. Seçenekler için [`pusula/`](pusula/) altındaki modül açıklamalarına bakın.
 
-Eğitim döngüsü `bfloat16` ve `FlashAttention-2` hızlandırmasıyla çalışır. Doğrulama kümesi üzerinde Platt Scaling uygulanarak Brier Skoru ve ECE (Expected Calibration Error) minimize edilir. Optimize edilen ağırlıklar `checkpoints/pusula/best/` dizinine kaydedilir.
+## Lisans ve teşekkürler
 
----
-
-## Lisans ve Alıntı
-
-Bu proje **Apache 2.0** lisansı altında açık kaynak olarak sunulmuştur. Hem ticari hem de akademik projelerde serbestçe kullanılabilir.
-
-```bibtex
-@misc{pusula_2026,
-  author = {Hasan Şahin},
-  title = {Pusula: Low-Latency Universal Typed Decision Engine for Autonomous Turkish Agent Workflows},
-  year = {2026},
-  publisher = {GitHub},
-  howpublished = {\url{https://github.com/hsnsahinhsn/pusula}}
-}
-```
+Apache 2.0. Pusula şu açık kaynak çalışmalar üzerine kuruludur:
+[TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) (Boğaziçi Üniversitesi TABILAB),
+[vllm-sr/d3](https://huggingface.co/vllm-sr/d3) (vLLM Semantic Router) ve
+[Qwen3.8](https://huggingface.co/Qwen/Qwen3.8-27B). Hepsi Apache 2.0 lisanslıdır.

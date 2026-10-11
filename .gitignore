@@ -29,3 +29,19 @@ runs/
 Thumbs.db
 *.bat
 *.cmd
+
+# Yerel çalışma notları (public repoya girmez)
+CLAUDE.local.md
+PROJECT_STATE.md
+
+# Pipeline çıktıları
+runs/
+data/
+
+# Kişisel/yerel dosyalar
+yerel/
+
+# Paketleme çıktıları
+*.egg-info/
+build/
+dist/
