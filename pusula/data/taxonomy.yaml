@@ -1,0 +1,801 @@
+# Pusula karar taksonomisi
+#
+# Yapı: alan (domain) -> alt alan (subdomain) -> niyet (intent)
+#  - Her seviyede kardeşler birbirini dışlar (MECE); kararsız kalınacak sınırlar açıklamada "Kapsamaz:" ile belirtilir.
+#  - Anahtarlar ASCII snake_case ve kalıcıdır (etiketler ve checkpoint'ler bunlara bağlıdır). Yeniden adlandırma = yeni sürüm.
+#  - Açıklamalar modele girdi olarak verilir (cross-encoder seçeneği bu metinle okur); kısa, ayırt edici ve Türkçe olmalı.
+#
+# Evrensel boyutlar (universal) her mesaja alandan bağımsız uygulanır.
+version: 1
+
+universal:
+  aciliyet:
+    type: score
+    instructions: Bu talep ne kadar hızlı ele alınmalı? Yazanın ses tonuna değil, beklemenin doğuracağı gerçek zarara bak.
+    criteria:
+      - "Rutin: bilgi sorusu, öneri, teşekkür veya planlı iş; beklemek kimseye zarar vermez"
+      - "Yakın: çözülmesi gereken bir sorun var ama zaman baskısı yok; birkaç gün içinde ele alınabilir"
+      - "Yüksek: süren bir mağduriyet var (hizmet kesintisi, takılan para, durmuş iş); aynı gün çözülmeli"
+      - "Kritik: can veya sağlık tehlikesi, süren dolandırıcılık ya da güvenlik ihlali, büyük maddi kayıp; dakikalar içinde müdahale"
+  eylem_gerekli:
+    type: noul
+    instructions: Bu mesaj, yanıt vermenin ötesinde somut bir işlem (kayıt açma, iptal, iade, bloke, araç veya API çağrısı) gerektiriyor mu?
+    criteria:
+      "false": "Hayır: bilgi vermek veya yanıtlamak yeterli"
+      "true": "Evet: somut bir işlem başlatılmalı"
+  insana_devret:
+    type: noul
+    instructions: Bu talep otomatik sistem yerine bir insan uzmana devredilmeli mi?
+    criteria:
+      "false": "Hayır: otomatik akış güvenle çözebilir"
+      "true": "Evet: hukuki veya tıbbi risk, kriz, yüksek tutar, öfkeli müşteri ya da yetki gerektiren durum"
+  guvenlik:
+    type: choice
+    instructions: Mesaj bir yapay zeka sistemi için güvenlik riski taşıyor mu?
+    criteria:
+      guvenli: Normal, iyi niyetli talep
+      prompt_enjeksiyonu: Sistem talimatlarını değiştirmeye, yok saydırmaya veya gizli bilgiyi sızdırmaya çalışan girdi
+      jailbreak_rol_yapma: Rol yapma veya kurgu bahanesiyle kuralları aşma girişimi
+      zararli_veya_yasadisi: Şiddet, nefret, dolandırıcılık veya yasa dışı faaliyet talebi ya da içeriği
+      yetkisiz_islem_talebi: Başkasının hesabına erişim, yetki yükseltme veya sistem komutu çalıştırma talebi
+      spam_anlamsiz: Reklam, anlamsız karakterler veya içeriksiz girdi
+  duygu:
+    type: choice
+    instructions: Mesajı yazan kişinin baskın duygu durumu nedir?
+    criteria:
+      notr: Sakin, olgusal
+      memnun: Memnun, teşekkür eden, olumlu
+      endiseli: Kaygılı, tedirgin, emin olamayan
+      hayal_kirikligi: Kırgın, bıkmış, tekrar eden sorundan yorulmuş
+      ofkeli: Öfkeli, suçlayıcı, tehditkar
+      caresiz_kriz: Çaresiz, panik halinde veya kendine zarar riski taşıyan
+  kisisel_veri:
+    type: noul
+    instructions: Mesaj kişisel veya hassas veri (TC kimlik no, kart/IBAN, şifre, sağlık bilgisi, açık adres, telefon) içeriyor mu?
+    criteria:
+      "false": "Hayır: kişisel veya hassas veri yok"
+      "true": "Evet: en az bir kişisel veya hassas veri var"
+
+domains:
+  finans_bankacilik:
+    name: Finans ve Bankacılık
+    description: Banka hesabı, kart, para transferi, kredi, yatırım ve üye işyeri işlemleri. Kapsamaz - vergi ve muhasebe kayıtları, sigorta.
+    subdomains:
+      hesap_ve_kart:
+        name: Hesap ve Kart
+        description: Banka hesabı ve kredi/banka kartı yönetimi
+        intents:
+          hesap_acma_kapama: Hesap açma, kapatma veya hesap türü değiştirme
+          kart_basvuru_limit: Kart başvurusu, limit artırma veya azaltma
+          kart_kayip_calinti: Kartın kaybolması veya çalınması, kartı kapattırma
+          sifre_ve_erisim: Kart şifresi, internet/mobil bankacılık giriş sorunu
+          bakiye_ve_hareket: Bakiye, hesap hareketi veya ekstre sorgulama
+      odeme_ve_transfer:
+        name: Ödeme ve Transfer
+        description: Para gönderme, alma ve düzenli ödeme talimatları
+        intents:
+          eft_fast_havale: EFT, FAST veya havale yapma ya da limit sorusu
+          takilan_hatali_transfer: Yanlış hesaba giden, ulaşmayan veya askıda kalan transfer
+          otomatik_odeme_talimati: Fatura veya düzenli ödeme talimatı kurma, iptal etme
+          doviz_ve_altin: Döviz veya altın alım satımı, kur sorusu
+      itiraz_ve_dolandiricilik:
+        name: İtiraz ve Dolandırıcılık
+        description: Tanınmayan işlemler, harcama itirazı ve dolandırıcılık mağduriyeti
+        intents:
+          supheli_islem: Bilgisi dışında yapılan işlem veya şüpheli hareket bildirimi
+          harcama_itirazi: Mal veya hizmeti alınmayan harcamaya itiraz (chargeback)
+          dolandiricilik_magduriyeti: Sahte arama, oltalama veya kandırılarak para gönderme
+          iade_bekleyen_tutar: Kartına yansımayan iade veya bekleyen tutar
+      kredi_ve_borc:
+        name: Kredi ve Borç
+        description: Kredi başvurusu, faiz, ödeme planı ve borç takibi
+        intents:
+          kredi_basvurusu: İhtiyaç, konut, taşıt veya ticari kredi başvurusu
+          faiz_ve_masraf: Faiz oranı, dosya masrafı veya ücret sorusu
+          yapilandirma_erteleme: Borç yapılandırma, taksit erteleme talebi
+          gecikme_ve_takip: Geciken ödeme, yasal takip veya kara liste sorusu
+          erken_kapama: Krediyi erken kapatma veya ara ödeme
+      yatirim_ve_kripto:
+        name: Yatırım ve Kripto
+        description: Borsa, fon, kripto varlık ve yatırım hesabı işlemleri
+        intents:
+          hisse_fon_islemi: Hisse senedi, fon veya tahvil alım satımı
+          kripto_islemleri: Kripto cüzdan, borsa transferi veya ağ ücreti sorunu
+          portfoy_bilgisi: Portföy değeri, getiri veya risk bilgisi
+          yatirim_hesabi_sorunu: Yatırım hesabı açma, yetki veya emir hatası
+      pos_ve_isyeri:
+        name: POS ve Üye İşyeri
+        description: İşletmelerin kart ile tahsilat altyapısı
+        intents:
+          pos_basvuru_ariza: Fiziksel POS başvurusu veya arızası
+          komisyon_ve_bloke: POS komisyonu, bloke süresi veya bloke çözme
+          sanal_pos_entegrasyon: Sanal POS veya ödeme geçidi entegrasyonu
+          isyeri_hesap_hareketi: Üye işyeri hesabına geçen tutarlar ve mutabakat
+
+  muhasebe_vergi:
+    name: Muhasebe ve Vergi
+    description: İşletmelerin e-belge, vergi beyannamesi, bordro hesaplama ve muhasebe kayıtları. Kapsamaz - çalışanın kendi izin veya maaş talebi (insan kaynakları).
+    subdomains:
+      e_belge:
+        name: e-Belge
+        description: e-Fatura, e-Arşiv, e-İrsaliye ve GİB/entegratör süreçleri
+        intents:
+          e_fatura_kesme_iptal: e-Fatura kesme, iptal etme veya reddetme
+          e_arsiv_e_irsaliye: e-Arşiv fatura veya e-İrsaliye düzenleme
+          gib_portal_sorunu: GİB portalı veya mükellef sorgulama sorunu
+          entegrator_hatasi: Özel entegratör bağlantı, gönderim veya şema hatası
+      vergi_beyan:
+        name: Vergi Beyanı
+        description: Beyanname hazırlama ve vergi yükümlülükleri
+        intents:
+          kdv_ve_tevkifat: KDV beyanı veya tevkifat oranı ve hesabı
+          muhtasar_prim_hizmet: Muhtasar ve prim hizmet beyannamesi
+          gecici_kurumlar_vergisi: Geçici vergi veya kurumlar vergisi beyanı
+          gelir_vergisi: Gelir vergisi beyanı, kira veya serbest meslek geliri
+          vergi_borcu_ceza: Vergi borcu, gecikme faizi, ceza veya uzlaşma
+      bordro:
+        name: Bordro
+        description: İşveren tarafında maaş, kesinti ve SGK bildirim hesapları
+        intents:
+          maas_hesaplama: Brütten nete veya netten brüte maaş hesabı
+          kesinti_vergi_dilimi: Gelir vergisi dilimi, damga vergisi veya SGK kesintisi
+          ise_giris_cikis_bildirgesi: SGK işe giriş veya işten çıkış bildirgesi
+          tazminat_hesabi: Kıdem veya ihbar tazminatı tutarının hesaplanması
+      mutabakat_ve_kayit:
+        name: Mutabakat ve Kayıt
+        description: Defter kayıtları ve karşı taraflarla mutabakat
+        intents:
+          banka_mutabakati: Banka ekstresi ile defter kayıtlarını eşleştirme
+          ba_bs_cari_mutabakat: Ba-Bs formu veya cari hesap mutabakatı
+          yevmiye_hesap_plani: Yevmiye kaydı veya tekdüzen hesap planı sorusu
+          amortisman_kkeg: Amortisman ayırma veya kanunen kabul edilmeyen gider
+      finansal_raporlama:
+        name: Finansal Raporlama
+        description: Mali tablolar, bütçe ve denetim
+        intents:
+          mali_tablolar: Bilanço veya gelir tablosu hazırlama ve yorumlama
+          butce_nakit_akisi: Bütçe, nakit akışı veya maliyet analizi
+          denetim_talebi: Bağımsız denetim veya iç denetim talebi
+
+  hukuk_uyum:
+    name: Hukuk ve Mevzuat Uyumu
+    description: KVKK, tüketici hakları, sözleşmeler, iş hukuku ve dava/icra süreçleri.
+    subdomains:
+      kvkk_kisisel_veri:
+        name: KVKK ve Kişisel Veri
+        description: Kişisel verilerle ilgili haklar ve veri ihlalleri
+        intents:
+          veri_erisim_talebi: Hakkında tutulan verileri öğrenme talebi
+          veri_silme_talebi: Kişisel verilerin silinmesi veya anonimleştirilmesi talebi
+          riza_ve_iletisim_izni: Açık rıza geri çekme, ticari ileti reddi
+          veri_ihlali_bildirimi: Verilerinin sızdırıldığı veya kötüye kullanıldığı bildirimi
+      tuketici_haklari:
+        name: Tüketici Hakları
+        description: Tüketicinin yasal hakları ve başvuru yolları
+        intents:
+          cayma_hakki: 14 günlük cayma hakkı kullanımı
+          ayipli_mal_hizmet: Ayıplı mal veya hizmet için yasal haklar
+          hakem_heyeti_basvurusu: Tüketici hakem heyeti veya mahkemeye başvuru
+          abonelik_iptal_hakki: Aboneliği iptal etme hakkı engellendiğinde
+      sozlesme:
+        name: Sözleşme
+        description: Sözleşmelerin incelenmesi, feshi ve ihtarlar
+        intents:
+          sozlesme_inceleme: Sözleşme maddesinin incelenmesi veya risk analizi
+          sozlesme_feshi: Sözleşmeyi feshetme veya cezai şart
+          ihtarname: İhtarname gönderme veya alınan ihtara yanıt
+          imza_yetki: İmza yetkisi, vekaletname veya e-imza
+      is_hukuku:
+        name: İş Hukuku
+        description: Çalışan ile işveren arasındaki yasal uyuşmazlıklar
+        intents:
+          kidem_ihbar_hakki: Kıdem veya ihbar tazminatına hak kazanma
+          haksiz_fesih: Haksız fesih veya işe iade
+          mobbing: Mobbing veya iş yerinde psikolojik taciz
+          fazla_mesai_alacagi: Ödenmeyen fazla mesai veya ücret alacağı
+      dava_ve_icra:
+        name: Dava ve İcra
+        description: Yargı ve icra süreçleri
+        intents:
+          icra_takibi: İcra takibi başlatma veya gelen icraya itiraz
+          dava_sureci: Açılan veya açılacak dava hakkında bilgi
+          arabuluculuk: Zorunlu veya ihtiyari arabuluculuk
+          avukat_talebi: Avukatla görüşme veya hukuki temsil talebi
+
+  saglik:
+    name: Sağlık
+    description: Tıbbi belirti ve triyaj, randevu, ilaç, tetkik ve sağlık kurumundaki ödeme. Kapsamaz - poliçe satın alma ve yenileme (sigorta).
+    subdomains:
+      acil_triyaj:
+        name: Acil ve Triyaj
+        description: Belirtiye göre aciliyet değerlendirmesi
+        intents:
+          acil_belirti: Göğüs ağrısı, nefes darlığı, bilinç kaybı gibi acil belirti
+          ilk_yardim: İlk yardım veya evde yapılacaklar sorusu
+          hafif_belirti: Acil olmayan, hafif seyirli şikayet
+      randevu:
+        name: Randevu
+        description: Hastane ve doktor randevuları
+        intents:
+          randevu_alma: Yeni randevu alma
+          randevu_iptal_degisiklik: Randevu iptali veya saat değişikliği
+          doktor_bolum_secimi: Hangi bölüme veya doktora gidileceği
+      ilac_recete:
+        name: İlaç ve Reçete
+        description: İlaç kullanımı ve reçeteler
+        intents:
+          recete_yenileme: Reçete yazdırma veya yenileme
+          ilac_yan_etki: İlaç yan etkisi veya etkileşimi
+          ilac_bulunamama: İlacın eczanede bulunamaması veya muadili
+      tetkik_sonuc:
+        name: Tetkik ve Sonuç
+        description: Laboratuvar, görüntüleme sonuçları ve raporlar
+        intents:
+          sonuc_sorgulama: Tahlil veya görüntüleme sonucunu öğrenme
+          sonuc_yorumlama: Sonuç değerlerinin ne anlama geldiği
+          rapor_talebi: Sağlık raporu veya epikriz talebi
+      saglik_odeme:
+        name: Sağlık Hizmeti Ödemesi
+        description: Hastanede provizyon, fark ücreti ve masraf iadesi
+        intents:
+          provizyon_onay: Sigorta provizyonu veya ön onay bekleniyor
+          fark_ucreti: Özel hastane fark ücreti sorusu
+          masraf_iadesi: Sağlık harcamasının geri ödenmesi
+
+  sigorta_sosyal_guvenlik:
+    name: Sigorta ve Sosyal Güvenlik
+    description: Hasar bildirimi, poliçe işlemleri ve SGK/emeklilik konuları. Kapsamaz - hastanedeki provizyon (sağlık).
+    subdomains:
+      hasar:
+        name: Hasar
+        description: Sigortalı olayın bildirimi ve hasar dosyası
+        intents:
+          kasko_hasar: Kasko kapsamında araç hasarı bildirimi
+          trafik_sigortasi_hasar: Trafik kazasında karşı tarafa veya kendine hasar
+          konut_dask_hasar: Konut, DASK, yangın veya su baskını hasarı
+          hasar_dosyasi_takibi: Açılmış hasar dosyasının durumu veya ödemesi
+      police:
+        name: Poliçe
+        description: Sigorta ürünü satın alma ve poliçe yönetimi
+        intents:
+          teklif_alma: Yeni sigorta teklifi isteme
+          police_yenileme_iptal: Poliçe yenileme veya iptal
+          zeyilname_degisiklik: Poliçede adres, araç veya teminat değişikliği
+          prim_odeme: Prim ödemesi veya taksit sorunu
+      sosyal_guvenlik:
+        name: Sosyal Güvenlik
+        description: SGK, emeklilik ve işsizlik hakları
+        intents:
+          hizmet_dokumu: SGK hizmet dökümü veya prim gün sayısı
+          emeklilik_hesaplama: Emeklilik yaşı veya maaşı hesaplama
+          issizlik_maasi: İşsizlik ödeneği başvurusu
+          gss_borcu: Genel sağlık sigortası borcu veya tescili
+
+  ticaret_eticaret:
+    name: Ticaret ve E-Ticaret
+    description: Online ve mağaza alışverişinde sipariş, iade, ödeme, ürün ve pazaryeri satıcı işlemleri.
+    subdomains:
+      siparis:
+        name: Sipariş
+        description: Verilmiş siparişin durumu ve değişiklikleri
+        intents:
+          siparis_durumu: Siparişin nerede olduğu veya hazırlanma durumu
+          siparis_iptali: Kargolanmadan sipariş iptali
+          eksik_yanlis_urun: Eksik, yanlış veya farklı ürün gönderimi
+          siparis_degisikligi: Sipariş içeriği veya teslimat bilgisi değişikliği
+      iade_degisim:
+        name: İade ve Değişim
+        description: Teslim alınmış ürünün iadesi veya değişimi
+        intents:
+          iade_talebi: Ürün iadesi başlatma
+          degisim_talebi: Beden, renk veya model değişimi
+          iade_ucreti_gecikmesi: Onaylanan iadenin parasının yatmaması
+      odeme_fatura:
+        name: Ödeme ve Fatura
+        description: Alışverişte ödeme adımı ve fatura
+        intents:
+          odeme_hatasi: Ödeme sırasında hata veya onaylanmama
+          cift_cekim: Aynı siparişin iki kez çekilmesi
+          fatura_talebi: Fatura veya kurumsal fatura talebi
+          kupon_kampanya_sorunu: Kupon, indirim veya kampanya uygulanmaması
+      urun_bilgi:
+        name: Ürün Bilgisi
+        description: Satın alma öncesi ürün soruları
+        intents:
+          stok_sorgulama: Ürünün stokta olup olmadığı
+          urun_ozellik: Ürün özellikleri, uyumluluk veya beden tablosu
+          fiyat_kampanya: Fiyat, indirim veya kampanya bilgisi
+          garanti_kapsami: Garanti süresi ve kapsamı
+      pazaryeri_satici:
+        name: Pazaryeri Satıcı
+        description: Pazaryerinde satış yapan işletmelerin talepleri
+        intents:
+          satici_hesabi: Satıcı hesabı açma, belge veya onay
+          urun_listeleme: Ürün yükleme, katalog veya listeleme hatası
+          komisyon_hakedis: Komisyon oranı veya hakediş ödemesi
+          performans_ceza: Satıcı puanı, ceza veya hesap askıya alma
+
+  lojistik_tedarik:
+    name: Lojistik ve Tedarik Zinciri
+    description: Kargo ve teslimat, gümrük, depo, satın alma ve filo operasyonları.
+    subdomains:
+      kargo_teslimat:
+        name: Kargo ve Teslimat
+        description: Gönderinin taşınması ve teslimi
+        intents:
+          kargo_takip: Gönderi takip numarası veya konum sorusu
+          teslimat_gecikmesi: Söz verilen tarihte gelmeyen gönderi
+          hasarli_teslimat: Hasarlı veya açılmış paket
+          adres_degisikligi: Teslimat adresi veya zamanı değişikliği
+          teslim_edildi_gorunuyor: Teslim edildi görünen ama alınmamış gönderi
+      gumruk_dis_ticaret:
+        name: Gümrük ve Dış Ticaret
+        description: Uluslararası sevkiyat ve gümrük işlemleri
+        intents:
+          gumruk_beyani: Gümrük beyannamesi veya GTİP sorusu
+          gumrukte_takilan_sevkiyat: Gümrükte bekleyen veya el konulan gönderi
+          vergi_harc: Gümrük vergisi, ÖTV veya harç
+          belge_eksigi: Fatura, menşe veya sertifika eksiği
+      depo_stok:
+        name: Depo ve Stok
+        description: Depo operasyonu ve stok yönetimi
+        intents:
+          stok_eksigi: Kritik stok seviyesi veya stok tükenmesi
+          sayim_farki: Sayım farkı veya kayıp ürün
+          depo_kapasite: Depo yeri veya kapasite planlama
+          soguk_zincir_alarmi: Soğuk zincir sıcaklık sapması
+      satinalma:
+        name: Satın Alma
+        description: Tedarikçiden mal veya hizmet temini
+        intents:
+          teklif_talebi: Tedarikçiden teklif isteme (RFQ)
+          tedarikci_degerlendirme: Tedarikçi seçimi veya performansı
+          satinalma_onayi: Satın alma siparişi onayı
+          vade_muzakeresi: Fiyat veya ödeme vadesi müzakeresi
+      filo_rota:
+        name: Filo ve Rota
+        description: Araç filosu ve dağıtım rotaları
+        intents:
+          rota_planlama: Dağıtım rotası veya sefer planlama
+          yolda_arac_arizasi: Seferdeki aracın arızalanması
+          surucu_yonetimi: Sürücü vardiyası, ihlal veya performans
+          yakit_maliyet: Yakıt tüketimi veya taşıma maliyeti
+
+  abonelik_hizmetleri:
+    name: Telekom ve Enerji Abonelikleri
+    description: İnternet, mobil hat, elektrik, doğalgaz ve su abonelikleri ile faturaları.
+    subdomains:
+      telekom:
+        name: Telekom
+        description: İnternet ve mobil hat hizmeti
+        intents:
+          internet_arizasi: İnternet kesintisi, yavaşlık veya modem sorunu
+          mobil_hat_sorunu: Çekmeme, SIM kart veya hat kapanması
+          tarife_paket: Tarife, paket veya ek paket değişikliği
+          numara_tasima: Numara taşıma
+          taahhut_cayma: Taahhüt bitimi veya cayma bedeli
+      enerji_su:
+        name: Enerji ve Su
+        description: Elektrik, doğalgaz ve su hizmeti
+        intents:
+          elektrik_kesintisi: Elektrik kesintisi veya voltaj sorunu
+          dogalgaz_ariza_kacak: Doğalgaz arızası veya gaz kokusu
+          sayac_okuma: Sayaç okuma veya endeks itirazı
+          abonelik_acma_devir: Abonelik açma, kapama veya devir
+      faturalama:
+        name: Faturalama
+        description: Abonelik faturaları ve ödemeleri
+        intents:
+          fatura_itirazi: Faturadaki kaleme itiraz
+          yuksek_fatura: Beklenenden yüksek fatura
+          odeme_talimati: Fatura ödeme veya otomatik talimat
+          borc_kesinti_uyarisi: Borç nedeniyle kesinti uyarısı
+
+  teknoloji_bt:
+    name: Teknoloji ve Bilgi İşlem
+    description: Kurum içi BT desteği, yazılım hataları, entegrasyonlar, siber güvenlik olayları ve yazılım geliştirme.
+    subdomains:
+      kimlik_erisim:
+        name: Kimlik ve Erişim
+        description: Kullanıcı hesabı, şifre ve yetkiler
+        intents:
+          sifre_sifirlama: Şifre sıfırlama
+          iki_adimli_dogrulama: 2FA veya doğrulama kodu sorunu
+          yetki_talebi: Bir sisteme veya klasöre erişim yetkisi isteme
+          hesap_kilitlenmesi: Hesabın kilitlenmesi veya askıya alınması
+      yazilim_hata:
+        name: Yazılım Hatası
+        description: Uygulamanın beklenmedik davranışı
+        intents:
+          uygulama_hatasi: Hata mesajı, çökme veya açılmama
+          performans_sorunu: Yavaşlık veya zaman aşımı
+          veri_kaybi: Kaybolan veya bozulan veri
+          surum_guncelleme: Güncelleme sonrası sorun veya sürüm talebi
+      altyapi_entegrasyon:
+        name: Altyapı ve Entegrasyon
+        description: Sunucu, ağ, API ve sistemler arası bağlantı
+        intents:
+          api_hatasi: API hata kodu, kota veya kimlik doğrulama hatası
+          webhook_entegrasyon: Webhook veya üçüncü taraf entegrasyonu
+          sunucu_kesintisi: Servis veya sunucu erişilemiyor
+          veritabani_sorunu: Veritabanı bağlantısı veya sorgu hatası
+      siber_guvenlik_olayi:
+        name: Siber Güvenlik Olayı
+        description: Kurumu hedef alan güvenlik olayları
+        intents:
+          oltalama_bildirimi: Şüpheli e-posta veya oltalama bildirimi
+          yetkisiz_erisim: Tanınmayan giriş veya yetkisiz erişim
+          zararli_yazilim: Virüs, fidye yazılımı veya zararlı dosya
+          veri_sizintisi_suphesi: Kurumsal verinin sızdığı şüphesi
+      donanim_cihaz:
+        name: Donanım ve Cihaz
+        description: Bilgisayar, yazıcı ve diğer cihazlar
+        intents:
+          cihaz_arizasi: Bilgisayar veya telefon arızası
+          cevre_birimi: Yazıcı, monitör veya klavye sorunu
+          cihaz_talebi: Yeni cihaz veya lisans talebi
+      gelistirme_destek:
+        name: Yazılım Geliştirme Desteği
+        description: Geliştiricilerin kod ve mimari soruları
+        intents:
+          kod_hatasi_yardimi: Koddaki hatanın ayıklanması
+          mimari_danisma: Mimari veya teknoloji seçimi
+          dokumantasyon_talebi: Dokümantasyon veya örnek kod isteme
+
+  insan_kaynaklari:
+    name: İnsan Kaynakları
+    description: Çalışanın ve adayın İK talepleri - işe alım, izin, performans, ayrılış ve çalışan ilişkileri. Kapsamaz - bordro hesaplama (muhasebe), yasal uyuşmazlık (hukuk).
+    subdomains:
+      ise_alim:
+        name: İşe Alım
+        description: Aday ve başvuru süreçleri
+        intents:
+          is_basvurusu: Açık pozisyona başvuru
+          mulakat_planlama: Mülakat zamanı veya formatı
+          teklif_sozlesme: İş teklifi, maaş beklentisi veya sözleşme
+          aday_durumu: Başvurunun hangi aşamada olduğu
+      calisan_islemleri:
+        name: Çalışan İşlemleri
+        description: Mevcut çalışanın günlük İK talepleri
+        intents:
+          izin_talebi: Yıllık, mazeret veya hastalık izni
+          avans_talebi: Maaş avansı isteme
+          belge_talebi: Çalışma belgesi veya maaş bordrosu çıktısı
+          yan_haklar: Yemek kartı, servis veya özel sağlık sigortası
+      performans_gelisim:
+        name: Performans ve Gelişim
+        description: Değerlendirme, eğitim ve kariyer
+        intents:
+          performans_degerlendirme: Hedefler veya değerlendirme sonucu
+          egitim_talebi: Eğitim veya sertifika programı
+          terfi_ucret: Terfi veya ücret artışı talebi
+      ayrilis:
+        name: Ayrılış
+        description: İşten ayrılma süreçleri
+        intents:
+          istifa: İstifa etme ve süreç
+          isten_cikis_sureci: İşten çıkarılma sonrası işlemler
+          cikis_mulakati: Çıkış mülakatı veya zimmet teslimi
+      calisan_iliskileri:
+        name: Çalışan İlişkileri
+        description: İş yeri ortamı, şikayetler ve iş güvenliği
+        intents:
+          sikayet_ihbar: Yönetici veya iş arkadaşı hakkında şikayet
+          is_sagligi_guvenligi: İş yerinde sağlık veya güvenlik riski
+          ic_iletisim: Duyuru, etkinlik veya kurum içi iletişim
+
+  kamu_hizmetleri:
+    name: Kamu Hizmetleri
+    description: e-Devlet, nüfus, belediye, trafik cezası ve adli kamu işlemleri. Kapsamaz - vergi beyannamesi (muhasebe), SGK (sigorta ve sosyal güvenlik).
+    subdomains:
+      e_devlet_nufus:
+        name: e-Devlet ve Nüfus
+        description: Kimlik, belge ve e-Devlet erişimi
+        intents:
+          e_devlet_giris: e-Devlet şifresi veya giriş sorunu
+          belge_sorgulama: e-Devlet üzerinden belge alma veya doğrulama
+          kimlik_pasaport: Kimlik kartı veya pasaport başvurusu
+          adres_nufus_kaydi: Adres beyanı veya nüfus kaydı
+      belediye:
+        name: Belediye
+        description: Yerel yönetim hizmetleri
+        intents:
+          imar_ruhsat: İmar durumu veya yapı ruhsatı
+          cevre_temizlik: Çöp, temizlik veya gürültü şikayeti
+          yol_altyapi: Yol, kaldırım veya altyapı arızası
+          sosyal_yardim: Belediye sosyal yardım başvurusu
+      ceza_harc:
+        name: Ceza ve Harç
+        description: İdari cezalar ve harç ödemeleri
+        intents:
+          trafik_cezasi: Trafik cezası sorgulama, ödeme veya itiraz
+          harc_odeme: Pasaport, ehliyet veya tapu harcı
+      adli_islemler:
+        name: Adli İşlemler
+        description: Vatandaşın adli kamu işlemleri
+        intents:
+          sikayet_basvurusu: CİMER veya savcılığa şikayet
+          adli_sicil: Adli sicil kaydı belgesi
+          uyap_islemi: UYAP üzerinden dosya sorgulama
+
+  egitim:
+    name: Eğitim
+    description: Sınavlar, öğrenci işleri, uzaktan eğitim ve ders konularında akademik sorular.
+    subdomains:
+      sinavlar:
+        name: Sınavlar
+        description: Ulusal ve uluslararası sınavlar
+        intents:
+          sinav_basvurusu: YKS, KPSS, ALES, YDS veya IELTS başvurusu
+          sinav_sonucu_itiraz: Sınav sonucu veya soru itirazı
+          sinav_hazirlik: Sınava çalışma planı veya kaynak
+      ogrenci_isleri:
+        name: Öğrenci İşleri
+        description: Kayıt, ders ve belge işlemleri
+        intents:
+          kayit_kabul: Okul veya üniversite kaydı, kabul
+          ders_secimi: Ders kaydı veya ekle-bırak
+          transkript_belge: Transkript veya öğrenci belgesi
+          burs_ucret: Burs, harç veya öğrenim ücreti
+      uzaktan_egitim:
+        name: Uzaktan Eğitim
+        description: Online öğrenme platformları
+        intents:
+          platform_erisim: LMS veya online ders platformuna erişim
+          odev_teslim: Ödev yükleme veya teslim tarihi
+          canli_ders_sorunu: Canlı ders bağlantı veya kayıt sorunu
+      akademik_soru:
+        name: Akademik Soru
+        description: Ders konusuyla ilgili içerik sorusu
+        intents:
+          matematik_fen: Matematik, fizik, kimya veya biyoloji sorusu
+          dil_edebiyat: Dil bilgisi, edebiyat veya yabancı dil sorusu
+          sosyal_bilimler: Tarih, coğrafya, felsefe veya ekonomi sorusu
+
+  seyahat_konaklama:
+    name: Seyahat ve Konaklama
+    description: Uçuş, otel, vize ve yolculuk sırasındaki ulaşım.
+    subdomains:
+      ucus:
+        name: Uçuş
+        description: Havayolu bileti ve uçuş süreçleri
+        intents:
+          bilet_rezervasyon: Uçak bileti alma veya rezervasyon
+          ucus_degisiklik_iptal: Uçuş tarihi değiştirme veya iptal
+          rotar_iptal_tazminat: Gecikme veya iptal nedeniyle tazminat
+          bagaj_sorunu: Kayıp, hasarlı veya fazla bagaj
+          check_in: Online check-in veya koltuk seçimi
+      konaklama:
+        name: Konaklama
+        description: Otel ve kiralık konaklama
+        intents:
+          otel_rezervasyon: Otel rezervasyonu
+          konaklama_iptal_iade: Rezervasyon iptali veya iade
+          tesis_sikayeti: Oda, temizlik veya hizmet şikayeti
+      vize_pasaport:
+        name: Vize
+        description: Yurt dışı seyahat belgeleri
+        intents:
+          vize_basvurusu: Vize başvurusu veya randevusu
+          seyahat_belgeleri: Gerekli belgeler veya giriş şartları
+      yolculuk_ulasim:
+        name: Yolculuk Ulaşımı
+        description: Seyahatte araç ve transfer
+        intents:
+          arac_kiralama: Araç kiralama veya teslim
+          transfer: Havalimanı transferi
+          otobus_tren: Otobüs veya tren bileti
+
+  gayrimenkul:
+    name: Gayrimenkul
+    description: Kiralama, alım satım ve site/apartman yönetimi.
+    subdomains:
+      kiralama:
+        name: Kiralama
+        description: Kiracı ile ev sahibi ilişkisi
+        intents:
+          kira_sozlesmesi: Kira sözleşmesi yapma veya yenileme
+          kira_artisi: Kira artış oranı veya uyuşmazlığı
+          depozito_iadesi: Depozitonun iade edilmemesi
+          tahliye: Tahliye talebi veya taahhütnamesi
+      alim_satim:
+        name: Alım Satım
+        description: Konut veya arsa alım satımı
+        intents:
+          tapu_islemleri: Tapu devri veya randevusu
+          ekspertiz_degerleme: Ekspertiz veya değer tespiti
+          ilan_ve_aracilik: İlan verme veya emlakçı komisyonu
+      site_yonetimi:
+        name: Site ve Apartman Yönetimi
+        description: Ortak alan ve yönetim konuları
+        intents:
+          aidat: Aidat tutarı veya ödemesi
+          ortak_alan_ariza: Asansör, kalorifer veya ortak alan arızası
+          komsuluk_sorunu: Gürültü veya komşuluk anlaşmazlığı
+
+  otomotiv_mobilite:
+    name: Otomotiv ve Mobilite
+    description: Araç bakımı, yol yardımı, araç resmi işlemleri ve elektrikli araçlar. Kapsamaz - kasko ve trafik sigortası hasarı (sigorta).
+    subdomains:
+      servis_bakim:
+        name: Servis ve Bakım
+        description: Araç bakımı ve onarımı
+        intents:
+          periyodik_bakim: Periyodik bakım randevusu veya ücreti
+          ariza_teshis: Uyarı lambası, ses veya arıza tespiti
+          garanti_servis: Garanti kapsamında onarım
+      yol_yardim:
+        name: Yol Yardım
+        description: Yolda kalan araca destek
+        intents:
+          cekici_talebi: Çekici çağırma
+          lastik_aku: Lastik patlaması veya akü bitmesi
+          kaza_aninda_destek: Kaza anında ne yapılacağı
+      arac_islemleri:
+        name: Araç İşlemleri
+        description: Araç alım satımı ve resmi işlemler
+        intents:
+          arac_alim_satim: İkinci el veya sıfır araç alım satımı
+          muayene: Araç muayenesi
+          ruhsat_plaka: Ruhsat, plaka veya noter işlemi
+      elektrikli_arac:
+        name: Elektrikli Araç
+        description: Şarj ve batarya
+        intents:
+          sarj_istasyonu: Şarj istasyonu bulma veya şarj hatası
+          batarya_menzil: Batarya sağlığı veya menzil
+
+  sanayi_uretim_tarim:
+    name: Sanayi, Üretim ve Tarım
+    description: Fabrika operasyonu, iş güvenliği, çevre ve tarım/hayvancılık.
+    subdomains:
+      uretim_operasyon:
+        name: Üretim Operasyonu
+        description: Üretim hattı ve planlama
+        intents:
+          makine_arizasi: Makine, PLC veya sensör arızası ve alarmı
+          kalite_sorunu: Hatalı ürün veya kalite sapması
+          uretim_planlama: Üretim planı, vardiya veya kapasite
+          kestirimci_bakim: Titreşim, sıcaklık gibi bakım sinyali
+      is_guvenligi:
+        name: İş Güvenliği
+        description: Sahada iş sağlığı ve güvenliği
+        intents:
+          is_kazasi_bildirimi: Yaralanmalı veya yaralanmasız iş kazası
+          tehlike_bildirimi: Ramak kala veya tehlikeli durum bildirimi
+          kkd_talebi: Kişisel koruyucu donanım eksiği
+      cevre_enerji:
+        name: Çevre ve Enerji
+        description: Atık, emisyon ve enerji verimliliği
+        intents:
+          atik_emisyon: Tehlikeli atık, emisyon veya sızıntı
+          enerji_verimliligi: Enerji tüketimi veya tasarruf
+          cevre_mevzuati: Çevre izni, karbon raporu veya mevzuat
+      tarim_hayvancilik:
+        name: Tarım ve Hayvancılık
+        description: Bitkisel ve hayvansal üretim
+        intents:
+          bitki_hastaligi: Bitki hastalığı veya zararlı
+          iklim_riski: Don, kuraklık veya dolu riski
+          sulama_gubreleme: Sulama veya gübreleme planı
+          hayvan_sagligi: Hayvan hastalığı veya veteriner ihtiyacı
+          tarimsal_destek: Tarımsal destek veya hibe başvurusu
+
+  kisisel_verimlilik:
+    name: Kişisel Verimlilik ve Ofis
+    description: Takvim, e-posta ve yazışma, görev yönetimi ve belge/veri işleri için asistan talepleri.
+    subdomains:
+      takvim:
+        name: Takvim
+        description: Toplantı ve zaman planlama
+        intents:
+          toplanti_planlama: Toplantı ayarlama veya oda ayırtma
+          cakisma_cozme: Çakışan toplantıları düzenleme
+          hatirlatici: Hatırlatıcı kurma
+      yazisma:
+        name: Yazışma
+        description: Metin hazırlama ve dönüştürme
+        intents:
+          e_posta_taslagi: E-posta veya mesaj taslağı yazma
+          ozet_cikarma: Metin, toplantı veya yazışma özeti
+          ceviri: Metin çevirisi
+      gorev_yonetimi:
+        name: Görev Yönetimi
+        description: İş takibi ve önceliklendirme
+        intents:
+          gorev_olusturma: Görev veya iş kaydı oluşturma
+          onceliklendirme: İşleri önceliklendirme
+          durum_raporu: Proje veya iş durum raporu
+      belge_veri:
+        name: Belge ve Veri
+        description: Dosya ve veri üzerinde çalışma
+        intents:
+          belge_arama: Belge veya bilgi arama
+          tablo_analiz: Tablo, Excel veya veri analizi
+          rapor_sunum: Rapor veya sunum hazırlama
+
+  medya_eglence:
+    name: Medya ve Eğlence
+    description: Dijital abonelikler, oyun, içerik/telif ve etkinlik biletleri.
+    subdomains:
+      dijital_abonelik:
+        name: Dijital Abonelik
+        description: Video, müzik ve yayın üyelikleri
+        intents:
+          uyelik_iptal: Üyelik iptali
+          uyelik_odeme: Üyelik ücreti veya ödeme sorunu
+          yayin_sorunu: İçeriğin oynatılamaması veya kalite sorunu
+      oyun:
+        name: Oyun
+        description: Oyun hesapları ve oyun içi satın alımlar
+        intents:
+          hesap_calinmasi: Oyun hesabının çalınması
+          oyun_ici_satin_alma: Oyun içi satın alım hatası veya iade
+          ban_itirazi: Hesap kısıtlaması veya ban itirazı
+      icerik_telif:
+        name: İçerik ve Telif
+        description: Yayınlanan içerik üzerindeki haklar
+        intents:
+          telif_ihlali: Telif hakkı ihlali bildirimi
+          icerik_kaldirma: İçerik kaldırma veya moderasyon itirazı
+      etkinlik_bilet:
+        name: Etkinlik ve Bilet
+        description: Konser, maç ve etkinlik biletleri
+        intents:
+          bilet_alma: Bilet satın alma
+          bilet_iptal_iade: Etkinlik iptali veya bilet iadesi
+
+  kriz_destek:
+    name: Kriz ve Psikososyal Destek
+    description: Can güvenliği, ruh sağlığı krizi, şiddet ve afet durumları; her zaman öncelikli ele alınır.
+    subdomains:
+      ruh_sagligi_krizi:
+        name: Ruh Sağlığı Krizi
+        description: Acil psikolojik destek ihtiyacı
+        intents:
+          kendine_zarar_riski: İntihar düşüncesi veya kendine zarar verme riski
+          panik_kaygi: Panik atak veya yoğun kaygı
+          duygusal_destek: Yalnızlık, yas veya duygusal destek ihtiyacı
+      siddet_istismar:
+        name: Şiddet ve İstismar
+        description: Şiddet, istismar ve taciz
+        intents:
+          aile_ici_siddet: Aile içi veya partner şiddeti
+          cocuk_istismari: Çocuğa yönelik istismar veya ihmal
+          taciz_israrli_takip: Taciz veya ısrarlı takip
+      afet_acil:
+        name: Afet ve Acil Durum
+        description: Doğal afet ve olağanüstü durumlar
+        intents:
+          deprem_afet: Deprem, enkaz veya afet bölgesinden yardım
+          yangin_sel: Yangın veya sel
+          kayip_kisi: Kayıp kişi bildirimi
+
+  genel_sohbet:
+    name: Genel ve Kapsam Dışı
+    description: Selamlaşma, genel bilgi soruları, kurum hakkında sorular, geri bildirim ve hiçbir alana girmeyen talepler.
+    subdomains:
+      sohbet:
+        name: Sohbet
+        description: Görev içermeyen konuşma
+        intents:
+          selamlasma: Selamlaşma, teşekkür veya vedalaşma
+          kucuk_sohbet: Gündelik sohbet
+      bilgi:
+        name: Genel Bilgi
+        description: Belirli bir alana ait olmayan bilgi soruları
+        intents:
+          genel_bilgi_sorusu: Genel kültür veya güncel bilgi sorusu
+          kurum_hakkinda: Kurumun çalışma saatleri, şubeleri veya iletişim bilgisi
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Görüş ve öneriler
+        intents:
+          oneri: Ürün veya hizmet önerisi
+          genel_memnuniyet: Genel memnuniyet veya memnuniyetsizlik
+      kapsam_disi:
+        name: Kapsam Dışı
+        description: Desteklenmeyen veya anlaşılamayan talep
+        intents:
+          desteklenmeyen_talep: Hizmet kapsamı dışında kalan istek
+          belirsiz_netlestirme: Ne istendiği anlaşılamayan, netleştirme gereken mesaj

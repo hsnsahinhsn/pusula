@@ -21,7 +21,7 @@ checkpoints/
 # Günlükler ve eğitim izleme
 logs/
 wandb/
-runs/
+/runs/
 *.log
 
 # İşletim sistemi kalıntıları ve yerel scriptler
@@ -35,8 +35,8 @@ CLAUDE.local.md
 PROJECT_STATE.md
 
 # Pipeline çıktıları
-runs/
-data/
+/runs/
+/data/
 
 # Kişisel/yerel dosyalar
 yerel/
