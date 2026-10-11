@@ -7,7 +7,8 @@
 #     generate   Qwen3.8-27B writes Turkish decision examples (label-first)
 #     judge      Qwen re-answers every question blind (second vote)
 #     fetch_d3   free the disk from Qwen, download vllm-sr/d3
-#     teach      base d3 (4-bit) answers every question (third vote + baseline)
+#     baseline   base d3 (4-bit) on the Turkish Decision Benchmark (the number Pusula must beat)
+#     teach      base d3 (4-bit) answers every question (third vote + soft targets)
 #     build      consensus labels, train/val/test splits
 #     curate     TabiBERT: semantic de-dup, label-noise removal, hard-distractor questions
 #     gold       blind gold candidates for an independent annotator (labels go to gold/labels.json)
@@ -20,7 +21,7 @@
 set -euo pipefail
 
 RUN=${1:?usage: pipeline.sh <run-name> [stage ...]}; shift || true
-STAGES=${*:-generate judge fetch_d3 teach build curate gold d3train evaluate}
+STAGES=${*:-generate judge fetch_d3 baseline teach build curate gold d3train evaluate}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DIR="$ROOT/runs/$RUN"
 N=${N:-15000}
@@ -67,6 +68,8 @@ for stage in $STAGES; do
       stop_vllm
       rm -rf "$HF_HOME/hub/models--${QWEN_MODEL//\//--}"
       hf download vllm-sr/d3 --local-dir "$D3_DIR" --exclude "assets/*" ;;
+    baseline)
+      python -m pusula.d3train eval --d3 "$D3_DIR" --data "$ROOT/benchmark/tr_decision_bench_v1.jsonl"         --out "$DIR/reports/d3_base_tr_decision_bench_v1.json" ;;
     teach)
       python -m pusula.teacher --d3 "$D3_DIR" --inp "$DIR/judged.jsonl" --out "$DIR/labeled.jsonl" ;;
     build)
@@ -78,12 +81,13 @@ for stage in $STAGES; do
     d3train)
       python -m pusula.d3train train --d3 "$D3_DIR" --data "$DIR/curated" --out "$DIR/pusula-d3" ;;
     evaluate)
-      for split in "$DIR/curated/test.jsonl" "$DIR/gold/gold.jsonl"; do
+      for split in "$DIR/curated/test.jsonl" "$DIR/gold/gold.jsonl" "$ROOT/benchmark/tr_decision_bench_v1.jsonl"; do
         [[ -f $split ]] || { log "$split yok, atlandı"; continue; }
         name=$(basename "$split" .jsonl)
-        python -m pusula.d3train eval --d3 "$D3_DIR" --data "$split" --out "$DIR/reports/d3_base_$name.json"
-        python -m pusula.d3train eval --d3 "$D3_DIR" --adapter "$DIR/pusula-d3/best" --data "$split" \
-          --out "$DIR/reports/pusula_d3_$name.json"
+        [[ -f "$DIR/reports/d3_base_$name.json" ]] ||           python -m pusula.d3train eval --d3 "$D3_DIR" --data "$split" --out "$DIR/reports/d3_base_$name.json"
+        echo "d3_base $name" >> "$DIR/reports/progress.log"
+        [[ -f "$DIR/reports/pusula_d3_$name.json" ]] ||           python -m pusula.d3train eval --d3 "$D3_DIR" --adapter "$DIR/pusula-d3/best" --data "$split"             --out "$DIR/reports/pusula_d3_$name.json"
+        echo "pusula_d3 $name" >> "$DIR/reports/progress.log"
       done ;;
     *) echo "bilinmeyen aşama: $stage" >&2; exit 2 ;;
   esac
