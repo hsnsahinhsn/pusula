@@ -116,26 +116,47 @@ def _precision(a) -> Optional[bool]:
     return {"4bit": True, "bf16": False}.get(a.precision)  # "auto" -> None (decided by GPU memory)
 
 
-def train(a) -> None:
+def _dist():
+    """(rank, world, device) — torchrun sets RANK/WORLD_SIZE/LOCAL_RANK; plain python runs single-GPU."""
+    import os
+
     import torch
+    import torch.distributed as dist
+
+    world = int(os.getenv("WORLD_SIZE", "1"))
+    if world > 1 and not dist.is_initialized():
+        dist.init_process_group("nccl")
+    local = int(os.getenv("LOCAL_RANK", "0"))
+    torch.cuda.set_device(local)
+    return (dist.get_rank() if world > 1 else 0), world, f"cuda:{local}"
+
+
+def train(a) -> None:
+    """Single- or multi-GPU (torchrun --nproc-per-node N): every GPU holds a full d3 copy, each optimizer
+    step's micro-batches are split across GPUs and the LoRA/readout gradients are averaged."""
+    import torch
+    import torch.distributed as dist
 
     from .d3model import D3Decider
 
+    rank, world, device = _dist()
+    main = rank == 0
+    say = console.print if main else (lambda *x, **k: None)
     out = Path(a.out)
     last = out / "last"
     resume = (last / "trainer_state.json").exists()
     decider = D3Decider.load(a.d3, adapter=str(last) if resume else None, lora_rank=a.lora_rank,
-                             gradient_checkpointing=True, load_in_4bit=_precision(a))
+                             gradient_checkpointing=True, load_in_4bit=_precision(a), device=device)
     decider.readout.requires_grad_(True)
     rng = random.Random(a.seed)
     t0 = time.time()
     train_items = build_items(read_examples(Path(a.data) / "train.jsonl"), decider, "final", rng, a.max_prompts)
     val_items = build_items(read_examples(Path(a.data) / "val.jsonl"), decider, "final", None, a.max_val)
-    console.print(f"[cyan]{len(train_items)} eğitim / {len(val_items)} doğrulama sorusu "
-                  f"({time.time() - t0:.0f}s tokenizasyon)[/cyan]")
+    say(f"[cyan]{len(train_items)} eğitim / {len(val_items)} doğrulama sorusu "
+        f"({time.time() - t0:.0f}s tokenizasyon), {world} GPU[/cyan]")
 
-    lora = [p for p in decider.backbone.parameters() if p.requires_grad]
-    opt = torch.optim.AdamW([{"params": lora, "lr": a.lr}, {"params": [decider.readout], "lr": a.readout_lr}],
+    params = [p for p in decider.backbone.parameters() if p.requires_grad] + [decider.readout]
+    opt = torch.optim.AdamW([{"params": params[:-1], "lr": a.lr}, {"params": [decider.readout], "lr": a.readout_lr}],
                             weight_decay=0.0)
     epochs_batches = [micro_batches(train_items, a.token_budget, random.Random(a.seed + e)) for e in range(a.epochs)]
     schedule = [b for eb in epochs_batches for b in eb]
@@ -149,49 +170,63 @@ def train(a) -> None:
         step, best = state["step"], state.get("best", -1.0)
         opt.load_state_dict(torch.load(last / "optimizer.pt", map_location="cpu"))
         sched.load_state_dict(torch.load(last / "scheduler.pt", map_location="cpu"))
-        console.print(f"[yellow]Kaldığı yerden devam: adım {step}/{steps_total}[/yellow]")
-    console.print(f"[cyan]{steps_total} adım ({a.accum} mikro-batch/adım), {len(schedule)} mikro-batch[/cyan]")
+        say(f"[yellow]Kaldığı yerden devam: adım {step}/{steps_total}[/yellow]")
+    say(f"[cyan]{steps_total} adım ({a.accum} mikro-batch/adım), {len(schedule)} mikro-batch[/cyan]")
 
     decider.backbone.train()
-    log = (out / "train_log.jsonl").open("a", encoding="utf-8")
+    log = (out / "train_log.jsonl").open("a", encoding="utf-8") if main else None
     running, t_step = 0.0, time.time()
-    for mb_index in range(step * a.accum, len(schedule)):
-        batch = schedule[mb_index]
-        with torch.autocast("cuda", dtype=torch.bfloat16):
-            logits = decider.logits([it.ids for it in batch], [it.count for it in batch])
-        labels = torch.tensor([it.label for it in batch], device=decider.device)
-        loss = torch.nn.functional.cross_entropy(logits, labels, label_smoothing=a.label_smoothing) / a.accum
-        loss.backward()
-        running += loss.item()
-        if (mb_index + 1) % a.accum and mb_index + 1 != len(schedule):
-            continue
-        torch.nn.utils.clip_grad_norm_(lora + [decider.readout], 1.0)
+    while step < steps_total:
+        step_batches = schedule[step * a.accum:(step + 1) * a.accum]
+        for batch in step_batches[rank::world]:
+            with torch.autocast("cuda", dtype=torch.bfloat16):
+                logits = decider.logits([it.ids for it in batch], [it.count for it in batch])
+            labels = torch.tensor([it.label for it in batch], device=decider.device)
+            loss = torch.nn.functional.cross_entropy(logits, labels, label_smoothing=a.label_smoothing)
+            (loss / len(step_batches)).backward()
+            running += loss.item() / len(step_batches)
+        if world > 1:
+            for p in params:
+                if p.grad is None:
+                    p.grad = torch.zeros_like(p)
+                dist.all_reduce(p.grad)  # sum of per-GPU partial means = mean over the step's micro-batches
+            t = torch.tensor([running], device=decider.device)
+            dist.all_reduce(t)
+            running = t.item()
+        torch.nn.utils.clip_grad_norm_(params, 1.0)
         opt.step()
         sched.step()
         opt.zero_grad(set_to_none=True)
         step += 1
         if step % a.log_every == 0:
             rate = a.log_every / (time.time() - t_step)
-            console.print(f"adım {step}/{steps_total} loss {running / a.log_every:.4f} ({rate:.2f} adım/s)")
-            log.write(json.dumps({"step": step, "loss": running / a.log_every}) + "\n")
-            log.flush()
+            say(f"adım {step}/{steps_total} loss {running / a.log_every:.4f} ({rate:.2f} adım/s)")
+            if main:
+                log.write(json.dumps({"step": step, "loss": running / a.log_every}) + "\n")
+                log.flush()
             running, t_step = 0.0, time.time()
         if step % a.save_every == 0 or step == steps_total:
-            decider.backbone.eval()
-            m = evaluate(decider, val_items, a.token_budget)
-            decider.backbone.train()
-            console.print(f"[bold]adım {step}[/bold] val macro_acc {m['macro_acc']:.4f} ece {m['ece']:.4f}")
-            log.write(json.dumps({"step": step, "val": m}, ensure_ascii=False) + "\n")
-            log.flush()
-            if m["macro_acc"] > best:
-                best = m["macro_acc"]
-                decider.save_adapter(out / "best", {"step": step, "val": m})
-            decider.save_adapter(last, {"step": step})
-            torch.save(opt.state_dict(), last / "optimizer.pt")
-            torch.save(sched.state_dict(), last / "scheduler.pt")
-            (last / "trainer_state.json").write_text(json.dumps({"step": step, "best": best}))
-    (out / "DONE").write_text(json.dumps({"steps": step, "best_val_macro_acc": best}))
-    console.print(f"[green]✓ Bitti: en iyi val macro_acc {best:.4f} → {out / 'best'}[/green]")
+            if main:
+                decider.backbone.eval()
+                m = evaluate(decider, val_items, a.token_budget)
+                decider.backbone.train()
+                say(f"[bold]adım {step}[/bold] val macro_acc {m['macro_acc']:.4f} ece {m['ece']:.4f}")
+                log.write(json.dumps({"step": step, "val": m}, ensure_ascii=False) + "\n")
+                log.flush()
+                if m["macro_acc"] > best:
+                    best = m["macro_acc"]
+                    decider.save_adapter(out / "best", {"step": step, "val": m})
+                decider.save_adapter(last, {"step": step})
+                torch.save(opt.state_dict(), last / "optimizer.pt")
+                torch.save(sched.state_dict(), last / "scheduler.pt")
+                (last / "trainer_state.json").write_text(json.dumps({"step": step, "best": best}))
+            if world > 1:
+                dist.barrier()
+    if main:
+        (out / "DONE").write_text(json.dumps({"steps": step, "best_val_macro_acc": best}))
+        say(f"[green]✓ Bitti: en iyi val macro_acc {best:.4f} → {out / 'best'}[/green]")
+    if world > 1:
+        dist.destroy_process_group()
 
 
 def run_eval(a) -> None:
