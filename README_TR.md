@@ -2,7 +2,7 @@
 
 # Pusula
 
-### Türkçe metinler için hızlı ve kalibre karar motoru
+### İlk Türkçe tam donanımlı karar modeli
 
 [English](README.md) • [Türkçe](README_TR.md)
 
@@ -12,23 +12,34 @@
 
 </div>
 
-Pusula, herhangi bir Türkçe metin (müşteri mesajı, destek kaydı, bir ajanın bağlamı) hakkında
-**sizin tanımladığınız sorulara** cevap verir ve metin üretmeden **her seçenek için bir olasılık**
-döndürür. Bir ajanın ya da iş akışının hızlı ve tipli bir karara ihtiyaç duyduğu her yerde
-kullanılabilir: yönlendirme, triyaj, araç seçimi, güvenlik denetimi, insana devir.
+Karar modelleri bir metin hakkında tipli sorulara cevap verir (bu kaydı kime yönlendirmeli, bu bir
+prompt enjeksiyonu mu, ne kadar acil) ve metin üretmek yerine **her seçenek için bir olasılık** döndürür.
+Bugünkü karar modelleri (Decision 3.0, Jev, Laya, ...) İngilizce için kurulmuştur ve Türkçede zorlanır.
+**Pusula, Türkçe için eğitilmiş Decision 3.0'dır.**
 
-- **İstek anında istediğiniz seçenekler.** Seçenekler metin olarak okunur; sabit bir etiket kümesine bağlı değilsiniz.
+- **Önce Türkçe.** [vllm-sr/d3](https://huggingface.co/vllm-sr/d3) (Decision 3.0), 20 alanda Türkçe karar
+  verisiyle ince ayarlandı: bankacılık, muhasebe ve vergi, hukuk, sağlık, e-ticaret, lojistik, kamu
+  hizmetleri ve daha fazlası. Gündelik yazım, yazım hataları, eksik Türkçe karakterler ve Türkçe–İngilizce
+  karışık metinler dahil.
+- **İstek anında istediğiniz seçenekler.** Soruyu ve seçeneklerini her istekte siz tanımlarsınız.
 - **Üç soru tipi.** `choice` (birini seç), `noul` (evet/hayır), `score` (sıralı seviyeler).
-- **Kalibre olasılıklar.** Güven değerleri sıcaklık ölçeklemesiyle kalibre edilir; eşik koyabilirsiniz.
+- **d3'ün yerine doğrudan takılır.** d3'ün `/v1/systemone` istek ve cevap biçimiyle birebir aynı.
 - **Hazır Türkçe taksonomi.** 20 alan → 86 alt alan → 299 niyet ve altı evrensel kontrol
   (aciliyet, eylem gerekli mi, insana devir, güvenlik riski, duygu, kişisel veri).
-- **d3 uyumlu API.** [vllm-sr/d3](https://huggingface.co/vllm-sr/d3)'ün `/v1/systemone` istek ve cevap
-  biçimiyle birebir aynıdır; doğrudan yerine kullanılabilir.
-- **Küçük ve yerel.** 149M parametreli bir kodlayıcı ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT));
-  kendi GPU'nuzda ya da CPU'da, istek başı ücret olmadan çalışır.
+- **Türkçe karar benchmark'ı.** Pusula, bağımsız etiketlenmiş Türkçe bir test setinde ham Decision 3.0 ile
+  karşılaştırılır; sonuçlar modelle birlikte yayınlanır.
 
-> **Durum:** ön sürüm. API ve kod kararlı; eğitilmiş model ağırlıkları ölçülmüş doğruluk ve gecikme
-> değerleriyle birlikte Hugging Face'te yayınlanacak.
+> **Durum:** ön sürüm. API ve kod kararlı; model ağırlıkları ve benchmark sonuçları Hugging Face'te
+> yayınlanacak.
+
+## Modeller
+
+| Model | Boyut | Çalıştığı yer | Ne için |
+|---|---|---|---|
+| **Pusula** (Türkçe Decision 3.0) | 26B, 4-bit yüklenir (`vllm-sr/d3` üzerine LoRA adaptörü) | ≥ 24 GB GPU | En iyi Türkçe karar kalitesi |
+| **Pusula Small** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | Herhangi bir GPU veya CPU | Yüksek hacim, düşük gecikme, uç cihazlar |
+
+İkisi de birebir aynı istekleri cevaplar.
 
 ---
 
@@ -50,11 +61,13 @@ kullanılabilir: yönlendirme, triyaj, araç seçimi, güvenlik denetimi, insana
 ## Kurulum
 
 ```bash
-pip install "pusula[serve] @ git+https://github.com/hsnsahinhsn/pusula"
+pip install "pusula[serve,d3] @ git+https://github.com/hsnsahinhsn/pusula"
+hf download vllm-sr/d3 --local-dir ~/d3 --exclude "assets/*"     # temel Decision 3.0 ağırlıkları (~52 GB)
 ```
 
-`serve` eki PyTorch, Transformers ve FastAPI'yi kurar. GPU'da çalıştırmak için önce PyTorch'un CUDA
-sürümünü kurun ([pytorch.org](https://pytorch.org/get-started/locally/)).
+`serve` eki PyTorch, Transformers ve FastAPI'yi; `d3` eki 4-bit model için PEFT ve bitsandbytes'ı kurar.
+Önce PyTorch'un CUDA sürümünü kurun ([pytorch.org](https://pytorch.org/get-started/locally/)).
+Pusula Small için yalnızca `serve` eki yeterlidir.
 
 ## Temel kavramlar
 
@@ -117,9 +130,10 @@ Yukarıdaki isteğin cevabı (değerler örnek amaçlıdır):
 ## Python API
 
 ```python
-from pusula.inference import DecisionEngine
+from pusula.inference import D3Engine, DecisionEngine
 
-engine = DecisionEngine.load("path/to/pusula-model")   # varsa GPU, yoksa CPU
+engine = D3Engine.load("~/d3", adapter="path/to/pusula")      # Pusula (Türkçe Decision 3.0)
+# engine = DecisionEngine.load("path/to/pusula-small")        # Pusula Small (GPU veya CPU)
 
 answers = engine.decide(
     "Siparişim 5 gündür kargoda, hâlâ gelmedi. Artık iptal etmek istiyorum.",
@@ -153,7 +167,8 @@ Sorular yukarıdaki gibi sözlük ya da `pusula.Question` nesnesi olabilir.
 Sunucuyu başlatın:
 
 ```bash
-PUSULA_MODEL_DIR=path/to/pusula-model pusula-serve --port 8080
+PUSULA_D3_BASE=~/d3 PUSULA_MODEL_DIR=path/to/pusula pusula-serve --port 8080   # Pusula
+PUSULA_MODEL_DIR=path/to/pusula-small pusula-serve --port 8080                  # Pusula Small
 ```
 
 | Metot | Yol | Açıklama |
@@ -180,7 +195,8 @@ Geçersiz sorular HTTP 422 ve sebebiyle döner. Ayarlar (ortam değişkenleri):
 
 | Değişken | Varsayılan | Anlamı |
 |---|---|---|
-| `PUSULA_MODEL_DIR` | — | Açılışta yüklenecek model dizini |
+| `PUSULA_D3_BASE` | — | Temel `vllm-sr/d3` dizini; Pusula'yı sunmak için ayarlayın (`PUSULA_MODEL_DIR` adaptör olur) |
+| `PUSULA_MODEL_DIR` | — | Pusula adaptör dizini ya da Pusula Small model dizini |
 | `PUSULA_DEVICE` | otomatik | `cuda`, `cuda:1`, `cpu`… |
 | `PUSULA_CORS_ORIGINS` | yok | Tarayıcı istemcileri için virgülle ayrılmış izinli origin'ler |
 | `PUSULA_MAX_QUESTIONS` | 32 | İstek başına soru sayısı |
@@ -272,12 +288,14 @@ sorular = {"alan": tax.domain_question(), **tax.universal, "benim_sorum": {...}}
 
 ## Kendi modelinizi eğitmek
 
-Pusula'yı oluşturmak için kullanılan her şey bu depoda. Pipeline, yerel bir LLM ile etiketli Türkçe veri
-üretir, bir öğretmen karar modeliyle etiketler ve TabiBERT cross-encoder'a damıtır:
+Pusula'yı oluşturmak için kullanılan her şey bu depoda; Decision 3.0'ı kendi alanınızın ya da dilinizin
+verisiyle ince ayarlayabilirsiniz. Pipeline, yerel bir LLM ile etiketli karar verisi üretir, temizler ve
+d3'ü QLoRA ile ince ayarlar:
 
 ```bash
-pip install -e ".[train,generate,teacher]"
-bash scripts/pipeline.sh benim-kosum      # generate → judge → teach → build → gold → train → evaluate
+pip install -e ".[train,generate,d3]"
+bash scripts/pipeline.sh benim-kosum
+# generate → judge → fetch_d3 → teach → build → curate → gold → d3train → evaluate
 ```
 
 Her aşama kaldığı yerden devam eder. Seçenekler için [`pusula/`](pusula/) altındaki modül açıklamalarına bakın.
@@ -287,4 +305,6 @@ Her aşama kaldığı yerden devam eder. Seçenekler için [`pusula/`](pusula/) 
 Apache 2.0. Pusula şu açık kaynak çalışmalar üzerine kuruludur:
 [TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) (Boğaziçi Üniversitesi TABILAB),
 [vllm-sr/d3](https://huggingface.co/vllm-sr/d3) (vLLM Semantic Router) ve
-[Qwen3.8](https://huggingface.co/Qwen/Qwen3.8-27B). Hepsi Apache 2.0 lisanslıdır.
+[Qwen3.8](https://huggingface.co/Qwen/Qwen3.8-27B). Hepsi Apache 2.0 lisanslıdır. `pusula/d3model.py`
+içindeki d3 prompt sözleşmesi ve nedensel olmayan dikkat kancası vllm-sr/d3'ü (orada
+perplexity-ai/pplx-decider-v1.1-27b'den uyarlanmış) izler, Apache 2.0.

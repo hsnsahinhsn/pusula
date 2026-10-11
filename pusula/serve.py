@@ -1,6 +1,9 @@
 """Pusula HTTP API (FastAPI). Request/answer shapes follow vllm-sr/d3's /v1/systemone.
 
-    PUSULA_MODEL_DIR=runs/full/model/best uvicorn pusula.serve:app --host 0.0.0.0 --port 8080
+    # Pusula (Turkish Decision 3.0): base d3 snapshot + Pusula adapter
+    PUSULA_D3_BASE=~/d3 PUSULA_MODEL_DIR=path/to/pusula-d3 pusula-serve
+    # small TabiBERT model
+    PUSULA_MODEL_DIR=path/to/pusula-small pusula-serve
 
 Endpoints:
     POST /v1/systemone        {"state": str, "questions": {name: {type, instructions, criteria}}}
@@ -58,7 +61,12 @@ def create_app(engine: Any = None, model_dir: Optional[str] = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         path = model_dir or os.getenv("PUSULA_MODEL_DIR")
-        if state["engine"] is None and path:
+        d3_base = os.getenv("PUSULA_D3_BASE")
+        if state["engine"] is None and d3_base:
+            from .inference import D3Engine
+
+            state["engine"] = D3Engine.load(d3_base, adapter=path, device=os.getenv("PUSULA_DEVICE") or "cuda:0")
+        elif state["engine"] is None and path:
             from .inference import DecisionEngine
 
             state["engine"] = DecisionEngine.load(path, device=os.getenv("PUSULA_DEVICE"))
@@ -72,7 +80,7 @@ def create_app(engine: Any = None, model_dir: Optional[str] = None) -> FastAPI:
 
     def get_engine():
         if state["engine"] is None:
-            raise HTTPException(503, "Model yüklü değil (PUSULA_MODEL_DIR ayarlayın).")
+            raise HTTPException(503, "Model yüklü değil (PUSULA_D3_BASE / PUSULA_MODEL_DIR ayarlayın).")
         return state["engine"]
 
     @app.get("/health")

@@ -44,14 +44,14 @@ train = [
 generate = [
     "openai>=1.40",
 ]
-# Teacher labeling with vllm-sr/d3 (its runtime pins transformers)
-teacher = [
-    "transformers==5.17.0",
+# Pusula = Decision 3.0 (vllm-sr/d3) in 4-bit + LoRA: inference, labeling and fine-tuning
+d3 = [
+    "transformers>=5.17",
+    "peft>=0.13",
+    "bitsandbytes>=0.45",
     "accelerate>=1.10",
     "einops",
-    "pillow>=10",
-    "torchvision",
-    "opencv-python-headless",
+    "flash-linear-attention",
 ]
 dev = [
     "pusula[serve,generate]",

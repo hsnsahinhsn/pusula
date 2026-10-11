@@ -2,7 +2,7 @@
 
 # Pusula
 
-### Fast, calibrated decisions on Turkish text
+### The first full-featured Turkish decision model
 
 [English](README.md) • [Türkçe](README_TR.md)
 
@@ -12,23 +12,33 @@
 
 </div>
 
-Pusula answers **questions you define** about any Turkish text (a customer message, a ticket, an
-agent's context) and returns a **probability for every option**, without generating text. Use it
-wherever an agent or workflow needs a quick, typed decision: routing, triage, tool selection,
-guardrails, escalation.
+Decision models answer typed questions about a text — route this ticket, is this a prompt injection,
+how urgent is it — and return a **probability for every option** instead of generating text. Today's
+decision models (Decision 3.0, Jev, Laya, ...) are built for English and stumble on Turkish.
+**Pusula is Decision 3.0 trained for Turkish.**
 
-- **Any options, at request time.** Options are read as text, so you are not limited to a fixed label set.
+- **Turkish first.** [vllm-sr/d3](https://huggingface.co/vllm-sr/d3) (Decision 3.0) fine-tuned on Turkish
+  decision data across 20 domains: banking, accounting and tax, law, health, e-commerce, logistics, public
+  services and more — informal writing, typos, missing Turkish characters and mixed Turkish–English included.
+- **Any options, at request time.** You define the question and its options in each request.
 - **Three question types.** `choice` (pick one), `noul` (yes/no), `score` (ordered levels).
-- **Calibrated probabilities.** Confidence values are temperature-calibrated, so you can set thresholds.
+- **Drop-in d3 replacement.** Same request and answer format as d3's `/v1/systemone`.
 - **Built-in Turkish taxonomy.** 20 domains → 86 subdomains → 299 intents, plus six universal checks
   (urgency, action needed, human handoff, security risk, emotion, personal data).
-- **d3-compatible API.** Same request and answer format as
-  [vllm-sr/d3](https://huggingface.co/vllm-sr/d3)'s `/v1/systemone`, so it can be used as a drop-in replacement.
-- **Small and local.** A 149M-parameter encoder ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT));
-  runs on your own GPU or CPU with no per-request fees.
+- **Turkish decision benchmark.** Pusula is evaluated against base Decision 3.0 on an independently
+  labeled Turkish test set; results are published with the model.
 
-> **Status:** pre-release. The API and code are stable; trained model weights will be published on
-> Hugging Face with measured accuracy and latency.
+> **Status:** pre-release. The API and code are stable; model weights and benchmark results will be
+> published on Hugging Face.
+
+## Models
+
+| Model | Size | Runs on | Use it for |
+|---|---|---|---|
+| **Pusula** (Turkish Decision 3.0) | 26B, loaded in 4-bit (LoRA adapter on top of `vllm-sr/d3`) | GPU with ≥ 24 GB | Best Turkish decision quality |
+| **Pusula Small** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | Any GPU or CPU | High volume, low latency, edge |
+
+Both answer exactly the same requests.
 
 ---
 
@@ -50,11 +60,13 @@ guardrails, escalation.
 ## Installation
 
 ```bash
-pip install "pusula[serve] @ git+https://github.com/hsnsahinhsn/pusula"
+pip install "pusula[serve,d3] @ git+https://github.com/hsnsahinhsn/pusula"
+hf download vllm-sr/d3 --local-dir ~/d3 --exclude "assets/*"     # base Decision 3.0 weights (~52 GB)
 ```
 
-The `serve` extra installs PyTorch, Transformers and FastAPI. For GPU inference, install a CUDA build
-of PyTorch first ([pytorch.org](https://pytorch.org/get-started/locally/)).
+The `serve` extra installs PyTorch, Transformers and FastAPI; `d3` adds PEFT and bitsandbytes for the
+4-bit model. Install a CUDA build of PyTorch first ([pytorch.org](https://pytorch.org/get-started/locally/)).
+Pusula Small needs only the `serve` extra.
 
 ## Concepts
 
@@ -117,9 +129,10 @@ Answer for the request above (illustrative values):
 ## Python API
 
 ```python
-from pusula.inference import DecisionEngine
+from pusula.inference import D3Engine, DecisionEngine
 
-engine = DecisionEngine.load("path/to/pusula-model")   # GPU if available, else CPU
+engine = D3Engine.load("~/d3", adapter="path/to/pusula")      # Pusula (Turkish Decision 3.0)
+# engine = DecisionEngine.load("path/to/pusula-small")        # Pusula Small (GPU or CPU)
 
 answers = engine.decide(
     "Siparişim 5 gündür kargoda, hâlâ gelmedi. Artık iptal etmek istiyorum.",
@@ -153,7 +166,8 @@ Questions can be plain dicts as above or `pusula.Question` objects.
 Start the server:
 
 ```bash
-PUSULA_MODEL_DIR=path/to/pusula-model pusula-serve --port 8080
+PUSULA_D3_BASE=~/d3 PUSULA_MODEL_DIR=path/to/pusula pusula-serve --port 8080   # Pusula
+PUSULA_MODEL_DIR=path/to/pusula-small pusula-serve --port 8080                  # Pusula Small
 ```
 
 | Method | Path | Description |
@@ -180,7 +194,8 @@ Invalid questions return HTTP 422 with the reason. Configuration (environment va
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `PUSULA_MODEL_DIR` | — | Model directory to load at startup |
+| `PUSULA_D3_BASE` | — | Base `vllm-sr/d3` directory; set it to serve Pusula (then `PUSULA_MODEL_DIR` is the adapter) |
+| `PUSULA_MODEL_DIR` | — | Pusula adapter directory, or a Pusula Small model directory |
 | `PUSULA_DEVICE` | auto | `cuda`, `cuda:1`, `cpu`… |
 | `PUSULA_CORS_ORIGINS` | none | Comma-separated allowed origins for browser clients |
 | `PUSULA_MAX_QUESTIONS` | 32 | Questions per request |
@@ -273,12 +288,14 @@ questions = {"alan": tax.domain_question(), **tax.universal, "my_question": {...
 
 ## Training your own model
 
-Everything used to build Pusula is in this repository. The pipeline generates labeled Turkish data with a
-local LLM, labels it with a teacher decision model, and distills it into the TabiBERT cross-encoder:
+Everything used to build Pusula is in this repository, so you can fine-tune Decision 3.0 on your own
+domain or language data. The pipeline writes labeled decision data with a local LLM, cleans it, and
+fine-tunes d3 with QLoRA:
 
 ```bash
-pip install -e ".[train,generate,teacher]"
-bash scripts/pipeline.sh my-run            # generate → judge → teach → build → gold → train → evaluate
+pip install -e ".[train,generate,d3]"
+bash scripts/pipeline.sh my-run
+# generate → judge → fetch_d3 → teach → build → curate → gold → d3train → evaluate
 ```
 
 Each stage is resumable. See the module docstrings in [`pusula/`](pusula/) for options.
@@ -288,4 +305,6 @@ Each stage is resumable. See the module docstrings in [`pusula/`](pusula/) for o
 Apache 2.0. Pusula builds on
 [TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) (Boğaziçi University TABILAB),
 [vllm-sr/d3](https://huggingface.co/vllm-sr/d3) (vLLM Semantic Router) and
-[Qwen3.8](https://huggingface.co/Qwen/Qwen3.8-27B), all Apache 2.0.
+[Qwen3.8](https://huggingface.co/Qwen/Qwen3.8-27B), all Apache 2.0. The d3 prompt contract and
+non-causal attention hook in `pusula/d3model.py` follow vllm-sr/d3 (adapted there from
+perplexity-ai/pplx-decider-v1.1-27b), Apache 2.0.

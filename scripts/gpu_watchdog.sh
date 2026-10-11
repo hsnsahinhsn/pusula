@@ -7,6 +7,7 @@
 # (both resumable), then gives them GRACE seconds to start before checking again.
 #
 #   bash scripts/gpu_watchdog.sh <done-marker> <server-cmd> <stage-cmd> <output-file>...
+#   (pass "" as <server-cmd> for stages that need no server, e.g. d3 labeling or training)
 #
 # Environment: STALL (default 240), GRACE (default 300), CHECK (default 20), LOG (default stdout).
 set -uo pipefail
@@ -22,12 +23,13 @@ restart() {
   log "restart: $1"
   tmux kill-session -t stage 2>/dev/null
   tmux kill-session -t server 2>/dev/null
-  pkill -f "vllm serve" 2>/dev/null; sleep 5; pkill -9 -f "VLLM::EngineCore" 2>/dev/null; sleep 2
-  tmux new-session -d -s server "$SERVER_CMD"
+  pkill -f "vllm serve" 2>/dev/null; pkill -f "python -m pusula" 2>/dev/null; sleep 5
+  pkill -9 -f "VLLM::EngineCore" 2>/dev/null; pkill -9 -f "python -m pusula" 2>/dev/null; sleep 2
+  [[ -n $SERVER_CMD ]] && tmux new-session -d -s server "$SERVER_CMD"
   tmux new-session -d -s stage "$STAGE_CMD"
 }
 
-tmux has-session -t server 2>/dev/null || restart "start"
+tmux has-session -t stage 2>/dev/null || restart "start"
 last=$(lines); since=$(( $(date +%s) + GRACE ))
 restarts=0
 while [[ ! -f $DONE ]]; do

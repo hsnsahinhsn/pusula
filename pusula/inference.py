@@ -26,7 +26,86 @@ def _as_questions(questions: QuestionsIn) -> dict[str, Question]:
     return {k: q if isinstance(q, Question) else Question(**q) for k, q in questions.items()}
 
 
-class DecisionEngine:
+class BaseEngine:
+    """decide() and route() on top of a subclass's decide_many()."""
+
+    model_name = "pusula"
+
+    def decide_many(self, requests: Sequence[tuple[str, QuestionsIn]]) -> list[dict[str, dict[str, Any]]]:
+        raise NotImplementedError
+
+    def decide(self, state: str, questions: QuestionsIn) -> dict[str, dict[str, Any]]:
+        return self.decide_many([(state, questions)])[0]
+
+    def route(self, state: str, taxonomy: Optional[Taxonomy] = None, universal: bool = True) -> dict[str, Any]:
+        """Hierarchical routing alan -> alt_alan -> niyet (three passes), plus the universal questions."""
+        tax = taxonomy or load_taxonomy()
+        first = {Q_DOMAIN: tax.domain_question()}
+        if universal:
+            first.update(tax.universal)
+        answers = self.decide(state, first)
+        domain = answers[Q_DOMAIN]["choice"]
+        answers.update(self.decide(state, {Q_SUBDOMAIN: tax.subdomain_question(domain)}))
+        sub = answers[Q_SUBDOMAIN]["choice"]
+        answers.update(self.decide(state, {Q_INTENT: tax.intent_question(domain, sub)}))
+        return {
+            "path": f"{domain}.{sub}.{answers[Q_INTENT]['choice']}",
+            "answers": answers,
+        }
+
+
+class D3Engine(BaseEngine):
+    """Pusula's main model: Decision 3.0 fine-tuned for Turkish (4-bit base + LoRA adapter)."""
+
+    model_name = "pusula-d3"
+
+    def __init__(self, decider, token_budget: int = 16384):
+        self.decider = decider
+        self.token_budget = token_budget
+        self._lock = threading.Lock()
+
+    @classmethod
+    def load(cls, base: str, adapter: Optional[str] = None, device: str = "cuda:0") -> "D3Engine":
+        from .d3model import D3Decider
+
+        decider = D3Decider.load(base, adapter=adapter, device=device)
+        decider.backbone.eval()
+        engine = cls(decider)
+        if adapter is None:
+            engine.model_name = "d3-base"
+        return engine
+
+    @torch.inference_mode()
+    def decide_many(self, requests: Sequence[tuple[str, QuestionsIn]]) -> list[dict[str, dict[str, Any]]]:
+        from .d3model import render
+
+        jobs = [(r, name, q) for r, (state, qs) in enumerate(requests) for name, q in _as_questions(qs).items()]
+        d = self.decider
+        ids = d.encode([render(d.tokenizer, requests[r][0], q, d.codes) for r, _, q in jobs])
+        results: list[dict[str, dict[str, Any]]] = [{} for _ in requests]
+        order = sorted(range(len(jobs)), key=lambda i: len(ids[i]))
+        with self._lock:
+            start = 0
+            while start < len(order):
+                end, width = start, 0
+                while end < len(order) and max(width, len(ids[order[end]])) * (end - start + 1) <= self.token_budget:
+                    width = max(width, len(ids[order[end]]))
+                    end += 1
+                end = max(end, start + 1)
+                batch = order[start:end]
+                counts = [len(jobs[i][2].option_keys()) for i in batch]
+                with torch.autocast(d.device.type, dtype=torch.bfloat16, enabled=d.device.type == "cuda"):
+                    logits = d.logits([ids[i] for i in batch], counts)
+                probs = torch.softmax(logits.float(), dim=-1).cpu()
+                for row, i in enumerate(batch):
+                    r, name, q = jobs[i]
+                    results[r][name] = answer_from_probs(q, probs[row, : counts[row]].tolist())
+                start = end
+        return results
+
+
+class DecisionEngine(BaseEngine):
+    """Small and fast: a TabiBERT cross-encoder distilled from the Turkish decision data."""
     def __init__(self, model: PusulaModel, tokenizer, max_length: int = 1024,
                  device: Optional[torch.device] = None, max_pairs_per_pass: int = 256):
         self.model = model
@@ -83,22 +162,3 @@ class DecisionEngine:
             probs = torch.softmax(logits[start:start + n] / t, dim=-1).tolist()
             results[r][name] = answer_from_probs(q, probs)
         return results
-
-    def decide(self, state: str, questions: QuestionsIn) -> dict[str, dict[str, Any]]:
-        return self.decide_many([(state, questions)])[0]
-
-    def route(self, state: str, taxonomy: Optional[Taxonomy] = None, universal: bool = True) -> dict[str, Any]:
-        """Hierarchical routing alan -> alt_alan -> niyet (three passes), plus the universal questions."""
-        tax = taxonomy or load_taxonomy()
-        first = {Q_DOMAIN: tax.domain_question()}
-        if universal:
-            first.update(tax.universal)
-        answers = self.decide(state, first)
-        domain = answers[Q_DOMAIN]["choice"]
-        answers.update(self.decide(state, {Q_SUBDOMAIN: tax.subdomain_question(domain)}))
-        sub = answers[Q_SUBDOMAIN]["choice"]
-        answers.update(self.decide(state, {Q_INTENT: tax.intent_question(domain, sub)}))
-        return {
-            "path": f"{domain}.{sub}.{answers[Q_INTENT]['choice']}",
-            "answers": answers,
-        }
