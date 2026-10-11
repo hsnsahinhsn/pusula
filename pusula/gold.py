@@ -27,19 +27,22 @@ from .schema import Example, Question
 from .taxonomy import Q_DOMAIN, Q_INTENT, Q_SUBDOMAIN, ROUTING_QUESTIONS, load_taxonomy
 
 GOLD = "gold"
+HARD_QUESTION = "niyet_zor"  # pusula.curate's derived question: its options always contain the true intent
 
 
-def extra_questions(ex: Example) -> dict[str, Question]:
-    """Questions that are neither taxonomy routing nor universal (e.g. ad-hoc ones)."""
+def extra_questions(ex: Example, blind: bool = False) -> dict[str, Question]:
+    """Questions that are neither taxonomy routing nor universal (e.g. ad-hoc ones). The blind file leaves out
+    the hard intent question, whose option set would hint at the intent; its gold label is derived on import."""
     universal = load_taxonomy().universal
-    return {k: q for k, q in ex.questions.items() if k not in ROUTING_QUESTIONS and k not in universal}
+    return {k: q for k, q in ex.questions.items() if k not in ROUTING_QUESTIONS and k not in universal
+            and not (blind and k == HARD_QUESTION)}
 
 
 def blind_rows(examples: list[Example]) -> list[dict]:
     return [{
         "id": ex.id,
         "state": ex.state,
-        "extra_questions": {k: q.model_dump(exclude_none=True) for k, q in extra_questions(ex).items()},
+        "extra_questions": {k: q.model_dump(exclude_none=True) for k, q in extra_questions(ex, blind=True).items()},
     } for ex in examples]
 
 
@@ -93,6 +96,11 @@ def import_labels(candidates: str, labels: str, out: str) -> int:
         questions: dict[str, Question] = tax.questions_for(path)
         questions.update(extra_questions(ex))
         gold_labels = {k: v for k, v in given.items() if k in questions and v in questions[k].option_keys()}
+        hard = questions.get(HARD_QUESTION)
+        if hard is not None and given.get(Q_INTENT) in hard.option_keys():
+            gold_labels[HARD_QUESTION] = given[Q_INTENT]
+        elif hard is not None:
+            gold_labels.pop(HARD_QUESTION, None)
         # Other sources stay comparable only on questions identical to the gold ones
         # (alt_alan / niyet questions change when the gold domain differs).
         labels_out = {GOLD: gold_labels}
