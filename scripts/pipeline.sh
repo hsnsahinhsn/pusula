@@ -16,7 +16,7 @@
 #     evaluate   base d3 vs Pusula on the test split and the gold benchmark
 #
 # Environment (optional):
-#   N=15000  QWEN_MODEL=Qwen/Qwen3.8-27B-FP8  VLLM_MEM=0.90  D3_DIR=~/d3  HF_HOME=~/hf
+#   N=15000  D3_SAMPLE=2000 (examples base d3 labels; 0 = all)  QWEN_MODEL=Qwen/Qwen3.8-27B-FP8  VLLM_MEM=0.90  D3_DIR=~/d3  HF_HOME=~/hf
 #   VLLM_EXTRA="--enforce-eager"   extra vLLM flags (recommended on shared/time-sliced GPUs)
 set -euo pipefail
 
@@ -71,7 +71,7 @@ for stage in $STAGES; do
     baseline)
       python -m pusula.d3train eval --d3 "$D3_DIR" --data "$ROOT/benchmark/tr_decision_bench_v1.jsonl"         --out "$DIR/reports/d3_base_tr_decision_bench_v1.json" ;;
     teach)
-      python -m pusula.teacher --d3 "$D3_DIR" --inp "$DIR/judged.jsonl" --out "$DIR/labeled.jsonl" ;;
+      python -m pusula.teacher --d3 "$D3_DIR" --inp "$DIR/judged.jsonl" --out "$DIR/labeled.jsonl"         --sample "${D3_SAMPLE:-2000}" ;;
     build)
       python -m pusula.dataset --inp "$DIR/labeled.jsonl" --out-dir "$DIR/final" ;;
     curate)

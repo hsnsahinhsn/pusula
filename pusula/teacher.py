@@ -1,4 +1,4 @@
-"""Stage 3: label every question with the base Decision 3.0 model (vllm-sr/d3).
+"""Stage 3: label questions with the base Decision 3.0 model (vllm-sr/d3).
 
 d3 returns a probability for every option without generating text. Its argmax is the third consensus
 vote, its distributions are kept as soft targets, and its accuracy is the "before" baseline that the
@@ -6,14 +6,18 @@ Turkish fine-tune is measured against. The model is loaded in 4-bit through the 
 training (pusula.d3model), so base and fine-tuned d3 are compared under identical quantization; this also
 fits the 26B model on GPUs with less than ~60 GB free.
 
-    python -m pusula.teacher --d3 ~/d3 --inp runs/full/judged.jsonl --out runs/full/labeled.jsonl
+    python -m pusula.teacher --d3 ~/d3 --inp runs/full/judged.jsonl --out runs/full/labeled.jsonl --sample 2000
+
+With --sample N only the first N examples (in file order; generation cycles through every intent, so they
+cover the taxonomy evenly) are labeled by d3; the rest are passed through unchanged so later stages see the
+whole dataset.
 """
 from __future__ import annotations
 
 import argparse
 import time
 
-from .jsonl import JsonlWriter, done_ids, read_jsonl
+from .jsonl import JsonlWriter, read_jsonl
 from .llm import console
 from .schema import Example, argmax_key
 
@@ -58,26 +62,32 @@ def label_chunk(decider, examples: list[Example], token_budget: int) -> None:
 def run(args) -> None:
     from .d3model import D3Decider
 
-    done = done_ids(args.out)
+    existing = list(read_jsonl(args.out))
+    done = {row["id"] for row in existing}
+    labeled = sum(1 for row in existing if "d3" in row.get("labels", {}))
     todo = [Example(**row) for row in read_jsonl(args.inp) if row["id"] not in done]
-    if args.limit:
-        todo = todo[: max(0, args.limit - len(done))]
     if not todo:
-        console.print(f"[green]{args.out}: d3 etiketlemesi tamam.[/green]")
+        console.print(f"[green]{args.out}: d3 aşaması tamam ({labeled} örnek d3 etiketli).[/green]")
         return
-    console.print(f"[cyan]d3 yükleniyor ({args.d3}, 4-bit)...[/cyan]")
-    decider = D3Decider.load(args.d3)
-    decider.backbone.eval()
-    console.print(f"[cyan]d3: {len(todo)} örnek (önceden biten {len(done)})[/cyan]")
+    budget = max(0, args.sample - labeled) if args.sample else len(todo)
+    to_label, passthrough = todo[:budget], todo[budget:]
     t0 = time.time()
     with JsonlWriter(args.out) as writer:
-        for start in range(0, len(todo), args.chunk):
-            chunk = todo[start:start + args.chunk]
-            label_chunk(decider, chunk, args.token_budget)
-            for ex in chunk:
-                writer.write(ex)
-            n = start + len(chunk)
-            console.print(f"d3: {n}/{len(todo)} ({n / (time.time() - t0):.2f} örnek/s)")
+        if to_label:
+            console.print(f"[cyan]d3 yükleniyor ({args.d3}, 4-bit)...[/cyan]")
+            decider = D3Decider.load(args.d3)
+            decider.backbone.eval()
+            console.print(f"[cyan]d3: {len(to_label)} örnek etiketlenecek (önceden {labeled})[/cyan]")
+            for start in range(0, len(to_label), args.chunk):
+                chunk = to_label[start:start + args.chunk]
+                label_chunk(decider, chunk, args.token_budget)
+                for ex in chunk:
+                    writer.write(ex)
+                n = start + len(chunk)
+                console.print(f"d3: {n}/{len(to_label)} ({n / (time.time() - t0):.2f} örnek/s)")
+        for ex in passthrough:
+            writer.write(ex)
+    console.print(f"[green]✓ {len(to_label)} örnek d3 ile etiketlendi, {len(passthrough)} örnek aynen aktarıldı[/green]")
 
 
 def main(argv=None) -> None:
@@ -87,7 +97,7 @@ def main(argv=None) -> None:
     p.add_argument("--out", required=True)
     p.add_argument("--chunk", type=int, default=64, help="examples per write")
     p.add_argument("--token-budget", type=int, default=24576, help="padded tokens per forward pass")
-    p.add_argument("--limit", type=int, default=0, help="stop after this many labeled examples (0 = all)")
+    p.add_argument("--sample", type=int, default=0, help="label only the first N examples with d3 (0 = all)")
     run(p.parse_args(argv))
 
 
