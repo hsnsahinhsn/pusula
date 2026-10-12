@@ -161,9 +161,14 @@ class D3Decider:
                                        llm_int8_skip_modules=["visual", "lm_head"])
         if full_finetune and (load_in_4bit or adapter or lora_rank):
             raise ValueError("full fine-tuning is BF16/FP32 only, without adapters")
-        backbone = Qwen3_5Model.from_pretrained(model_dir, dtype=torch.float32 if full_finetune else torch.bfloat16,
-                                                attn_implementation="sdpa",
-                                                quantization_config=quant, device_map={"": device})
+        # a device_map loads straight to the GPU (no full copy in RAM) but needs accelerate; on CPU (Pusula Mini)
+        # a plain load is the same thing without that dependency
+        on_cpu = torch.device(device).type == "cpu" and quant is None
+        # FP32 for full fine-tuning (master weights) and on CPU, where BF16 matmuls are often many times slower
+        fp32 = full_finetune or on_cpu
+        backbone = Qwen3_5Model.from_pretrained(model_dir, dtype=torch.float32 if fp32 else torch.bfloat16,
+                                                attn_implementation="sdpa", quantization_config=quant,
+                                                **({} if on_cpu else {"device_map": {"": device}}))
         enable_noncausal_full_attention(backbone.language_model)
         readout_path = Path(adapter or model_dir) / "readout.safetensors"
         readout = torch.nn.Parameter(load_file(str(readout_path))["weight"].to(device, torch.float32))
