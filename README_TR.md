@@ -44,6 +44,24 @@ Hepsi birebir aynı istekleri cevaplar.
 
 ---
 
+## Sonuçlar
+
+Pusula v1.0'ın temel aldığı modelle karşılaştırmalı doğruluğu (%). Türkçe Karar Benchmark'ı ve altın set, eğitim
+verisinden bağımsız olarak etiketlendi.
+
+| Değerlendirme | Soru | Decision 3.0 | **Pusula v1.0** |
+|---|---|---|---|
+| [Türkçe Karar Benchmark'ı v1](benchmark/README.md) | 3.441 | 88,2 | **91,9** |
+| Altın set (kör etiketli, eğitimde yok) | 4.027 | 84,5 | **87,9** |
+| Ayrılmış test seti | 6.729 | 92,6 | **98,0** |
+| MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı) | 2.974 | 85,3 | 85,1 |
+| OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler) | 3.528 | 88,4 | **89,0** |
+
+Benchmark'ta en büyük kazanımlar insana devretme (69,5 → 88,8), aciliyet (62,6 → 71,3) ve alan yönlendirmesi
+(88,2 → 95,4). Kişisel veri tespiti temel modelin gerisinde (99,0 → 92,0); ayrıntılar model kartında.
+MASSIVE ve OffensEval eğitim verisinde yok: Türkçe eğitimin, modelin daha önce görmediği sorulara cevap verme
+yeteneğini koruduğunu gösteriyor.
+
 ## İçindekiler
 
 - [Kurulum](#kurulum)
@@ -64,6 +82,7 @@ Hepsi birebir aynı istekleri cevaplar.
 ```bash
 pip install "pusula[serve,d3] @ git+https://github.com/hsnsahinhsn/pusula"
 hf download vllm-sr/d3 --local-dir ~/d3 --exclude "assets/*"     # temel Decision 3.0 ağırlıkları (~52 GB)
+hf download hsnsahinhsn/pusula --local-dir ~/pusula                # Pusula v1.0 adaptörü (~840 MB)
 ```
 
 `serve` eki PyTorch, Transformers ve FastAPI'yi; `d3` eki 4-bit model için PEFT ve bitsandbytes'ı kurar.
@@ -133,7 +152,7 @@ Yukarıdaki isteğin cevabı (değerler örnek amaçlıdır):
 ```python
 from pusula.inference import D3Engine, DecisionEngine
 
-engine = D3Engine.load("~/d3", adapter="path/to/pusula")      # Pusula (Türkçe Decision 3.0)
+engine = D3Engine.load("~/d3", adapter="~/pusula")      # Pusula (Türkçe Decision 3.0)
 # engine = DecisionEngine.load("path/to/pusula-nano")        # Pusula Nano (GPU veya CPU)
 
 answers = engine.decide(

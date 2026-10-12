@@ -43,6 +43,24 @@ All of them answer exactly the same requests.
 
 ---
 
+## Results
+
+Accuracy (%) of Pusula v1.0 against the model it is built on. The Turkish Decision Benchmark and the gold set were
+labeled independently of the training data.
+
+| Evaluation | Questions | Decision 3.0 | **Pusula v1.0** |
+|---|---|---|---|
+| [Turkish Decision Benchmark v1](benchmark/README.md) | 3,441 | 88.2 | **91.9** |
+| Gold set (blind-labeled, held out) | 4,027 | 84.5 | **87.9** |
+| Held-out test split | 6,729 | 92.6 | **98.0** |
+| MASSIVE tr-TR, 60-way intent, zero-shot (human-written) | 2,974 | 85.3 | 85.1 |
+| OffensEval 2020 Turkish, offensive language (real tweets) | 3,528 | 88.4 | **89.0** |
+
+On the benchmark, the largest gains are human handoff (69.5 → 88.8), urgency (62.6 → 71.3) and domain routing
+(88.2 → 95.4). Personal-data detection is lower than the base model (99.0 → 92.0); see the model card for details.
+MASSIVE and OffensEval are not part of the training data: they show that the Turkish fine-tune keeps the base model's
+ability to answer unseen questions.
+
 ## Contents
 
 - [Installation](#installation)
@@ -63,6 +81,7 @@ All of them answer exactly the same requests.
 ```bash
 pip install "pusula[serve,d3] @ git+https://github.com/hsnsahinhsn/pusula"
 hf download vllm-sr/d3 --local-dir ~/d3 --exclude "assets/*"     # base Decision 3.0 weights (~52 GB)
+hf download hsnsahinhsn/pusula --local-dir ~/pusula                # Pusula v1.0 adapter (~840 MB)
 ```
 
 The `serve` extra installs PyTorch, Transformers and FastAPI; `d3` adds PEFT and bitsandbytes for the
@@ -132,7 +151,7 @@ Answer for the request above (illustrative values):
 ```python
 from pusula.inference import D3Engine, DecisionEngine
 
-engine = D3Engine.load("~/d3", adapter="path/to/pusula")      # Pusula (Turkish Decision 3.0)
+engine = D3Engine.load("~/d3", adapter="~/pusula")      # Pusula (Turkish Decision 3.0)
 # engine = DecisionEngine.load("path/to/pusula-nano")        # Pusula Nano (GPU or CPU)
 
 answers = engine.decide(
