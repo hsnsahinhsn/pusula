@@ -49,7 +49,8 @@ _TR = str.maketrans("çğıöşüâîû", "cgiosuaiu")
 
 
 def clean_key(s: str) -> str:
-    s = unicodedata.normalize("NFKC", s).lower().translate(_TR)
+    s = unicodedata.normalize("NFKC", s).replace("İ", "i").replace("I", "ı").lower().translate(_TR)
+    s = "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
     s = re.sub(r"[^a-z0-9]+", "_", s).strip("_")
     return s[:48]
 
