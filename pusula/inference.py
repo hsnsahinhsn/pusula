@@ -10,6 +10,8 @@
 """
 from __future__ import annotations
 
+import os
+
 import threading
 from typing import Any, Mapping, Optional, Sequence
 
@@ -70,6 +72,8 @@ class D3Engine(BaseEngine):
         """`load_in_4bit=None` picks BF16 on GPUs with >= 80 GB, else 4-bit (PUSULA_D3_4BIT overrides)."""
         from .d3model import D3Decider
 
+        base = os.path.expanduser(base)
+        adapter = os.path.expanduser(adapter) if adapter else None
         decider = D3Decider.load(base, adapter=adapter, device=device, load_in_4bit=load_in_4bit)
         decider.backbone.eval()
         engine = cls(decider)
@@ -122,7 +126,7 @@ class DecisionEngine(BaseEngine):
         dev = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
         if dtype is None and dev.type == "cuda":
             dtype = torch.bfloat16
-        model, tokenizer, cfg = PusulaModel.load(path, device=dev, dtype=dtype)
+        model, tokenizer, cfg = PusulaModel.load(os.path.expanduser(path), device=dev, dtype=dtype)
         return cls(model, tokenizer, max_length=int(cfg.get("max_length", 1024)), device=dev)
 
     @property
