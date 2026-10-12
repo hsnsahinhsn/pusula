@@ -187,7 +187,8 @@ def train(a) -> None:
         decider = D3Decider.load(str(last) if resume else a.d3, full_finetune=True, load_in_4bit=False,
                                  gradient_checkpointing=not a.no_grad_ckpt, device=device)
     else:
-        decider = D3Decider.load(a.d3, adapter=str(last) if resume else None, lora_rank=a.lora_rank,
+        start = str(last) if resume else a.init_adapter  # continue from a trained Pusula adapter (e.g. v1 -> v2)
+        decider = D3Decider.load(a.d3, adapter=start, lora_rank=a.lora_rank,
                                  gradient_checkpointing=not a.no_grad_ckpt, load_in_4bit=_precision(a), device=device)
     decider.readout.requires_grad_(True)
     rng = random.Random(a.seed)
@@ -308,6 +309,7 @@ def main(argv=None) -> None:
     t.add_argument("--max-val", type=int, default=1500)
     t.add_argument("--epochs", type=int, default=1)
     t.add_argument("--lora-rank", type=int, default=32)
+    t.add_argument("--init-adapter", default=None, help="start from this trained adapter (LoRA + readout) instead of base d3")
     t.add_argument("--full", action="store_true", help="train the whole model instead of LoRA (small d3-format "
                                                         "models such as Pusula Mini; --d3 is the model directory)")
     t.add_argument("--lr", type=float, default=1e-4)
