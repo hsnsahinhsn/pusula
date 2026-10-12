@@ -30,8 +30,15 @@ PY
 $PIP "transformers==5.17.0" "safetensors>=0.4" einops pyarrow "huggingface_hub>=1.0" pyyaml rich "pydantic>=2"   fastapi uvicorn openai ninja psutil tqdm packaging numpy
 $PIP --no-deps "peft>=0.13" "accelerate>=1.10" flash-linear-attention fla-core
 $PIP --no-deps -e .
+# the CUDA toolkit that builds kernels must match torch's CUDA (e.g. the image ships 12.6, the torch wheel is 13.0)
+TCU=$(python -c "import torch; print(torch.version.cuda)")
+if [ ! -x "/usr/local/cuda-$TCU/bin/nvcc" ] && command -v apt-get >/dev/null; then
+  sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "cuda-toolkit-${TCU/./-}" >/dev/null 2>&1 || true
+fi
+if [ -x "/usr/local/cuda-$TCU/bin/nvcc" ]; then export CUDA_HOME="/usr/local/cuda-$TCU" PATH="/usr/local/cuda-$TCU/bin:$PATH"; fi
 # fast causal conv kernel for d3's Gated DeltaNet layers (otherwise a slow fallback is used)
-python -c "import causal_conv1d" 2>/dev/null ||   MAX_JOBS=${MAX_JOBS:-32} $PIP --no-deps --no-build-isolation "causal-conv1d>=1.5"
+python -c "import causal_conv1d" 2>/dev/null || \
+  MAX_JOBS=${MAX_JOBS:-32} $PIP --no-deps --no-build-isolation "causal-conv1d>=1.5"
 if [[ ${WITH_VLLM:-0} == 1 ]]; then $PIP vllm; fi  # brings its own torch: use a dedicated image/venv
 
 if [[ ${1:-} == models ]]; then
