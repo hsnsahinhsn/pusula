@@ -120,3 +120,17 @@ def test_build_and_gold_roundtrip(tmp_path, example):
     g = read_examples(tmp_path / "gold" / "gold.jsonl")[0]
     assert g.labels["gold"] and g.meta["gold_confidence"] == "high"
     assert g.labels["generator"]["alan"] == g.labels["gold"]["alan"]
+
+
+def test_second_judge_anchors_its_questions(example):
+    ex = example.model_copy(deep=True)
+    gen = ex.labels["generator"]
+    ex.labels["judge"] = dict(gen)
+    ex.labels["judge2"] = {"aciliyet": str(max(0, int(gen["aciliyet"]) - 1)), "duygu": gen["duygu"]}
+    from collections import Counter, defaultdict
+    out, contested = dataset.apply_consensus(ex, defaultdict(Counter))
+    # same-family voters agree on a higher urgency, the independent judge does not: contested, not inflated
+    if gen["aciliyet"] != "0":
+        assert "aciliyet" in contested and "aciliyet" not in out.labels["final"]
+    assert out.labels["final"]["duygu"] == gen["duygu"]
+    assert out.labels["final"]["alan"] == gen["alan"]  # questions without a judge2 vote keep the usual rule

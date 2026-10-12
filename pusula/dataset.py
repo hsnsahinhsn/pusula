@@ -1,6 +1,7 @@
 """Stage 4: consensus labels, soft targets and train/val/test splits.
 
-Votes per question come from the generator, the judge and (when the teach stage ran) the d3 teacher. A
+Votes per question come from the generator, the judge, an optional second judge from another model family
+(`judge2`, which anchors the questions it answered) and (when the teach stage ran) the d3 teacher. A
 question is kept when at least two votes agree; with only two voters both must agree exactly (for score
 questions with three voters: all votes within one level, taking the median).
 The kept label goes to ``labels["final"]``; d3's distribution stays in ``teacher`` as the soft target
@@ -22,7 +23,10 @@ from .jsonl import read_examples, write_examples
 from .llm import console
 from .schema import Example, Question
 
-SOURCES = ("generator", "judge", "d3")
+SOURCES = ("generator", "judge", "judge2", "d3")
+# An independent judge from another model family. Where it voted, the final label must be ITS answer and at least one
+# other voter must agree: a shared bias of same-family voters (e.g. urgency rated one level high) cannot win the vote.
+ANCHOR = "judge2"
 
 
 def consensus(q: Question, votes: list[str]) -> Optional[str]:
@@ -47,7 +51,11 @@ def apply_consensus(ex: Example, stats: dict) -> tuple[Example, list[str]]:
     final, contested = {}, []
     for name, q in ex.questions.items():
         votes = {s: ex.labels[s][name] for s in SOURCES if name in ex.labels.get(s, {})}
-        label = consensus(q, list(votes.values()))
+        if ANCHOR in votes:
+            anchor = votes[ANCHOR]
+            label = anchor if any(v == anchor for s, v in votes.items() if s != ANCHOR) else None
+        else:
+            label = consensus(q, list(votes.values()))
         st = stats[name]
         st["total"] += 1
         for s in votes:

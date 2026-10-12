@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import random
 import string
 
@@ -67,17 +68,24 @@ async def run(args) -> None:
     console.print(f"[cyan]Yargıç: {len(todo)} örnek (önceden biten {len(done)})[/cyan]")
     writer = JsonlWriter(args.out)
 
+    wanted = set(args.questions.split(",")) if args.questions else None
+    extra = json.loads(args.extra_body) if args.extra_body else None
+
     async def worker(ex: Example):
-        order = lettered(ex, args.seed)
+        view = ex if wanted is None else ex.model_copy(update={"questions": {
+            k: q for k, q in ex.questions.items() if k in wanted}})
+        if not view.questions:
+            return {}
+        order = lettered(view, args.seed)
         out = await chat_json(
             client, args.model,
-            [{"role": "system", "content": SYSTEM}, {"role": "user", "content": build_prompt(ex, order)}],
-            answer_schema(order), temperature=0.0, top_p=1.0, max_tokens=400,
+            [{"role": "system", "content": SYSTEM}, {"role": "user", "content": build_prompt(view, order)}],
+            answer_schema(order), temperature=0.0, top_p=1.0, max_tokens=args.max_tokens, extra_body=extra,
         )
         return decode(order, out) if out else None
 
     def on_result(ex: Example, labels: dict[str, str]):
-        ex.labels["judge"] = labels
+        ex.labels[args.source] = labels
         writer.write(ex)
 
     try:
@@ -94,6 +102,10 @@ def main(argv=None) -> None:
     p.add_argument("--model", default=DEFAULT_MODEL)
     p.add_argument("--concurrency", type=int, default=192)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--questions", default="", help="comma-separated question names to ask (default: all)")
+    p.add_argument("--source", default="judge", help="labels key for this judge's answers")
+    p.add_argument("--max-tokens", type=int, default=400, help="raise for reasoning models")
+    p.add_argument("--extra-body", default="", help="JSON passed to the server, e.g. {\"reasoning_effort\": \"medium\"}")
     asyncio.run(run(p.parse_args(argv)))
 
 

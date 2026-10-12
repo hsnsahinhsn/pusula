@@ -31,6 +31,7 @@ async def chat_json(
     top_p: float = 0.95,
     max_tokens: int = 2048,
     retries: int = 3,
+    extra_body: Optional[dict[str, Any]] = None,
 ) -> Optional[dict[str, Any]]:
     """One structured completion; returns the parsed object, or None after `retries` failures.
 
@@ -52,8 +53,9 @@ async def chat_json(
                     "type": "json_schema",
                     "json_schema": {"name": "output", "schema": schema, "strict": True},
                 },
-                # Qwen3.x: answer directly; structured output and thinking do not mix.
-                extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+                # Qwen3.x: answer directly; structured output and thinking do not mix. Other models pass their own
+                # options (e.g. gpt-oss: {"reasoning_effort": "medium"}).
+                extra_body=extra_body if extra_body is not None else {"chat_template_kwargs": {"enable_thinking": False}},
             )
             choice = resp.choices[0]
             if choice.finish_reason == "length":
