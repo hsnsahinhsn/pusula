@@ -182,7 +182,7 @@ def train(a) -> None:
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     last = out / "last"
-    resume = (last / "trainer_state.json").exists()
+    resume = (last / "trainer_state.json").exists() and not a.bench
     if a.full:  # whole model (Pusula Mini); a resume reloads the saved full model
         decider = D3Decider.load(str(last) if resume else a.d3, full_finetune=True, load_in_4bit=False,
                                  gradient_checkpointing=not a.no_grad_ckpt, device=device)
@@ -223,8 +223,15 @@ def train(a) -> None:
     decider.backbone.train()
     log = (out / "train_log.jsonl").open("a", encoding="utf-8") if main else None
     running, t_step = 0.0, time.time()
+    bench_tokens, t_bench = 0, 0.0
     while step < steps_total:
         step_batches = schedule[step * a.accum:(step + 1) * a.accum]
+        if a.bench and step == 1:  # the first step warms up kernels and the allocator
+            torch.cuda.synchronize()
+            t_bench = time.time()
+            torch.cuda.reset_peak_memory_stats()
+        if a.bench and step >= 1:
+            bench_tokens += sum(len(it.ids) for b in step_batches for it in b)  # real tokens, all GPUs
         step_loss = 0.0
         for batch in step_batches[rank::world]:
             with torch.autocast("cuda", dtype=torch.bfloat16):
@@ -249,6 +256,18 @@ def train(a) -> None:
         sched.step()
         opt.zero_grad(set_to_none=True)
         step += 1
+        if a.bench and step == a.bench + 1:
+            torch.cuda.synchronize()
+            dt = time.time() - t_bench
+            res = {"grad_ckpt": not a.no_grad_ckpt, "token_budget": a.token_budget, "accum": a.accum,
+                   "tokens_per_s": round(bench_tokens / dt), "s_per_step": round(dt / a.bench, 2),
+                   "est_hours": round(dt / a.bench * steps_total / 3600, 2),
+                   "peak_gb": round(torch.cuda.max_memory_allocated() / 2**30, 1)}
+            say(json.dumps(res))
+            if main:
+                with (out / "bench.jsonl").open("a") as f:
+                    f.write(json.dumps(res) + "\n")
+            break
         if step % a.log_every == 0:
             rate = a.log_every / (time.time() - t_step)
             say(f"adım {step}/{steps_total} loss {running / a.log_every:.4f} ({rate:.2f} adım/s)")
@@ -256,7 +275,7 @@ def train(a) -> None:
                 log.write(json.dumps({"step": step, "loss": running / a.log_every}) + "\n")
                 log.flush()
             running, t_step = 0.0, time.time()
-        if step % a.save_every == 0 or step == steps_total:
+        if not a.bench and (step % a.save_every == 0 or step == steps_total):
             if main:
                 decider.backbone.eval()
                 m = evaluate(decider, val_items, a.token_budget)
@@ -273,7 +292,7 @@ def train(a) -> None:
                 (last / "trainer_state.json").write_text(json.dumps({"step": step, "best": best}))
             if world > 1:
                 dist.barrier()
-    if main:
+    if main and not a.bench:
         (out / "DONE").write_text(json.dumps({"steps": step, "best_val_macro_acc": best}))
         say(f"[green]✓ Bitti: en iyi val macro_acc {best:.4f} → {out / 'best'}[/green]")
     if world > 1:
@@ -327,6 +346,9 @@ def main(argv=None) -> None:
     t.add_argument("--seed", type=int, default=17)
     t.add_argument("--precision", choices=["auto", "4bit", "bf16"], default="auto",
                    help="d3 weights: bf16 (LoRA, needs ~80 GB GPU) or 4bit (QLoRA); auto picks by GPU memory")
+    t.add_argument("--bench", type=int, default=0, help="speed test: time this many optimizer steps after a warm-up "
+                                                       "step, append tokens/s and peak memory to OUT/bench.jsonl, "
+                                                       "save nothing (see scripts/speedtest.sh)")
     e = sub.add_parser("eval")
     e.add_argument("--d3", required=True)
     e.add_argument("--adapter", default=None)
