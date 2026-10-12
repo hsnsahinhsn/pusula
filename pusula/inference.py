@@ -10,8 +10,8 @@
 """
 from __future__ import annotations
 
+import json
 import os
-
 import threading
 from typing import Any, Mapping, Optional, Sequence
 
@@ -61,10 +61,19 @@ class D3Engine(BaseEngine):
 
     model_name = "pusula-d3"
 
-    def __init__(self, decider, token_budget: int = 16384):
+    def __init__(self, decider, token_budget: int = 16384, calibration: Optional[Mapping[str, Any]] = None):
         self.decider = decider
         self.token_budget = token_budget
         self._lock = threading.Lock()
+        # per-option log-prob biases for the built-in universal questions (pusula.calibrate); applied only when
+        # a request asks exactly that question, never to a custom question that happens to share its name
+        self._calibration: dict[str, tuple[Question, list[float]]] = {}
+        if calibration:
+            universal = load_taxonomy().universal
+            for name, c in calibration.get("questions", {}).items():
+                q = universal.get(name)
+                if q is not None and len(q.option_keys()) == c["options"]:
+                    self._calibration[name] = (q, list(c["bias"]))
 
     @classmethod
     def load(cls, base: str, adapter: Optional[str] = None, device: str = "cuda:0",
@@ -76,7 +85,12 @@ class D3Engine(BaseEngine):
         adapter = os.path.expanduser(adapter) if adapter else None
         decider = D3Decider.load(base, adapter=adapter, device=device, load_in_4bit=load_in_4bit)
         decider.backbone.eval()
-        engine = cls(decider)
+        calib_file = os.path.join(adapter or base, "calibration.json")
+        calibration = None
+        if os.path.isfile(calib_file):
+            with open(calib_file, encoding="utf-8") as f:
+                calibration = json.load(f)
+        engine = cls(decider, calibration=calibration)
         if adapter is None:
             engine.model_name = "d3-base"
         return engine
@@ -105,9 +119,15 @@ class D3Engine(BaseEngine):
                 probs = torch.softmax(logits.float(), dim=-1).cpu()
                 for row, i in enumerate(batch):
                     r, name, q = jobs[i]
-                    results[r][name] = answer_from_probs(q, probs[row, : counts[row]].tolist())
+                    results[r][name] = answer_from_probs(q, self._calibrate(name, q, probs[row, : counts[row]].tolist()))
                 start = end
         return results
+
+    def _calibrate(self, name: str, q: Question, probs: list[float]) -> list[float]:
+        from .calibrate import apply_bias
+
+        c = self._calibration.get(name)
+        return apply_bias(probs, c[1]) if c and c[0] == q else probs
 
 
 class DecisionEngine(BaseEngine):
