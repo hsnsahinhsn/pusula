@@ -10,6 +10,16 @@ cd "$(dirname "$0")/.."
 export HF_HOME=${HF_HOME:-/workspace/hf} D3_DIR=${D3_DIR:-/workspace/d3}
 PIP="python -m pip install -q"
 
+# plain OS images (e.g. Ubuntu 24.04) have no PyTorch: create a venv with a CUDA 13 build (Hopper/Blackwell ready)
+if ! python -c "import torch" 2>/dev/null; then
+  VENV=${VENV:-$HOME/venv}
+  command -v apt-get >/dev/null && { sudo -n true 2>/dev/null && SUDO=sudo || SUDO=;     $SUDO apt-get update -qq && $SUDO apt-get install -y -qq python3-venv python3-dev build-essential git >/dev/null; }
+  [ -x "$VENV/bin/python" ] || python3 -m venv "$VENV"
+  source "$VENV/bin/activate"
+  python -m pip install -q --upgrade pip
+  python -m pip install -q torch --index-url https://download.pytorch.org/whl/cu130
+  echo "source $VENV/bin/activate" >> "${ENV_FILE:-env.sh}"
+fi
 python - <<'PY'
 import torch
 assert torch.cuda.is_available(), "no CUDA GPU visible"
