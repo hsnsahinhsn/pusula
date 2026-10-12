@@ -224,6 +224,7 @@ def train(a) -> None:
     log = (out / "train_log.jsonl").open("a", encoding="utf-8") if main else None
     running, t_step = 0.0, time.time()
     bench_tokens, t_bench = 0, 0.0
+    bad = skipped = 0  # non-finite micro-batch losses / optimizer steps skipped for non-finite gradients
     while step < steps_total:
         step_batches = schedule[step * a.accum:(step + 1) * a.accum]
         if a.bench and step == 1:  # the first step warms up kernels and the allocator
@@ -240,6 +241,9 @@ def train(a) -> None:
             loss = smoothed_ce(logits, labels, [it.count for it in batch], a.label_smoothing)
             if a.distill_alpha < 1.0:
                 loss = a.distill_alpha * loss + (1 - a.distill_alpha) * distill_kl(logits, batch)
+            if not torch.isfinite(loss):  # one bad micro-batch must not poison the weights
+                bad += 1
+                continue
             (loss / len(step_batches)).backward()
             step_loss += loss.item() / len(step_batches)
         if world > 1:
@@ -251,8 +255,11 @@ def train(a) -> None:
             dist.all_reduce(t)  # only this step's partial losses: the running sum must not be reduced again
             step_loss = t.item()
         running += step_loss
-        torch.nn.utils.clip_grad_norm_(params, 1.0)
-        opt.step()
+        norm = torch.nn.utils.clip_grad_norm_(params, 1.0)
+        if torch.isfinite(norm):  # same decision on every GPU: gradients were all-reduced
+            opt.step()
+        else:
+            skipped += 1
         sched.step()
         opt.zero_grad(set_to_none=True)
         step += 1
@@ -270,7 +277,8 @@ def train(a) -> None:
             break
         if step % a.log_every == 0:
             rate = a.log_every / (time.time() - t_step)
-            say(f"adım {step}/{steps_total} loss {running / a.log_every:.4f} ({rate:.2f} adım/s)")
+            say(f"adım {step}/{steps_total} loss {running / a.log_every:.4f} ({rate:.2f} adım/s)"
+                + (f" [yellow]atlanan: {bad} mikro-batch, {skipped} adım[/yellow]" if bad or skipped else ""))
             if main:
                 log.write(json.dumps({"step": step, "loss": running / a.log_every}) + "\n")
                 log.flush()
