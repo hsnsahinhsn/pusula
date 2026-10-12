@@ -308,9 +308,12 @@ def train(a) -> None:
 
 
 def run_eval(a) -> None:
+    import torch
+
     from .d3model import D3Decider
 
-    decider = D3Decider.load(a.d3, adapter=a.adapter, load_in_4bit=_precision(a))
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"  # CPU: e.g. Pusula Mini on a laptop
+    decider = D3Decider.load(a.d3, adapter=a.adapter, load_in_4bit=_precision(a), device=device)
     decider.backbone.eval()
     examples = read_examples(a.data)
     source = a.label_source or ("gold" if any("gold" in ex.labels for ex in examples) else "final")

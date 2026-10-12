@@ -73,3 +73,28 @@ def test_agreement_and_ledger(tmp_path):
     led.add({"cost": 0.6})
     assert led.room() and not led.room(reserve=0.5)
     assert Ledger(tmp_path / "spend.jsonl", cap=1.0).total == 0.6
+
+
+def test_check_questions_sizes():
+    from pusula.annotate import check_questions
+
+    def q(tip, n):
+        return {"talimat": "Soru?", "tip": tip, "secenekler": [{"anahtar": f"s{i}", "aciklama": "x"} for i in range(n)]}
+
+    ex, _ = _example()
+    good = {"sorular": [q("noul", 0), q("choice", 4), q("choice", 12)]}
+    labels, errors = check_questions(ex, good)
+    assert errors == [] and set(labels) == {"adhoc_1", "adhoc_2", "adhoc_3"}
+    labels, errors = check_questions(ex, {"sorular": [q("noul", 0), q("choice", 4), q("choice", 5)]})
+    assert labels == {} and errors
+
+
+def test_validate_extras_and_specs():
+    from pusula.annotate import _jaccard, _shingles, message_specs, validate_extras
+
+    ex, _ = _example(Question(type="noul", instructions="İade istiyor mu?"))
+    assert validate_extras(ex, {"ozel": True}) == ({"ozel": "true"}, [])
+    assert validate_extras(ex, {})[1] == ["ozel=None"]
+    s1, s2 = message_specs(50, seed=3), message_specs(50, seed=3)
+    assert s1 == s2 and len({s["path"] for s in s1}) > 20
+    assert _jaccard(_shingles("kargom gelmedi hala"), _shingles("kargom gelmedi hala")) == 1.0
