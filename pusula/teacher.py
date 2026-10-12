@@ -24,8 +24,8 @@ from .schema import Example, argmax_key
 TEACHER_MODEL = "vllm-sr/d3"
 
 
-def label_chunk(decider, examples: list[Example], token_budget: int) -> None:
-    """Fills ex.teacher / ex.labels['d3'] for every question of `examples` (original option order)."""
+def label_chunk(decider, examples: list[Example], token_budget: int, source: str = "d3") -> None:
+    """Fills ex.teacher / ex.labels[source] for every question of `examples` (original option order)."""
     import torch
 
     from .d3model import render
@@ -45,7 +45,7 @@ def label_chunk(decider, examples: list[Example], token_budget: int) -> None:
             ex, name, q = jobs[i]
             p = probs[row, : counts[row]].tolist()
             ex.teacher[name] = p
-            ex.labels.setdefault("d3", {})[name] = argmax_key(q, p)
+            ex.labels.setdefault(source, {})[name] = argmax_key(q, p)
         batch.clear()
 
     width = 0
@@ -64,7 +64,7 @@ def run(args) -> None:
 
     existing = list(read_jsonl(args.out))
     done = {row["id"] for row in existing}
-    labeled = sum(1 for row in existing if "d3" in row.get("labels", {}))
+    labeled = sum(1 for row in existing if args.source in row.get("labels", {}))
     todo = [Example(**row) for row in read_jsonl(args.inp) if row["id"] not in done]
     if not todo:
         console.print(f"[green]{args.out}: d3 aşaması tamam ({labeled} örnek d3 etiketli).[/green]")
@@ -75,12 +75,13 @@ def run(args) -> None:
     with JsonlWriter(args.out) as writer:
         if to_label:
             console.print(f"[cyan]d3 yükleniyor ({args.d3}, 4-bit)...[/cyan]")
-            decider = D3Decider.load(args.d3, load_in_4bit={"4bit": True, "bf16": False}.get(args.precision))
+            decider = D3Decider.load(args.d3, adapter=args.adapter,
+                                     load_in_4bit={"4bit": True, "bf16": False}.get(args.precision))
             decider.backbone.eval()
             console.print(f"[cyan]d3: {len(to_label)} örnek etiketlenecek (önceden {labeled})[/cyan]")
             for start in range(0, len(to_label), args.chunk):
                 chunk = to_label[start:start + args.chunk]
-                label_chunk(decider, chunk, args.token_budget)
+                label_chunk(decider, chunk, args.token_budget, args.source)
                 for ex in chunk:
                     writer.write(ex)
                 n = start + len(chunk)
@@ -99,6 +100,8 @@ def main(argv=None) -> None:
     p.add_argument("--token-budget", type=int, default=24576, help="padded tokens per forward pass")
     p.add_argument("--precision", choices=["auto", "4bit", "bf16"], default="auto")
     p.add_argument("--sample", type=int, default=0, help="label only the first N examples with d3 (0 = all)")
+    p.add_argument("--adapter", default=None, help="a trained Pusula adapter: label with Pusula instead of base d3")
+    p.add_argument("--source", default="d3", help="labels key for the teacher's answers (e.g. pusula)")
     run(p.parse_args(argv))
 
 

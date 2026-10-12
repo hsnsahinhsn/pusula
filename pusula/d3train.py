@@ -35,6 +35,7 @@ class Item:
     ids: list[int]
     label: int          # index of the label among the options as shown
     count: int          # number of options
+    soft: Optional[list[float]] = None  # teacher distribution in the shown order (knowledge distillation)
 
 
 def build_items(examples: list[Example], decider, label_source: str, rng: Optional[random.Random],
@@ -65,9 +66,12 @@ def build_items(examples: list[Example], decider, label_source: str, rng: Option
         label = q.option_keys().index(ex.labels[label_source][name])
         shown = order.index(label) if order is not None else label
         prompts.append(render(decider.tokenizer, ex.state, q, decider.codes, order))
-        meta.append((name, q.type, shown, len(q.option_keys())))
+        soft = ex.teacher.get(name)
+        if soft is not None and order is not None:
+            soft = [soft[i] for i in order]
+        meta.append((name, q.type, shown, len(q.option_keys()), soft))
     ids = decider.encode(prompts)
-    return [Item(n, t, i, lab, c) for i, (n, t, lab, c) in zip(ids, meta)]
+    return [Item(n, t, i, lab, c, s) for i, (n, t, lab, c, s) in zip(ids, meta)]
 
 
 def smoothed_ce(logits, labels, counts, eps: float):
@@ -82,6 +86,22 @@ def smoothed_ce(logits, labels, counts, eps: float):
     nll = -logp.gather(1, labels[:, None]).squeeze(1)
     smooth = -(logp.masked_fill(~valid, 0.0).sum(1) / valid.sum(1))
     return ((1 - eps) * nll + eps * smooth).mean()
+
+
+def distill_kl(logits, batch):
+    """KL(teacher || student) over each question's own options, for the items that carry a teacher distribution."""
+    import torch
+
+    rows = [r for r, it in enumerate(batch) if it.soft is not None]
+    if not rows:
+        return logits.sum() * 0.0
+    k = logits.shape[1]
+    target = torch.zeros((len(rows), k), device=logits.device)
+    for j, r in enumerate(rows):
+        target[j, : batch[r].count] = torch.as_tensor(batch[r].soft, device=logits.device)
+    logp = torch.log_softmax(logits[rows].float(), dim=-1)
+    valid = target > 0
+    return (target[valid] * (target[valid].log() - logp[valid])).sum() / len(rows)
 
 
 def micro_batches(items: list[Item], token_budget: int, rng: Optional[random.Random]) -> list[list[Item]]:
@@ -210,6 +230,8 @@ def train(a) -> None:
                 logits = decider.logits([it.ids for it in batch], [it.count for it in batch])
             labels = torch.tensor([it.label for it in batch], device=decider.device)
             loss = smoothed_ce(logits, labels, [it.count for it in batch], a.label_smoothing)
+            if a.distill_alpha < 1.0:
+                loss = a.distill_alpha * loss + (1 - a.distill_alpha) * distill_kl(logits, batch)
             (loss / len(step_batches)).backward()
             step_loss += loss.item() / len(step_batches)
         if world > 1:
@@ -296,6 +318,8 @@ def main(argv=None) -> None:
     t.add_argument("--no-grad-ckpt", action="store_true",
                    help="keep activations instead of recomputing them (faster, needs more GPU memory; pair with a "
                         "smaller --token-budget and a larger --accum to keep the same tokens per step)")
+    t.add_argument("--distill-alpha", type=float, default=1.0,
+                   help="weight of the hard-label loss; the rest is KL to the teacher distribution (1 = no distillation)")
     t.add_argument("--log-every", type=int, default=10)
     t.add_argument("--save-every", type=int, default=200)
     t.add_argument("--seed", type=int, default=17)

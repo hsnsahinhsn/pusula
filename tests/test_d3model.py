@@ -126,3 +126,29 @@ def test_smoothed_ce_ignores_padded_codes():
     ref = (torch.nn.functional.cross_entropy(logits[:1, :2], labels[:1], label_smoothing=0.1)
            + torch.nn.functional.cross_entropy(logits[1:], labels[1:], label_smoothing=0.1)) / 2
     assert torch.allclose(loss, ref, atol=1e-5) and loss.item() < 2
+
+
+def test_distill_kl_uses_teacher_rows_only():
+    torch = __import__("pytest").importorskip("torch")
+    from pusula.d3train import Item, distill_kl
+
+    logits = torch.tensor([[2.0, 0.0, -1e4], [0.0, 1.0, 0.5]])
+    batch = [Item("a", "choice", [1], 0, 2, [0.9, 0.1]), Item("b", "choice", [1], 1, 3, None)]
+    kl = distill_kl(logits, batch)
+    p = torch.softmax(logits[0, :2], -1)
+    ref = (torch.tensor([0.9, 0.1]) * (torch.tensor([0.9, 0.1]).log() - p.log())).sum()
+    assert torch.allclose(kl, ref, atol=1e-5)
+    assert distill_kl(logits, [batch[1]]).item() == 0.0
+
+
+def test_wide_intent_question(example):
+    import random
+
+    from pusula.distill import WIDE_QUESTION, add_wide_intent
+
+    ex = example.model_copy(deep=True)
+    ex.labels["final"] = dict(ex.labels["generator"])
+    assert add_wide_intent(ex, random.Random(1))
+    q = ex.questions[WIDE_QUESTION]
+    assert 30 <= len(q.option_keys()) <= 60 and ex.labels["final"]["niyet"] in q.option_keys()
+    assert ex.labels["final"][WIDE_QUESTION] == ex.labels["final"]["niyet"]
