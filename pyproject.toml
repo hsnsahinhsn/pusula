@@ -44,6 +44,10 @@ train = [
 generate = [
     "openai>=1.40",
 ]
+# Evaluation labels (gold set) from the Claude API: pusula.annotate
+annotate = [
+    "anthropic>=1.13",
+]
 # Pusula = Decision 3.0 (vllm-sr/d3) in 4-bit + LoRA: inference, labeling and fine-tuning
 d3 = [
     "transformers>=5.17",
@@ -72,7 +76,7 @@ Issues = "https://github.com/hsnsahinhsn/pusula/issues"
 include = ["pusula*"]
 
 [tool.setuptools.package-data]
-pusula = ["data/*.yaml"]
+pusula = ["data/*.yaml", "data/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
