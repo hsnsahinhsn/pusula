@@ -134,3 +134,18 @@ def test_second_judge_anchors_its_questions(example):
         assert "aciliyet" in contested and "aciliyet" not in out.labels["final"]
     assert out.labels["final"]["duygu"] == gen["duygu"]
     assert out.labels["final"]["alan"] == gen["alan"]  # questions without a judge2 vote keep the usual rule
+
+
+def test_adhoc_questions_parse_and_clean():
+    from pusula.adhoc import clean_key, to_questions
+
+    assert clean_key("Kargo Gecikmesi!") == "kargo_gecikmesi" and clean_key("İade/Değişim") == "iade_degisim"
+    out = {"sorular": [
+        {"talimat": "Müşteri iade istiyor mu?", "tip": "noul", "secenekler": []},
+        {"talimat": "Hangi kanal?", "tip": "choice", "secenekler": [{"anahtar": "E-posta", "aciklama": "e-posta"},
+                                                                     {"anahtar": "telefon", "aciklama": "telefon"}]},
+        {"talimat": "Tek seçenek", "tip": "choice", "secenekler": [{"anahtar": "x", "aciklama": "y"}]},
+    ]}
+    qs = to_questions(out)
+    assert set(qs) == {"adhoc_1", "adhoc_2"} and qs["adhoc_1"].type == "noul"
+    assert list(qs["adhoc_2"].criteria) == ["e_posta", "telefon"]
