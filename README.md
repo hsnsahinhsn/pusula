@@ -190,6 +190,13 @@ PUSULA_D3_BASE=~/d3 PUSULA_MODEL_DIR=path/to/pusula pusula-serve --port 8080   #
 PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve --port 8080                  # Pusula Nano
 ```
 
+The server listens on `127.0.0.1` by default. To reach it from other machines, set an API key first and pass
+`--host 0.0.0.0`; clients then send `Authorization: Bearer <key>` (or `X-API-Key: <key>`) to every `/v1/*` path:
+
+```bash
+PUSULA_API_KEY=change-me PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve --host 0.0.0.0 --port 8080
+```
+
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/v1/systemone` | One `{state, questions}` request (d3-compatible) |

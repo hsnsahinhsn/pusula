@@ -191,6 +191,14 @@ PUSULA_D3_BASE=~/d3 PUSULA_MODEL_DIR=path/to/pusula pusula-serve --port 8080   #
 PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve --port 8080                  # Pusula Nano
 ```
 
+Sunucu varsayılan olarak yalnız `127.0.0.1` üzerinde dinler. Başka makinelerden erişmek için önce bir API anahtarı
+belirleyip `--host 0.0.0.0` verin; istemciler her `/v1/*` isteğinde `Authorization: Bearer <anahtar>` (ya da
+`X-API-Key: <anahtar>`) gönderir:
+
+```bash
+PUSULA_API_KEY=degistirin PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve --host 0.0.0.0 --port 8080
+```
+
 | Metot | Yol | Açıklama |
 |---|---|---|
 | `POST` | `/v1/systemone` | Tek `{state, questions}` isteği (d3 uyumlu) |

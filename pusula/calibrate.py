@@ -127,9 +127,9 @@ def score(preds: str, calibration: str) -> dict:
     for name, rows in sorted(by_name.items()):
         acc0 = sum(max(range(len(r["probs"])), key=r["probs"].__getitem__) == r["label"] for r in rows) / len(rows)
         c = calib.get(name)
-        if c:
-            acc1 = sum(max(range(len(r["probs"])), key=apply_bias(r["probs"], c["bias"]).__getitem__) == r["label"]
-                       for r in rows if len(r["probs"]) == c["options"]) / len(rows)
+        if c:  # rows whose option count differs from the fitted one keep their uncalibrated prediction
+            acc1 = sum(max(range(len(r["probs"])), key=(apply_bias(r["probs"], c["bias"]) if len(r["probs"]) == c["options"]
+                                                        else r["probs"]).__getitem__) == r["label"] for r in rows) / len(rows)
         else:
             acc1 = acc0
         report[name] = {"n": len(rows), "acc": round(acc0, 4), "acc_calibrated": round(acc1, 4)}

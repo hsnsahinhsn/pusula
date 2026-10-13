@@ -80,3 +80,24 @@ def test_validation_errors(client, bad):
 def test_taxonomy_endpoint(client):
     data = client.get("/v1/taxonomy").json()
     assert "domains" in data and "universal" in data
+
+
+def test_api_key_guards_v1_endpoints():
+    c = TestClient(create_app(engine=FakeEngine(), api_key="s3cret"))
+    assert c.get("/health").status_code == 200  # liveness stays open
+    assert c.post("/v1/systemone", json=BODY).status_code == 401
+    assert c.post("/v1/systemone", json=BODY, headers={"Authorization": "Bearer yanlis"}).status_code == 401
+    assert c.post("/v1/systemone", json=BODY, headers={"Authorization": "Bearer s3cret"}).status_code == 200
+    assert c.get("/v1/taxonomy", headers={"X-API-Key": "s3cret"}).status_code == 200
+
+
+def test_default_host_is_local(monkeypatch):
+    import sys
+
+    from pusula import serve
+    monkeypatch.delenv("PUSULA_HOST", raising=False)
+    seen = {}
+    monkeypatch.setitem(sys.modules, "uvicorn", type("U", (), {"run": staticmethod(lambda app, host, port: seen.update(host=host))}))
+    monkeypatch.setattr(sys, "argv", ["pusula-serve"])
+    serve.main()
+    assert seen["host"] == "127.0.0.1"
