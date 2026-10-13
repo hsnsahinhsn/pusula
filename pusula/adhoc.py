@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import re
 import unicodedata
 
 from .jsonl import JsonlWriter, done_ids, read_examples
 from .llm import DEFAULT_BASE_URL, DEFAULT_MODEL, chat_json, console, make_client, run_pool, wait_for_server
-from .schema import Example, Question, argmax_key
+from .schema import Example, Question
 
 SYSTEM = (
     "Sen karar sistemleri için soru tasarlayan bir uzmansın. Verilen müşteri/kullanıcı mesajı için, gerçek bir şirketin "
@@ -45,6 +46,14 @@ SCHEMA = {
         "required": ["talimat", "tip", "secenekler"], "additionalProperties": False}}},
     "required": ["sorular"], "additionalProperties": False,
 }
+# --wide: the third question has 25-60 options (long lists such as product lines or transaction codes), the
+# hardest case for small models
+PROMPT_WIDE = PROMPT.replace(
+    "3. 10–25 seçenekli geniş bir seçim sorusu (tip: choice), örneğin departman, ürün grubu, işlem türü veya konu listesi.",
+    "3. 25–60 seçenekli çok geniş bir seçim sorusu (tip: choice), örneğin ürün veya hizmet kalemleri, işlem kodları, "
+    "birim ve departman listesi ya da ayrıntılı konu sınıflandırması.")
+SCHEMA_WIDE = json.loads(json.dumps(SCHEMA))
+SCHEMA_WIDE["properties"]["sorular"]["items"]["properties"]["secenekler"]["maxItems"] = 60
 _TR = str.maketrans("çğıöşüâîû", "cgiosuaiu")
 
 
@@ -75,8 +84,10 @@ def to_questions(out: dict) -> dict[str, Question]:
 
 
 async def generate(args) -> None:
+    suffix = "-adhocw" if args.wide else "-adhoc"
+    prompt, schema = (PROMPT_WIDE, SCHEMA_WIDE) if args.wide else (PROMPT, SCHEMA)
     done = done_ids(args.out)
-    todo = [ex for ex in read_examples(args.inp) if f"{ex.id}-adhoc" not in done]
+    todo = [ex for ex in read_examples(args.inp) if f"{ex.id}{suffix}" not in done]
     await wait_for_server(args.base_url)
     client = make_client(args.base_url)
     writer = JsonlWriter(args.out)
@@ -84,10 +95,10 @@ async def generate(args) -> None:
 
     async def worker(ex: Example):
         out = await chat_json(client, args.model, [{"role": "system", "content": SYSTEM},
-                                                   {"role": "user", "content": PROMPT.format(state=ex.state)}],
-                              SCHEMA, temperature=0.7, max_tokens=1500)
+                                                   {"role": "user", "content": prompt.format(state=ex.state)}],
+                              schema, temperature=0.7, max_tokens=3000 if args.wide else 1500)
         qs = to_questions(out) if out else {}
-        return Example(id=f"{ex.id}-adhoc", state=ex.state, questions=qs, meta={"source": "adhoc"}) if qs else None
+        return Example(id=f"{ex.id}{suffix}", state=ex.state, questions=qs, meta={"source": "adhoc"}) if qs else None
 
     try:
         await run_pool(todo, worker, args.concurrency, lambda ex, res: writer.write(res), label="soru", total=len(todo))
@@ -121,6 +132,7 @@ def main(argv=None) -> None:
     p.add_argument("--base-url", default=DEFAULT_BASE_URL)
     p.add_argument("--model", default=DEFAULT_MODEL)
     p.add_argument("--concurrency", type=int, default=192)
+    p.add_argument("--wide", action="store_true", help="the third question gets 25-60 options")
     a = p.parse_args(argv)
     if a.cmd == "finalize":
         finalize(a.inp, a.out)
