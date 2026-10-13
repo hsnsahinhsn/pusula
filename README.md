@@ -320,6 +320,14 @@ bash scripts/pipeline.sh my-run
 
 Each stage is resumable. See the module docstrings in [`pusula/`](pusula/) for options.
 
+The judgment questions (urgency, human handoff, action needed) follow one written
+[labeling policy](pusula/data/label_policy.md); edit it to match your own product. After a policy change,
+`python -m pusula.judge --policy --refresh --questions …` relabels those questions with the open-weight judge and
+`python -m pusula.relabel` measures the new labels against your gold set and swaps them into the training data.
+`python -m pusula.annotate` (`pip install -e ".[annotate]"`, Claude API) builds blind gold and benchmark labels with
+two annotators and adjudication. Use such labels only to evaluate: most commercial model terms do not allow training
+competing models on their outputs.
+
 ## License and acknowledgements
 
 Apache 2.0. Pusula builds on

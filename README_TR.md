@@ -320,6 +320,14 @@ bash scripts/pipeline.sh benim-kosum
 
 Her aşama kaldığı yerden devam eder. Seçenekler için [`pusula/`](pusula/) altındaki modül açıklamalarına bakın.
 
+Takdir gerektiren sorular (aciliyet, insana devretme, eylem gerekliliği) yazılı bir
+[etiketleme politikasına](pusula/data/label_policy.md) uyar; kendi ürününüze göre düzenleyebilirsiniz. Politika
+değişince `python -m pusula.judge --policy --refresh --questions …` bu soruları açık ağırlıklı yargıç modelle yeniden
+etiketler, `python -m pusula.relabel` yeni etiketleri altın setinizle ölçer ve eğitim verisine işler.
+`python -m pusula.annotate` (`pip install -e ".[annotate]"`, Claude API) iki etiketçi ve hakemle kör altın set ve
+benchmark etiketleri üretir. Bu etiketleri yalnızca değerlendirmede kullanın: ticari model şartlarının çoğu, çıktılarıyla
+rakip model eğitmeye izin vermez.
+
 ## Lisans ve teşekkürler
 
 Apache 2.0. Pusula şu açık kaynak çalışmalar üzerine kuruludur:
