@@ -110,8 +110,9 @@ def enable_noncausal_full_attention(text_model) -> None:
     text_model.register_forward_pre_hook(mask_inputs, with_kwargs=True)
 
 
-def default_4bit() -> bool:
-    """4-bit unless the GPU can hold the BF16 weights (~52 GB) with room to spare; PUSULA_D3_4BIT=0/1 overrides."""
+def default_4bit(model_dir: Optional[str] = None, device: str = "cuda:0") -> bool:
+    """4-bit only on a GPU that cannot hold the BF16 weights with room to spare (d3: ~52 GB, so below 80 GB);
+    never on the CPU, where 4-bit kernels are not available. PUSULA_D3_4BIT=0/1 overrides."""
     import os
 
     import torch
@@ -119,9 +120,13 @@ def default_4bit() -> bool:
     env = os.getenv("PUSULA_D3_4BIT")
     if env is not None:
         return env.strip() not in ("0", "false", "no")
-    if not torch.cuda.is_available():
-        return True
-    return torch.cuda.get_device_properties(0).total_memory < 80 * 2**30
+    if torch.device(device).type != "cuda" or not torch.cuda.is_available():
+        return False
+    gpu = torch.cuda.get_device_properties(torch.device(device).index or 0).total_memory
+    weights = sum(f.stat().st_size for f in Path(model_dir).glob("*.safetensors")) if model_dir else 0
+    if weights:  # a small d3-format model (Pusula Mini) fits anywhere in BF16
+        return weights * 1.5 > gpu
+    return gpu < 80 * 2**30
 
 
 D3_FORMAT_FILES = ("decision_config.json", "tokenizer.json", "tokenizer_config.json", "vocab.json", "merges.txt",
@@ -153,7 +158,7 @@ class D3Decider:
         from transformers.models.qwen3_5.modeling_qwen3_5 import Qwen3_5Model
 
         if load_in_4bit is None:
-            load_in_4bit = default_4bit()
+            load_in_4bit = default_4bit(model_dir, device)
         quant = None
         if load_in_4bit:
             quant = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",

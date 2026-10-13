@@ -104,14 +104,11 @@ class D3Engine(BaseEngine):
         ids = d.encode([render(d.tokenizer, requests[r][0], q, d.codes) for r, _, q in jobs])
         results: list[dict[str, dict[str, Any]]] = [{} for _ in requests]
         order = sorted(range(len(jobs)), key=lambda i: len(ids[i]))
+        lengths = [len(ids[i]) for i in order]
         with self._lock:
             start = 0
             while start < len(order):
-                end, width = start, 0
-                while end < len(order) and max(width, len(ids[order[end]])) * (end - start + 1) <= self.token_budget:
-                    width = max(width, len(ids[order[end]]))
-                    end += 1
-                end = max(end, start + 1)
+                end = self._batch_end(lengths, start)
                 batch = order[start:end]
                 counts = [len(jobs[i][2].option_keys()) for i in batch]
                 with torch.autocast(d.device.type, dtype=torch.bfloat16, enabled=d.device.type == "cuda"):
@@ -122,6 +119,19 @@ class D3Engine(BaseEngine):
                     results[r][name] = answer_from_probs(q, self._calibrate(name, q, probs[row, : counts[row]].tolist()))
                 start = end
         return results
+
+    def _batch_end(self, lengths: Sequence[int], start: int, max_padding: float = 0.25) -> int:
+        """End of the forward pass that starts at ``start`` (``lengths`` sorted ascending): as many prompts as fit the
+        token budget, stopping before padding exceeds ``max_padding`` of the real tokens. Padding is paid for in full;
+        on a CPU, one long prompt padded together with several short ones can make a pass twice as slow."""
+        end, real = start + 1, lengths[start]
+        while end < len(lengths):
+            n, width = end - start + 1, lengths[end]  # the next prompt is the longest so far
+            if width * n > self.token_budget or width * n > (real + width) * (1 + max_padding):
+                break
+            real += width
+            end += 1
+        return end
 
     def _calibrate(self, name: str, q: Question, probs: list[float]) -> list[float]:
         from .calibrate import apply_bias
