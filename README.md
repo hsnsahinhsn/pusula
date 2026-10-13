@@ -28,16 +28,16 @@ decision models (Decision 3.0, Jev, Laya, ...) are built for English and stumble
 - **Turkish decision benchmark.** Pusula is evaluated against base Decision 3.0 on an independently
   labeled Turkish test set; results are published with the model.
 
-> **Status:** pre-release. The API and code are stable; model weights and benchmark results will be
-> published on Hugging Face.
+> **Status:** v1.0. Weights: [Pusula](https://huggingface.co/hsnsahinhsn/pusula) ·
+> [Pusula Mini](https://huggingface.co/hsnsahinhsn/pusula-mini) · [Pusula Nano](https://huggingface.co/hsnsahinhsn/pusula-nano).
 
 ## Models
 
-| Model | Size | Runs on | Use it for |
-|---|---|---|---|
-| **Pusula** (Turkish Decision 3.0) | 26B (LoRA adapter on top of `vllm-sr/d3`) | GPU: ≥ 64 GB in BF16, ≥ 24 GB in 4-bit | Best Turkish decision quality; reasons over any ad-hoc question |
-| **Pusula Mini** *(coming soon)* | ~0.8B | CPU (~1 s per decision) or any GPU | Good balance without a GPU |
-| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | Any GPU or CPU | High volume, low latency, edge, first-pass filtering |
+| Model | Size | Runs on | Benchmark / gold set | Use it for |
+|---|---|---|---|---|
+| **Pusula** (Turkish Decision 3.0) | 26B: a 0.9 GB LoRA adapter on top of `vllm-sr/d3` | GPU: ≥ 64 GB in BF16, ≥ 24 GB in 4-bit | **92.8 / 90.3** | The highest accuracy, for the built-in questions and your own |
+| **Pusula Mini** | 4.7B (Qwen3.5-4B, fully fine-tuned, d3 format) | GPU (weights: 9.1 GB in BF16) | 80.9 / 84.5 | A smaller GPU; the strongest small model on tasks unlike its training data |
+| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU or any GPU | 81.8 / 84.2 | High volume and low latency on the built-in questions |
 
 All of them answer exactly the same requests.
 
@@ -45,21 +45,38 @@ All of them answer exactly the same requests.
 
 ## Results
 
-Accuracy (%) of Pusula v1.0 against the model it is built on. The Turkish Decision Benchmark and the gold set were
-labeled independently of the training data.
+Accuracy (%). The evaluation labels come from two annotators working blind and independently (Claude Opus 5.5 and
+Claude Sonnet 5.5), with disagreements adjudicated, all following the published
+[labeling policy](pusula/data/label_policy.md). They are used only for evaluation, never as training labels.
 
-| Evaluation | Questions | Decision 3.0 | **Pusula v1.0** |
-|---|---|---|---|
-| [Turkish Decision Benchmark v1](benchmark/README.md) | 3,441 | 88.2 | **91.9** |
-| Gold set (blind-labeled, held out) | 4,027 | 84.5 | **87.9** |
-| Held-out test split | 6,729 | 92.6 | **98.0** |
-| MASSIVE tr-TR, 60-way intent, zero-shot (human-written) | 2,974 | 85.3 | 85.1 |
-| OffensEval 2020 Turkish, offensive language (real tweets) | 3,528 | 88.4 | **89.0** |
+| Evaluation | Questions | Decision 3.0 | **Pusula** | Pusula Mini | Pusula Nano |
+|---|---|---|---|---|---|
+| [Turkish Decision Benchmark](benchmark/README.md) (2,194 messages) | 19,861 | 88.5 | **92.8** | 80.9 | 81.8 |
+| Gold test set (759 held-out messages) | 7,015 | 85.5 | **90.3** | 84.5 | 84.2 |
+| Your own questions (497 messages × 3 ad-hoc questions) | 1,491 | **94.8** | 93.1 | 85.0 | 85.6 |
+| MASSIVE tr-TR, 60-way intent, zero-shot (human-written) | 2,974 | **85.3** | 84.7 | 33.3 | 30.9 |
+| OffensEval 2020 Turkish, offensive language (real tweets) | 3,528 | 88.4 | **88.8** | 76.9 | 27.5 |
 
-On the benchmark, the largest gains are human handoff (69.5 → 88.8), urgency (62.6 → 71.3) and domain routing
-(88.2 → 95.4). Personal-data detection is lower than the base model (99.0 → 92.0); see the model card for details.
-MASSIVE and OffensEval are not part of the training data: they show that the Turkish fine-tune keeps the base model's
-ability to answer unseen questions.
+Gold test set, per question:
+
+| Question | Decision 3.0 | **Pusula** |
+|---|---|---|
+| Urgency (4 levels) | 53.2 | **80.2** |
+| Human handoff | 81.5 | **89.1** |
+| Domain | 82.1 | **87.4** |
+| Emotion | 85.0 | **88.9** |
+| Security risk | 94.2 | **97.8** |
+| Action required | 88.9 | **89.2** |
+| Personal data | **96.4** | 96.0 |
+| Intent | **96.8** | 95.1 |
+
+- **Urgency is partly subjective:** the two annotators agree on 84.4% of messages, so 80.2 is close to the ceiling.
+- **Your own questions:** Pusula is on par with Decision 3.0 overall (custom questions in the gold set +2.2, OffensEval
+  +0.4, MASSIVE −0.6) but behind on questions with 10 or more options (86.7 vs 90.1). An update for long option lists
+  is planned.
+- **Mini and Nano** are trained mainly on the built-in questions. For tasks unlike them, with many options, use Pusula;
+  among the small models, Mini handles such tasks far better (OffensEval 76.9 vs 27.5).
+- MASSIVE and OffensEval are not part of the training data.
 
 ## Contents
 
@@ -81,12 +98,15 @@ ability to answer unseen questions.
 ```bash
 pip install "pusula[serve,d3] @ git+https://github.com/hsnsahinhsn/pusula"
 hf download vllm-sr/d3 --local-dir ~/d3 --exclude "assets/*"     # base Decision 3.0 weights (~52 GB)
-hf download hsnsahinhsn/pusula --local-dir ~/pusula                # Pusula v1.0 adapter (~840 MB)
+hf download hsnsahinhsn/pusula --local-dir ~/pusula                # Pusula adapter (~0.9 GB)
+# or one of the small models, which need no base weights:
+hf download hsnsahinhsn/pusula-mini --local-dir ~/pusula-mini      # Pusula Mini (~9.1 GB)
+hf download hsnsahinhsn/pusula-nano --local-dir ~/pusula-nano      # Pusula Nano (~0.6 GB)
 ```
 
 The `serve` extra installs PyTorch, Transformers and FastAPI; `d3` adds PEFT and bitsandbytes for the
 4-bit model. Install a CUDA build of PyTorch first ([pytorch.org](https://pytorch.org/get-started/locally/)).
-Pusula Nano needs only the `serve` extra.
+Pusula Mini and Pusula Nano need only the `serve` extra.
 
 ## Concepts
 
@@ -152,7 +172,8 @@ Answer for the request above (illustrative values):
 from pusula.inference import D3Engine, DecisionEngine
 
 engine = D3Engine.load("~/d3", adapter="~/pusula")      # Pusula (Turkish Decision 3.0)
-# engine = DecisionEngine.load("path/to/pusula-nano")        # Pusula Nano (GPU or CPU)
+# engine = D3Engine.load("~/pusula-mini")                # Pusula Mini (d3 format, no adapter)
+# engine = DecisionEngine.load("~/pusula-nano")          # Pusula Nano (GPU or CPU)
 
 answers = engine.decide(
     "Siparişim 5 gündür kargoda, hâlâ gelmedi. Artık iptal etmek istiyorum.",
@@ -187,6 +208,7 @@ Start the server:
 
 ```bash
 PUSULA_D3_BASE=~/d3 PUSULA_MODEL_DIR=path/to/pusula pusula-serve --port 8080   # Pusula
+PUSULA_D3_BASE=~/pusula-mini pusula-serve --port 8080                         # Pusula Mini
 PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve --port 8080                  # Pusula Nano
 ```
 
