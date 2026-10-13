@@ -17,6 +17,8 @@ from __future__ import annotations
 import argparse
 import time
 
+from typing import Optional
+
 from .jsonl import JsonlWriter, read_jsonl
 from .llm import console
 from .schema import Example, argmax_key
@@ -24,13 +26,15 @@ from .schema import Example, argmax_key
 TEACHER_MODEL = "vllm-sr/d3"
 
 
-def label_chunk(decider, examples: list[Example], token_budget: int, source: str = "d3") -> None:
-    """Fills ex.teacher / ex.labels[source] for every question of `examples` (original option order)."""
+def label_chunk(decider, examples: list[Example], token_budget: int, source: str = "d3",
+                questions: Optional[set[str]] = None) -> None:
+    """Fills ex.teacher / ex.labels[source] for every question of `examples` (original option order), or only for
+    `questions` when given (the others keep their labels and soft targets)."""
     import torch
 
     from .d3model import render
 
-    jobs = [(ex, name, q) for ex in examples for name, q in ex.questions.items()]
+    jobs = [(ex, name, q) for ex in examples for name, q in ex.questions.items() if questions is None or name in questions]
     ids = decider.encode([render(decider.tokenizer, ex.state, q, decider.codes) for ex, _, q in jobs])
     order = sorted(range(len(jobs)), key=lambda i: len(ids[i]))
     batch: list[int] = []
@@ -81,7 +85,8 @@ def run(args) -> None:
             console.print(f"[cyan]d3: {len(to_label)} örnek etiketlenecek (önceden {labeled})[/cyan]")
             for start in range(0, len(to_label), args.chunk):
                 chunk = to_label[start:start + args.chunk]
-                label_chunk(decider, chunk, args.token_budget, args.source)
+                label_chunk(decider, chunk, args.token_budget, args.source,
+                            set(args.questions.split(",")) if args.questions else None)
                 for ex in chunk:
                     writer.write(ex)
                 n = start + len(chunk)
@@ -102,6 +107,7 @@ def main(argv=None) -> None:
     p.add_argument("--sample", type=int, default=0, help="label only the first N examples with d3 (0 = all)")
     p.add_argument("--adapter", default=None, help="a trained Pusula adapter: label with Pusula instead of base d3")
     p.add_argument("--source", default="d3", help="labels key for the teacher's answers (e.g. pusula)")
+    p.add_argument("--questions", default="", help="comma-separated question names to label (default: all)")
     run(p.parse_args(argv))
 
 

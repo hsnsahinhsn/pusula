@@ -152,3 +152,20 @@ def test_wide_intent_question(example):
     q = ex.questions[WIDE_QUESTION]
     assert 30 <= len(q.option_keys()) <= 60 and ex.labels["final"]["niyet"] in q.option_keys()
     assert ex.labels["final"][WIDE_QUESTION] == ex.labels["final"]["niyet"]
+
+
+def test_teacher_labels_only_selected_questions(example):
+    torch = __import__("pytest").importorskip("torch")
+    from pusula.teacher import label_chunk
+
+    class LogitDecider(FakeDecider):
+        def logits(self, sequences, counts):
+            out = torch.full((len(sequences), max(counts)), -1e4)
+            for i, c in enumerate(counts):
+                out[i, :c] = torch.arange(c, dtype=torch.float)
+            return out
+
+    ex = example.model_copy(deep=True)
+    first = next(iter(ex.questions))
+    label_chunk(LogitDecider(), [ex], token_budget=2000, source="pusula", questions={first})
+    assert set(ex.labels["pusula"]) == {first} and set(ex.teacher) == {first}

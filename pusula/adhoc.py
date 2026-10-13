@@ -127,6 +127,7 @@ def main(argv=None) -> None:
     f = sub.add_parser("finalize")
     f.add_argument("--inp", required=True)
     f.add_argument("--out", required=True)
+    f.add_argument("--source", default="pusula", help="labels key of the teacher whose answers become the labels")
     p.add_argument("--inp")
     p.add_argument("--out")
     p.add_argument("--base-url", default=DEFAULT_BASE_URL)
@@ -135,7 +136,7 @@ def main(argv=None) -> None:
     p.add_argument("--wide", action="store_true", help="the third question gets 25-60 options")
     a = p.parse_args(argv)
     if a.cmd == "finalize":
-        finalize(a.inp, a.out)
+        finalize(a.inp, a.out, a.source)
     else:
         asyncio.run(generate(a))
 
