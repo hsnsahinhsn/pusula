@@ -191,7 +191,7 @@ class D3Decider:
             from peft import LoraConfig, get_peft_model
             backbone = get_peft_model(backbone, LoraConfig(
                 r=lora_rank, lora_alpha=2 * lora_rank, lora_dropout=0.05, target_modules=LORA_TARGETS,
-                bias="none"))
+                bias="none", task_type="FEATURE_EXTRACTION"))  # a string the Hub can parse; same logits as None
         for name, param in backbone.named_parameters():  # base weights train only in full fine-tuning
             if not trainable:
                 param.requires_grad_(full_finetune and name.startswith("language_model."))
