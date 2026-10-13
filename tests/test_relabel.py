@@ -17,6 +17,7 @@ def _ex(i="a", **labels):
 
 def test_policy_prompt_and_refresh():
     assert "etiketleme politikası" in system_prompt(True).lower() and system_prompt(False) != system_prompt(True)
+    assert system_prompt(True, "Ek kural: X").endswith("Ek kural: X") and system_prompt(True, "  ") == system_prompt(True)
     ex = refreshed(_ex(), {"insana_devret"})
     assert ex.questions["insana_devret"] == load_taxonomy().universal["insana_devret"]
     assert ex.labels == {} and ex.teacher == {}

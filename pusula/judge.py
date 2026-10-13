@@ -14,6 +14,7 @@ import random
 import string
 from collections import Counter
 from importlib import resources
+from pathlib import Path
 
 from .jsonl import JsonlWriter, done_ids, read_jsonl
 from .llm import DEFAULT_BASE_URL, DEFAULT_MODEL, chat_json, console, make_client, run_pool, wait_for_server
@@ -40,12 +41,14 @@ def lettered(ex: Example, seed: int = 0) -> dict[str, list[str]]:
     return order
 
 
-def system_prompt(policy: bool = False) -> str:
-    """With ``policy``, the labeling policy (pusula/data/label_policy.md) that every annotator follows."""
+def system_prompt(policy: bool = False, note: str = "") -> str:
+    """With ``policy``, the labeling policy (pusula/data/label_policy.md) that every annotator follows; ``note`` adds
+    judge-specific decision rules after it (e.g. how to settle a boundary the judge keeps getting wrong)."""
     if not policy:
         return SYSTEM
     text = resources.files("pusula").joinpath("data/label_policy.md").read_text(encoding="utf-8")
-    return f"{SYSTEM}\n\nAşağıdaki etiketleme politikasına uy:\n\n{text}"
+    out = f"{SYSTEM}\n\nAşağıdaki etiketleme politikasına uy:\n\n{text}"
+    return f"{out}\n\n{note.strip()}" if note.strip() else out
 
 
 def refreshed(ex: Example, names: set[str]) -> Example:
@@ -103,7 +106,7 @@ async def run(args) -> None:
     wanted = set(args.questions.split(",")) if args.questions else None
     extra = json.loads(args.extra_body) if args.extra_body else None
 
-    system = system_prompt(args.policy)
+    system = system_prompt(args.policy, Path(args.policy_note).read_text(encoding="utf-8") if args.policy_note else "")
 
     async def worker(ex: Example):
         view = ex if wanted is None else ex.model_copy(update={"questions": {
@@ -148,6 +151,7 @@ def main(argv=None) -> None:
     p.add_argument("--source", default="judge", help="labels key for this judge's answers")
     p.add_argument("--max-tokens", type=int, default=400, help="raise for reasoning models")
     p.add_argument("--policy", action="store_true", help="add the labeling policy (data/label_policy.md) to the prompt")
+    p.add_argument("--policy-note", default="", help="file with extra decision rules appended after the policy")
     p.add_argument("--refresh", action="store_true",
                    help="ask the --questions with the current taxonomy definitions (relabeling after a policy change)")
     p.add_argument("--rationale", action="store_true", help="a short assessment before the answers")
