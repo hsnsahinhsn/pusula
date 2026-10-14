@@ -183,13 +183,9 @@ def train(a) -> None:
     out.mkdir(parents=True, exist_ok=True)
     last = out / "last"
     resume = (last / "trainer_state.json").exists() and not a.bench
-    if a.full:  # whole model (Pusula Mini); a resume reloads the saved full model
-        decider = D3Decider.load(str(last) if resume else a.d3, full_finetune=True, load_in_4bit=False,
-                                 gradient_checkpointing=not a.no_grad_ckpt, device=device)
-    else:
-        start = str(last) if resume else a.init_adapter  # continue from a trained Pusula adapter (e.g. v1 -> v2)
-        decider = D3Decider.load(a.d3, adapter=start, lora_rank=a.lora_rank,
-                                 gradient_checkpointing=not a.no_grad_ckpt, load_in_4bit=_precision(a), device=device)
+    start = str(last) if resume else a.init_adapter  # continue from a trained Pusula adapter (e.g. v1 -> v2)
+    decider = D3Decider.load(a.d3, adapter=start, lora_rank=a.lora_rank,
+                             gradient_checkpointing=not a.no_grad_ckpt, load_in_4bit=_precision(a), device=device)
     decider.readout.requires_grad_(True)
     rng = random.Random(a.seed)
     t0 = time.time()
@@ -312,7 +308,7 @@ def run_eval(a) -> None:
 
     from .d3model import D3Decider
 
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"  # CPU: e.g. Pusula Mini on a laptop
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
     decider = D3Decider.load(a.d3, adapter=a.adapter, load_in_4bit=_precision(a), device=device)
     decider.backbone.eval()
     examples = read_examples(a.data)
@@ -340,8 +336,6 @@ def main(argv=None) -> None:
     t.add_argument("--epochs", type=int, default=1)
     t.add_argument("--lora-rank", type=int, default=32)
     t.add_argument("--init-adapter", default=None, help="start from this trained adapter (LoRA + readout) instead of base d3")
-    t.add_argument("--full", action="store_true", help="train the whole model instead of LoRA (small d3-format "
-                                                        "models such as Pusula Mini; --d3 is the model directory)")
     t.add_argument("--lr", type=float, default=1e-4)
     t.add_argument("--readout-lr", type=float, default=2e-5)
     t.add_argument("--label-smoothing", type=float, default=0.05)

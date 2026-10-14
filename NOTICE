@@ -8,9 +8,7 @@ This product includes or builds on the following Apache-2.0 licensed works:
   The d3 prompt contract and non-causal attention hook in pusula/d3model.py follow vllm-sr/d3
   (adapted there from perplexity-ai/pplx-decider-v1.1-27b, Apache-2.0).
 - Qwen3.8-27B, https://huggingface.co/Qwen/Qwen3.8-27B (Qwen Team, Alibaba Cloud).
-- Qwen3.5-4B, https://huggingface.co/Qwen/Qwen3.5-4B (Qwen Team, Alibaba Cloud).
 - TabiBERT, https://huggingface.co/boun-tabilab/TabiBERT (Boğaziçi University TABILAB).
 
-Pusula model weights are LoRA adapters and a code readout trained on top of vllm-sr/d3 (Pusula),
-a fully fine-tuned Qwen3.5-4B in the d3 format (Pusula Mini) and a fine-tuned TabiBERT cross-encoder
-(Pusula Nano). Their training data was generated synthetically; it contains no scraped or personal data.
+Pusula model weights are LoRA adapters and a code readout trained on top of vllm-sr/d3 (Pusula)
+and a fine-tuned TabiBERT cross-encoder (Pusula Nano). Their training data was generated synthetically; it contains no scraped or personal data.

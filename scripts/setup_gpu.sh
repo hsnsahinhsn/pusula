@@ -4,7 +4,7 @@
 #
 #   bash scripts/setup_gpu.sh            # python deps + Pusula
 #   WITH_VLLM=1 bash scripts/setup_gpu.sh   # also vLLM (data generation with Qwen)
-#   bash scripts/setup_gpu.sh models     # also download vllm-sr/d3 (to $D3_DIR), TabiBERT and Qwen3.5-0.8B
+#   bash scripts/setup_gpu.sh models     # also download vllm-sr/d3 (to $D3_DIR) and TabiBERT
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export HF_HOME=${HF_HOME:-/workspace/hf} D3_DIR=${D3_DIR:-/workspace/d3}
@@ -44,6 +44,5 @@ if [[ ${WITH_VLLM:-0} == 1 ]]; then $PIP vllm; fi  # brings its own torch: use a
 if [[ ${1:-} == models ]]; then
   hf download vllm-sr/d3 --local-dir "$D3_DIR" --exclude "assets/*"
   hf download boun-tabilab/TabiBERT
-  hf download Qwen/Qwen3.5-0.8B
 fi
 python -c "import torch, pusula, transformers, peft, accelerate, fla, causal_conv1d; print('pusula ok, torch', torch.__version__, 'transformers', transformers.__version__)"

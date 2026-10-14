@@ -110,7 +110,7 @@ def enable_noncausal_full_attention(text_model) -> None:
     text_model.register_forward_pre_hook(mask_inputs, with_kwargs=True)
 
 
-def default_4bit(model_dir: Optional[str] = None, device: str = "cuda:0") -> bool:
+def default_4bit(device: str = "cuda:0") -> bool:
     """4-bit only on a GPU that cannot hold the BF16 weights with room to spare (d3: ~52 GB, so below 80 GB);
     never on the CPU, where 4-bit kernels are not available. PUSULA_D3_4BIT=0/1 overrides."""
     import os
@@ -122,15 +122,9 @@ def default_4bit(model_dir: Optional[str] = None, device: str = "cuda:0") -> boo
         return env.strip() not in ("0", "false", "no")
     if torch.device(device).type != "cuda" or not torch.cuda.is_available():
         return False
-    gpu = torch.cuda.get_device_properties(torch.device(device).index or 0).total_memory
-    weights = sum(f.stat().st_size for f in Path(model_dir).glob("*.safetensors")) if model_dir else 0
-    if weights:  # a small d3-format model (Pusula Mini) fits anywhere in BF16
-        return weights * 1.5 > gpu
-    return gpu < 80 * 2**30
+    return torch.cuda.get_device_properties(torch.device(device).index or 0).total_memory < 80 * 2**30
 
 
-D3_FORMAT_FILES = ("decision_config.json", "tokenizer.json", "tokenizer_config.json", "vocab.json", "merges.txt",
-                   "chat_template.jinja", "special_tokens_map.json")
 LORA_TARGETS = r".*language_model.*\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj|in_proj_qkvz|in_proj_ba|in_proj_qkv|in_proj_z|out_proj)$"
 
 
@@ -147,31 +141,26 @@ class D3Decider:
 
     @classmethod
     def load(cls, model_dir: str, adapter: Optional[str] = None, load_in_4bit: Optional[bool] = None,
-             lora_rank: int = 0, device: str = "cuda:0", gradient_checkpointing: bool = False,
-             full_finetune: bool = False) -> "D3Decider":
-        """Load d3 (or a d3-format model such as Pusula Mini) from a local directory. `adapter`: a trained
-        Pusula adapter dir (LoRA + readout). `lora_rank` > 0 adds fresh trainable LoRA layers (training from
-        the base). `full_finetune` keeps FP32 master weights and trains the whole language model instead."""
+             lora_rank: int = 0, device: str = "cuda:0", gradient_checkpointing: bool = False) -> "D3Decider":
+        """Load d3 from a local directory. `adapter`: a trained Pusula adapter dir (LoRA + readout).
+        `lora_rank` > 0 adds fresh trainable LoRA layers (training from the base)."""
         import torch
         from safetensors.torch import load_file
         from transformers import AutoTokenizer, BitsAndBytesConfig
         from transformers.models.qwen3_5.modeling_qwen3_5 import Qwen3_5Model
 
         if load_in_4bit is None:
-            load_in_4bit = default_4bit(model_dir, device)
+            load_in_4bit = default_4bit(device)
         quant = None
         if load_in_4bit:
             quant = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
                                        bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True,
                                        llm_int8_skip_modules=["visual", "lm_head"])
-        if full_finetune and (load_in_4bit or adapter or lora_rank):
-            raise ValueError("full fine-tuning is BF16/FP32 only, without adapters")
-        # a device_map loads straight to the GPU (no full copy in RAM) but needs accelerate; on CPU (Pusula Mini)
-        # a plain load is the same thing without that dependency
+        # a device_map loads straight to the GPU (no full copy in RAM) but needs accelerate; on CPU a plain load
+        # is the same thing without that dependency
         on_cpu = torch.device(device).type == "cpu" and quant is None
-        # FP32 for full fine-tuning (master weights) and on CPU, where BF16 matmuls are often many times slower
-        fp32 = full_finetune or on_cpu
-        backbone = Qwen3_5Model.from_pretrained(model_dir, dtype=torch.float32 if fp32 else torch.bfloat16,
+        # FP32 on CPU, where BF16 matmuls are often many times slower
+        backbone = Qwen3_5Model.from_pretrained(model_dir, dtype=torch.float32 if on_cpu else torch.bfloat16,
                                                 attn_implementation="sdpa", quantization_config=quant,
                                                 **({} if on_cpu else {"device_map": {"": device}}))
         enable_noncausal_full_attention(backbone.language_model)
@@ -192,14 +181,13 @@ class D3Decider:
             backbone = get_peft_model(backbone, LoraConfig(
                 r=lora_rank, lora_alpha=2 * lora_rank, lora_dropout=0.05, target_modules=LORA_TARGETS,
                 bias="none", task_type="FEATURE_EXTRACTION"))  # a string the Hub can parse; same logits as None
-        for name, param in backbone.named_parameters():  # base weights train only in full fine-tuning
-            if not trainable:
-                param.requires_grad_(full_finetune and name.startswith("language_model."))
+        if not trainable:  # base weights never train; only LoRA layers and the readout do
+            for param in backbone.parameters():
+                param.requires_grad_(False)
         if gradient_checkpointing and not load_in_4bit:
             backbone.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
         tokenizer = AutoTokenizer.from_pretrained(model_dir)
         decider = cls(backbone, readout, tokenizer, load_codes(model_dir), torch.device(device))
-        decider.model_dir = Path(model_dir)
         return decider
 
     def encode(self, prompts: Sequence[str]) -> list[list[int]]:
@@ -229,17 +217,6 @@ class D3Decider:
         path.mkdir(parents=True, exist_ok=True)
         if hasattr(self.backbone, "peft_config"):
             self.backbone.save_pretrained(str(path))
-        else:  # full model (Pusula Mini): BF16 weights plus everything needed to load it as a d3-format model
-            import shutil
-
-            import torch
-
-            state = {k: v.detach().to(torch.bfloat16) for k, v in self.backbone.state_dict().items()}
-            self.backbone.save_pretrained(str(path), state_dict=state)
-            for name in D3_FORMAT_FILES:
-                src = self.model_dir / name
-                if src.exists() and src.resolve() != (path / name).resolve():
-                    shutil.copy2(src, path / name)
         save_file({"weight": self.readout.detach().float().cpu().contiguous()}, str(path / "readout.safetensors"))
         (path / "pusula_d3.json").write_text(json.dumps({"format_id": "d3-code-readout-v1", **(meta or {})},
                                                         ensure_ascii=False, indent=2), encoding="utf-8")

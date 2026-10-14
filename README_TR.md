@@ -30,17 +30,16 @@ Bugünkü karar modelleri (Decision 3.0, Jev, Laya, ...) İngilizce için kurulm
   karşılaştırılır; sonuçlar modelle birlikte yayınlanır.
 
 > **Durum:** v1.0. Ağırlıklar: [Pusula](https://huggingface.co/hsnsahinhsn/pusula) ·
-> [Pusula Mini](https://huggingface.co/hsnsahinhsn/pusula-mini) · [Pusula Nano](https://huggingface.co/hsnsahinhsn/pusula-nano).
+> [Pusula Nano](https://huggingface.co/hsnsahinhsn/pusula-nano).
 
 ## Modeller
 
 | Model | Boyut | Çalıştığı yer | Benchmark / altın set | Ne için |
 |---|---|---|---|---|
 | **Pusula** (Türkçe Decision 3.0) | 26B: `vllm-sr/d3` üzerine 0,9 GB'lık LoRA adaptörü | GPU: BF16'da ≥ 64 GB, 4-bit'te ≥ 24 GB | **92,8 / 90,3** | En yüksek doğruluk; hazır sorularda da sizin sorularınızda da |
-| **Pusula Mini** | 4,7B (Qwen3.5-4B, tam eğitim, d3 biçimi) | GPU (ağırlıklar BF16'da 9,1 GB) | 80,9 / 84,5 | Daha küçük bir GPU; eğitim verisine benzemeyen görevlerde en güçlü küçük model |
 | **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU veya herhangi bir GPU | 81,8 / 84,2 | Hazır sorularda yüksek hacim ve düşük gecikme |
 
-Hepsi birebir aynı istekleri cevaplar.
+İkisi de birebir aynı istekleri cevaplar.
 
 ---
 
@@ -50,13 +49,13 @@ Doğruluk (%). Değerlendirme etiketleri birbirini görmeden çalışan iki etik
 Sonnet 5.5); ayrıştıkları yerde hakem karar verir ve hepsi yayınlanan [etiketleme politikasına](pusula/data/label_policy.md)
 uyar. Bu etiketler yalnız ölçüm için kullanılır, hiçbir zaman eğitim etiketi olarak kullanılmaz.
 
-| Değerlendirme | Soru | Decision 3.0 | **Pusula** | Pusula Mini | Pusula Nano |
-|---|---|---|---|---|---|
-| [Türkçe Karar Benchmark'ı](benchmark/README.md) (2.194 mesaj) | 19.861 | 88,5 | **92,8** | 80,9 | 81,8 |
-| Altın test seti (eğitimde olmayan 759 mesaj) | 7.015 | 85,5 | **90,3** | 84,5 | 84,2 |
-| Kendi sorularınız (497 mesaj × 3 özel soru) | 1.491 | **94,8** | 93,1 | 85,0 | 85,6 |
-| MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı) | 2.974 | **85,3** | 84,7 | 33,3 | 30,9 |
-| OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler) | 3.528 | 88,4 | **88,8** | 76,9 | 27,5 |
+| Değerlendirme | Soru | Decision 3.0 | **Pusula** | Pusula Nano |
+|---|---|---|---|---|
+| [Türkçe Karar Benchmark'ı](benchmark/README.md) (2.194 mesaj) | 19.861 | 88,5 | **92,8** | 81,8 |
+| Altın test seti (eğitimde olmayan 759 mesaj) | 7.015 | 85,5 | **90,3** | 84,2 |
+| Kendi sorularınız (497 mesaj × 3 özel soru) | 1.491 | **94,8** | 93,1 | 85,6 |
+| MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı) | 2.974 | **85,3** | 84,7 | 30,9 |
+| OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler) | 3.528 | 88,4 | **88,8** | 27,5 |
 
 Altın test seti, soru bazında:
 
@@ -75,8 +74,8 @@ Altın test seti, soru bazında:
 - **Kendi sorularınız:** Pusula genel olarak Decision 3.0 ile aynı seviyede (altın setteki özel sorularda +2,2,
   OffensEval'de +0,4, MASSIVE'de −0,6), ancak 10 ve üzeri seçenekli sorularda geride (86,7'ye 90,1). Uzun seçenek
   listeleri için bir güncelleme planlandı.
-- **Mini ve Nano** ağırlıkla hazır sorularla eğitildi. Bunlara benzemeyen, çok seçenekli görevler için Pusula'yı
-  kullanın; küçük modeller arasında bu tür görevlerde Mini çok daha iyi (OffensEval'de 76,9'a 27,5).
+- **Nano** ağırlıkla hazır sorularla eğitildi. Bunlara benzemeyen ya da çok seçenekli görevler için Pusula'yı
+  kullanın (OffensEval'de 88,8'e 27,5, MASSIVE'de 84,7'ye 30,9).
 - MASSIVE ve OffensEval eğitim verisinde yok.
 
 ## İçindekiler
@@ -100,14 +99,13 @@ Altın test seti, soru bazında:
 pip install "pusula[serve,d3] @ git+https://github.com/hsnsahinhsn/pusula"
 hf download vllm-sr/d3 --local-dir ~/d3 --exclude "assets/*"     # temel Decision 3.0 ağırlıkları (~52 GB)
 hf download hsnsahinhsn/pusula --local-dir ~/pusula                # Pusula adaptörü (~0,9 GB)
-# ya da temel ağırlık gerektirmeyen küçük modellerden biri:
-hf download hsnsahinhsn/pusula-mini --local-dir ~/pusula-mini      # Pusula Mini (~9,1 GB)
+# ya da temel ağırlık gerektirmeyen küçük model:
 hf download hsnsahinhsn/pusula-nano --local-dir ~/pusula-nano      # Pusula Nano (~0,6 GB)
 ```
 
 `serve` eki PyTorch, Transformers ve FastAPI'yi; `d3` eki 4-bit model için PEFT ve bitsandbytes'ı kurar.
 Önce PyTorch'un CUDA sürümünü kurun ([pytorch.org](https://pytorch.org/get-started/locally/)).
-Pusula Mini ve Pusula Nano için yalnızca `serve` eki yeterlidir.
+Pusula Nano için yalnızca `serve` eki yeterlidir.
 
 ## Temel kavramlar
 
@@ -173,7 +171,6 @@ Yukarıdaki isteğin cevabı (değerler örnek amaçlıdır):
 from pusula.inference import D3Engine, DecisionEngine
 
 engine = D3Engine.load("~/d3", adapter="~/pusula")      # Pusula (Türkçe Decision 3.0)
-# engine = D3Engine.load("~/pusula-mini")                # Pusula Mini (d3 biçimi, adaptörsüz)
 # engine = DecisionEngine.load("~/pusula-nano")          # Pusula Nano (GPU veya CPU)
 
 answers = engine.decide(
@@ -209,7 +206,6 @@ Sunucuyu başlatın:
 
 ```bash
 PUSULA_D3_BASE=~/d3 PUSULA_MODEL_DIR=path/to/pusula pusula-serve --port 8080   # Pusula
-PUSULA_D3_BASE=~/pusula-mini pusula-serve --port 8080                         # Pusula Mini
 PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve --port 8080                  # Pusula Nano
 ```
 

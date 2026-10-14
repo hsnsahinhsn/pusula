@@ -1,7 +1,7 @@
-"""Pusula Mini / Nano from Pusula: knowledge-distillation data.
+"""Pusula Nano from Pusula: knowledge-distillation data.
 
-    # 1. sample training examples, add a wide many-option intent question (30-60 options) so small models
-    #    learn to pick among many codes, copy val/test with the same extra question
+    # 1. sample training examples, add a wide many-option intent question (30-60 options) so the small model
+    #    learns to pick among many options, copy val/test with the same extra question
     python -m pusula.distill prepare --data runs/full/curated --out runs/full/distill --n 3000
     # 2. Pusula labels every question (soft targets)
     python -m pusula.teacher --d3 ~/d3 --adapter runs/full/pusula-d3/best --source pusula --precision bf16 \
@@ -64,7 +64,7 @@ def prepare(data: str, out: str, n: int, seed: int = 23) -> None:
 
 
 def finalize(out: str, source: str = "pusula", seed: int = 29) -> None:
-    """train.jsonl = Pusula-labeled examples + as many hard-label ones (Mini); train_full/ = all of them (Nano)."""
+    """full/train.jsonl = the Pusula-labeled examples + all hard-label ones (Nano's training data)."""
     dst = Path(out)
     rows = read_examples(dst / "train_labeled.jsonl")
     kept = dropped = 0
@@ -79,14 +79,13 @@ def finalize(out: str, source: str = "pusula", seed: int = 29) -> None:
                 kept += 1
     rest = read_examples(dst / "train_rest.jsonl")
     random.Random(seed).shuffle(rest)
-    write_examples(dst / "train.jsonl", rows + rest[: len(rows)])
     full = dst / "full"
     full.mkdir(exist_ok=True)
     write_examples(full / "train.jsonl", rows + rest)
     for split in ("val", "test"):
         write_examples(full / f"{split}.jsonl", read_examples(dst / f"{split}.jsonl"))
     console.print(f"[green]{len(rows)} örnek Pusula etiketli: {kept} soru dağılımıyla, {dropped} soru yalnız etiketle; "
-                  f"Mini {2 * len(rows)} örnek, Nano {len(rows) + len(rest)} örnek[/green]")
+                  f"Nano {len(rows) + len(rest)} örnek[/green]")
 
 
 def main(argv=None) -> None:
