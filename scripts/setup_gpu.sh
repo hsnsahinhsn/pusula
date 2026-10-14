@@ -28,7 +28,7 @@ PY
 # torch comes from the image (often a pre-release build such as 2.14.0a0+nv): torch-dependent packages are
 # installed with --no-deps so pip never tries to replace it; their other dependencies are listed explicitly.
 $PIP "transformers==5.17.0" "safetensors>=0.4" einops pyarrow "huggingface_hub>=1.0" pyyaml rich "pydantic>=2"   fastapi uvicorn openai ninja psutil tqdm packaging numpy
-$PIP --no-deps "peft>=0.13" "accelerate>=1.10" flash-linear-attention fla-core
+$PIP --no-deps "peft>=0.13" "accelerate>=1.10" flash-linear-attention fla-core "bitsandbytes>=0.46.1"  # 4-bit d3 on GPUs < 80 GB
 $PIP --no-deps -e .
 # the CUDA toolkit that builds kernels must match torch's CUDA (e.g. the image ships 12.6, the torch wheel is 13.0)
 TCU=$(python -c "import torch; print(torch.version.cuda)")
