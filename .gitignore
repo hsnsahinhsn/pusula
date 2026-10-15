@@ -41,6 +41,9 @@ PROJECT_STATE.md
 # Kişisel/yerel dosyalar
 yerel/
 
+# İndirilen modeller (Pusula Nano vb.)
+/models/
+
 # Paketleme çıktıları
 *.egg-info/
 build/
