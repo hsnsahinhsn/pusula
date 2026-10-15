@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import time
-
 from typing import Optional
 
 from .jsonl import JsonlWriter, read_jsonl
