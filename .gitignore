@@ -45,3 +45,9 @@ yerel/
 *.egg-info/
 build/
 dist/
+
+# Local Netlify folder
+.netlify
+
+# Hugging Face upload resume metadata
+.cache/
