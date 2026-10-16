@@ -12,6 +12,12 @@ Mesajı, hizmet veren kurumun vermesi gereken karar açısından oku. Yazarın t
 
 - Kişinin ulaşmak istediği sonuca bak; mesajda birden fazla konu varsa asıl talebi seç.
 - Açıklamalardaki "Kapsamaz" notlarına uy; en özgül niyeti seç.
+- Yorumlar (mağaza, ürün, kurum veya hizmet değerlendirmesi): mesaj somut bir sorun ya da talep anlatmıyorsa,
+  yalnız genel bir görüş bildiriyorsa `genel_sohbet > geri_bildirim > genel_memnuniyet` seç ("Kalitesiz, almayın",
+  "Personel çok kaba"). Somut bir sorun veya talep varsa o konunun alanını ve niyetini seç ("Yanlış renk geldi"
+  → eksik/yanlış ürün, "Ürün kırık geldi, iade istiyorum" → iade talebi, "Kargom 10 gündür şubede" → kargo
+  takibi, "3 gündür internet yok" → internet arızası). Yorumun yazıldığı yer (harita, ürün sayfası) ve
+  sektörün adı tek başına alanı belirlemez.
 
 ## aciliyet
 
