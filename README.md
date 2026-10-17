@@ -375,7 +375,7 @@ in [`CITATION.cff`](CITATION.cff) and through the "Cite this repository" button 
 ```bibtex
 @software{pusula2026,
   title   = {Pusula: The First Full-Featured Turkish Decision Model},
-  author  = {{\c{S}}ahin, Hasan and Sayman, Ahmet},
+  author  = {Şahin, Hasan and Sayman, Ahmet},
   year    = {2026},
   version = {1.0},
   url     = {https://github.com/hsnsahinhsn/pusula},
