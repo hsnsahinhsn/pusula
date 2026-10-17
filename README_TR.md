@@ -1,6 +1,6 @@
 <div align="center">
 
-# Pusula
+<h1><picture><source media="(prefers-color-scheme: dark)" srcset="site/brand/pusula-logo-reverse.svg"><img src="site/brand/pusula-logo.svg" alt="Pusula" width="300"></picture></h1>
 
 ### İlk Türkçe tam donanımlı karar modeli
 
