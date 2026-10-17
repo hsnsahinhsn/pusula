@@ -6,9 +6,12 @@ train and eval splits. Everything runs on this machine; nothing is sent anywhere
 
     python -m pusula.clean_real --inp raw.csv --text-field metin --out-dir OUT \\
         --eval-n 500 --strata kanal --id-prefix kurum --seed 0 \\
-        [--no-ner] [--ner-model akdeniz27/bert-base-turkish-cased-ner] [--ner-min-score 0.5] [--repair-glued]
+        [--no-ner] [--ner-model akdeniz27/bert-base-turkish-cased-ner] [--ner-min-score 0.5] [--repair-glued] \\
+        [--exclude old_raw.csv:metin --exclude old_clean.jsonl]
 
 With --repair-glued, provider tags glued into words are repaired (see ``repair_glued``) instead of dropping the row.
+With --exclude (repeatable, ``PATH[:FIELD]``, field defaults to ``state``), rows already present in earlier raw or clean
+files are dropped as ``onceki_veri``, so a new delivery never repeats a message that is already in a train or eval split.
 """
 from __future__ import annotations
 
@@ -21,7 +24,7 @@ import re
 import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Callable, Iterator
+from typing import AbstractSet, Callable, Iterator, Sequence
 
 from .anonymize import FIRST, LAST, Anonymizer, fake_tckn, luhn_ok, needs_review
 
@@ -432,6 +435,21 @@ def iter_rows(path: Path, text_field: str) -> Iterator[tuple[int, str, dict]]:
             yield row_num, text, meta
 
 
+def load_exclude_keys(specs: Sequence[str]) -> set[str]:
+    """Dedupe keys of every message in earlier files (``PATH[:FIELD]``, FIELD defaults to ``state``). Raw files go
+    through the same mojibake repair and normalization as new rows, so a re-delivered raw message matches."""
+    keys: set[str] = set()
+    for spec in specs:
+        path, sep, field = spec.rpartition(":")
+        if not sep or "/" in field:
+            path, field = spec, "state"
+        for _, text, _ in iter_rows(Path(path), field):
+            if text:
+                keys.add(dedupe_key(_normalize_text(fix_mojibake(text) or text)))
+    keys.discard("")
+    return keys
+
+
 def process_rows(
     items: list[tuple[int, str, dict]],
     *,
@@ -443,6 +461,7 @@ def process_rows(
     name_finder: NameFinder | None,
     ner_min_score: float,
     repair_vocab: Vocab | None = None,
+    exclude_keys: AbstractSet[str] = frozenset(),
 ) -> tuple[list[dict], list[dict], list[dict], list[dict], dict]:
     """Run the cleaning pipeline; returns train, eval, dropped, review rows, and report dict."""
     anon = Anonymizer(seed)
@@ -474,6 +493,10 @@ def process_rows(
             continue
 
         dkey = dedupe_key(text)
+        if dkey in exclude_keys:
+            dropped.append({"source_row": meta["source_row"], "reason": "onceki_veri", "text": raw_text})
+            stats["onceki_veri"] += 1
+            continue
         if dkey in seen_keys:
             dropped.append({"source_row": meta["source_row"], "reason": "tekrar", "text": raw_text})
             stats["tekrar"] += 1
@@ -510,6 +533,11 @@ def process_rows(
         for k, v in anon.counts.items():
             anon_counts[k] += v
         anon.counts.clear()
+
+        if exclude_keys and dedupe_key(text) in exclude_keys:  # earlier clean files hold the anonymized text
+            dropped.append({"source_row": meta["source_row"], "reason": "onceki_veri", "text": raw_text})
+            stats["onceki_veri"] += 1
+            continue
 
         words = needs_review(text)
         clean.append({"text": text, "meta": meta, "_dedupe": dkey, "_review": words})
@@ -579,6 +607,7 @@ def run(
     ner_min_score: float,
     name_finder: NameFinder | None = None,
     repair: bool = False,
+    exclude: Sequence[str] = (),
 ) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_dir.chmod(0o700)
@@ -599,6 +628,7 @@ def run(
         name_finder=finder if use_ner else None,
         ner_min_score=ner_min_score,
         repair_vocab=vocab,
+        exclude_keys=load_exclude_keys(exclude),
     )
     if use_ner and name_finder is None:
         report["ner_model"] = ner_model
@@ -637,6 +667,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--ner-model", default="akdeniz27/bert-base-turkish-cased-ner")
     p.add_argument("--ner-min-score", type=float, default=0.5)
     p.add_argument("--repair-glued", action="store_true", help="repair tags glued into words instead of dropping the row")
+    p.add_argument("--exclude", action="append", default=[], metavar="PATH[:FIELD]",
+                   help="drop rows already in this earlier raw or clean file (repeatable; FIELD defaults to state)")
     a = p.parse_args(argv)
     report = run(
         a.inp,
@@ -650,6 +682,7 @@ def main(argv: list[str] | None = None) -> None:
         ner_model=a.ner_model,
         ner_min_score=a.ner_min_score,
         repair=a.repair_glued,
+        exclude=a.exclude,
     )
     print(json.dumps(report, ensure_ascii=False))
 

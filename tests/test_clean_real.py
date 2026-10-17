@@ -256,3 +256,27 @@ def test_stratified_allocation():
     rows = [{"meta": {"k": "a"}}, {"meta": {"k": "a"}}, {"meta": {"k": "b"}}, {"meta": {"k": "b"}}, {"meta": {"k": "b"}}]
     idx = stratified_eval_indices(rows, eval_n=10, strata_field="k", seed=1)
     assert len(idx) == 1
+
+
+def test_exclude_drops_rows_seen_in_earlier_files(tmp_path: Path):
+    old_raw = tmp_path / "old.csv"
+    with old_raw.open("w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["metin", "kanal"])
+        w.writerow([_as_cp1252("Kargom üç gündür gelmedi, kimse cevap vermiyor."), "web"])
+    old_clean = tmp_path / "old_eval.jsonl"
+    old_clean.write_text(json.dumps({"id": "e1", "state": "Fatura iki kez kesilmiş, iade istiyorum."},
+                                    ensure_ascii=False) + "\n", encoding="utf-8")
+    new = tmp_path / "new.jsonl"
+    rows = ["kargom üç gündür gelmedi kimse cevap vermiyor",       # same message as the old raw row (mojibake there)
+            "Fatura iki kez kesilmiş, iade istiyorum!",            # same message as an old eval row
+            "Uygulama açılmıyor, şifre sıfırlama da çalışmıyor."]  # new
+    new.write_text("".join(json.dumps({"metin": t, "kanal": "web"}, ensure_ascii=False) + "\n" for t in rows),
+                   encoding="utf-8")
+    out = tmp_path / "out"
+    main(["--inp", str(new), "--text-field", "metin", "--out-dir", str(out), "--eval-n", "0", "--no-ner",
+          "--exclude", f"{old_raw}:metin", "--exclude", str(old_clean)])
+    report = json.loads((out / "report.json").read_text(encoding="utf-8"))
+    assert report["dropped"] == {"onceki_veri": 2}
+    train = [json.loads(l) for l in (out / "train.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert [r["state"] for r in train] == [rows[2]]
