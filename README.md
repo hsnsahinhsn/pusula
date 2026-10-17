@@ -12,21 +12,21 @@
 
 </div>
 
-Decision models answer typed questions about a text — route this ticket, is this a prompt injection,
-how urgent is it — and return a **probability for every option** instead of generating text. Today's
-decision models (Decision 3.0, Jev, Laya, ...) are built for English and stumble on Turkish.
-**Pusula is Decision 3.0 trained for Turkish.**
+Decision models answer typed questions about a text (for example, which team should handle a ticket, whether it
+contains a prompt injection, or how urgent it is) and return a **probability for every option** instead of
+generated text. Existing decision models (Decision 3.0, Jev, Laya and others) were developed for English, and their
+accuracy on Turkish is limited. **Pusula is Decision 3.0 adapted to Turkish.**
 
-- **Turkish first.** [vllm-sr/d3](https://huggingface.co/vllm-sr/d3) (Decision 3.0) fine-tuned on Turkish
-  decision data across 20 domains: banking, accounting and tax, law, health, e-commerce, logistics, public
-  services and more — informal writing, typos, missing Turkish characters and mixed Turkish–English included.
-- **Any options, at request time.** You define the question and its options in each request.
-- **Three question types.** `choice` (pick one), `noul` (yes/no), `score` (ordered levels).
-- **Drop-in d3 replacement.** Same request and answer format as d3's `/v1/systemone`.
-- **Built-in Turkish taxonomy.** 20 domains → 86 subdomains → 299 intents, plus six universal checks
-  (urgency, action needed, human handoff, security risk, emotion, personal data).
-- **Turkish decision benchmark.** Pusula is evaluated against base Decision 3.0 on an independently
-  labeled Turkish test set; results are published with the model.
+- **Turkish first.** [vllm-sr/d3](https://huggingface.co/vllm-sr/d3) (Decision 3.0) has been fine-tuned on Turkish
+  decision data from 20 domains, including banking, accounting and tax, law, health, e-commerce, logistics and
+  public services. Informal writing, typos, missing Turkish characters and mixed Turkish–English text are covered.
+- **Options defined at request time.** Questions and their options are specified in each request.
+- **Three question types.** `choice` (one option), `noul` (yes/no) and `score` (ordered levels).
+- **Drop-in d3 replacement.** The request and answer format of d3's `/v1/systemone` is preserved.
+- **Built-in Turkish taxonomy.** 20 domains, 86 subdomains and 299 intents, together with six universal checks
+  (urgency, action required, human handoff, security risk, emotion and personal data).
+- **Turkish decision benchmark.** Pusula has been evaluated against the base Decision 3.0 model on independently
+  labeled Turkish test sets; the results are published with the model.
 
 > **Status:** v1.0. Weights: [Pusula](https://huggingface.co/hsnsahinhsn/pusula) ·
 > [Pusula Nano](https://huggingface.co/hsnsahinhsn/pusula-nano).
@@ -35,19 +35,19 @@ decision models (Decision 3.0, Jev, Laya, ...) are built for English and stumble
 
 | Model | Size | Runs on | Benchmark / gold set | Use it for |
 |---|---|---|---|---|
-| **Pusula** (Turkish Decision 3.0) | 26B: a 0.9 GB LoRA adapter on top of `vllm-sr/d3` | GPU: ≥ 64 GB in BF16, ≥ 24 GB in 4-bit | **92.1 / 90.6** | The highest accuracy, for the built-in questions and your own |
+| **Pusula** (Turkish Decision 3.0) | 26B: a 0.9 GB LoRA adapter on top of `vllm-sr/d3` | GPU: ≥ 64 GB in BF16, ≥ 24 GB in 4-bit | **92.1 / 90.6** | Highest accuracy, for built-in and custom questions |
 | **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU or any GPU | 82.1 / 84.3 | High volume and low latency on the built-in questions |
 
-Both answer exactly the same requests.
+Both models accept identical requests.
 
 ---
 
 ## Results
 
-Accuracy (%). The evaluation labels come from two annotators working blind and independently (Claude Opus 5.5 and
-Claude Sonnet 5.5), with disagreements adjudicated, all following the published
-[labeling policy](pusula/data/label_policy.md). The real customer messages were labeled blind by Claude with the same
-policy. Evaluation labels are used only for evaluation, never as training labels.
+Accuracy (%). Evaluation labels were assigned blind and independently by two annotators (Claude Opus 5.5 and
+Claude Sonnet 5.5); disagreements were adjudicated, and all labels follow the published
+[labeling policy](pusula/data/label_policy.md). The real customer messages were labeled blind by Claude under the same
+policy. Evaluation labels are used exclusively for evaluation and are never used as training labels.
 
 | Evaluation | Questions | Decision 3.0 | **Pusula** | Pusula Nano |
 |---|---|---|---|---|
@@ -74,12 +74,14 @@ Gold test set, per question:
 - **Real customer messages:** Evaluation was performed on a held-out set of 500 anonymized customer messages
   (reviews, complaints and questions) licensed from a commercial partner. This set is not published. Other messages
   from the same source were used for training and were labeled by an open model (Qwen).
-- **Urgency is partly subjective:** the two annotators agree on 84.4% of messages, so 81.0 is close to the ceiling.
-- **Your own questions:** Pusula is on par with Decision 3.0 (94.7 vs 94.8; custom questions in the gold set +2.7,
-  OffensEval +0.2, MASSIVE −0.2).
-- **Nano** is trained mainly on the built-in questions. On real messages it is close to Pusula (82.9 vs 84.1). For
-  tasks unlike the built-in questions, or with many options, use Pusula (OffensEval 88.6 vs 37.2, MASSIVE 85.1 vs 36.1).
-- MASSIVE and OffensEval are not part of the training data.
+- **Urgency is partly subjective:** the two annotators agree on 84.4% of messages; a score of 81.0 is therefore
+  close to the attainable ceiling.
+- **Custom questions:** Pusula performs on par with Decision 3.0 (94.7 vs 94.8; custom questions in the gold set
+  +2.7, OffensEval +0.2, MASSIVE −0.2).
+- **Pusula Nano** was trained mainly on the built-in questions. On real messages its accuracy is close to that of
+  Pusula (82.9 vs 84.1). For tasks that differ from the built-in questions, or that have many options, Pusula is
+  recommended (OffensEval 88.6 vs 37.2, MASSIVE 85.1 vs 36.1).
+- MASSIVE and OffensEval are not included in the training data.
 
 ## Contents
 
@@ -106,13 +108,13 @@ hf download hsnsahinhsn/pusula --local-dir ~/pusula                # Pusula adap
 hf download hsnsahinhsn/pusula-nano --local-dir ~/pusula-nano      # Pusula Nano (~0.6 GB)
 ```
 
-The `serve` extra installs PyTorch, Transformers and FastAPI; `d3` adds PEFT and bitsandbytes for the
-4-bit model. Install a CUDA build of PyTorch first ([pytorch.org](https://pytorch.org/get-started/locally/)).
-Pusula Nano needs only the `serve` extra.
+The `serve` extra installs PyTorch, Transformers and FastAPI; the `d3` extra adds PEFT and bitsandbytes for 4-bit
+loading. A CUDA build of PyTorch should be installed beforehand ([pytorch.org](https://pytorch.org/get-started/locally/)).
+Pusula Nano requires only the `serve` extra.
 
 ## Concepts
 
-A request has a **state** and named **questions**:
+A request consists of a **state** (the text) and named **questions**:
 
 ```json
 {
@@ -143,7 +145,7 @@ A request has a **state** and named **questions**:
 | `noul` | Optional; may describe `"false"` and `"true"` | `noul` = probability of *true* |
 | `score` | Ordered list of 2–10 levels, lowest first | `score` = expected level (0…n-1), `probabilities`, `confidence`, `legend` |
 
-Answer for the request above (illustrative values):
+The answer to the request above is shown below (illustrative values):
 
 ```json
 {
@@ -195,25 +197,26 @@ print(answers["niyet"]["choice"], answers["niyet"]["confidence"])
 print(answers["temsilci"]["noul"])
 ```
 
-Many requests at once (packed into as few forward passes as possible):
+Multiple requests can be processed in a single call; they are packed into as few forward passes as possible:
 
 ```python
 results = engine.decide_many([(text, questions) for text in messages])
 ```
 
-Questions can be plain dicts as above or `pusula.Question` objects.
+Questions may be given as plain dictionaries, as above, or as `pusula.Question` objects.
 
 ## HTTP API
 
-Start the server:
+The server is started as follows:
 
 ```bash
 PUSULA_D3_BASE=~/d3 PUSULA_MODEL_DIR=path/to/pusula pusula-serve --port 8080   # Pusula
 PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve --port 8080                  # Pusula Nano
 ```
 
-The server listens on `127.0.0.1` by default. To reach it from other machines, set an API key first and pass
-`--host 0.0.0.0`; clients then send `Authorization: Bearer <key>` (or `X-API-Key: <key>`) to every `/v1/*` path:
+By default, the server listens on `127.0.0.1` only. For access from other machines, an API key must be set and
+`--host 0.0.0.0` passed; clients then include `Authorization: Bearer <key>` (or `X-API-Key: <key>`) in every request
+to a `/v1/*` path:
 
 ```bash
 PUSULA_API_KEY=change-me PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve --host 0.0.0.0 --port 8080
@@ -239,11 +242,11 @@ curl -s localhost:8080/v1/systemone -H 'Content-Type: application/json' -d '{
 }'
 ```
 
-Invalid questions return HTTP 422 with the reason. Configuration (environment variables):
+Invalid questions are rejected with HTTP 422 and the reason. The server is configured through environment variables:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `PUSULA_D3_BASE` | — | Base `vllm-sr/d3` directory; set it to serve Pusula (then `PUSULA_MODEL_DIR` is the adapter) |
+| `PUSULA_D3_BASE` | — | Base `vllm-sr/d3` directory; required for Pusula (`PUSULA_MODEL_DIR` then points to the adapter) |
 | `PUSULA_MODEL_DIR` | — | Pusula adapter directory, or a Pusula Nano model directory |
 | `PUSULA_DEVICE` | auto | `cuda`, `cuda:1`, `cpu`… |
 | `PUSULA_CORS_ORIGINS` | none | Comma-separated allowed origins for browser clients |
@@ -253,8 +256,8 @@ Invalid questions return HTTP 422 with the reason. Configuration (environment va
 
 ## Built-in taxonomy and routing
 
-`POST /v1/route` (or `engine.route(text)`) routes a message in three steps — **alan** (domain) →
-**alt_alan** (subdomain) → **niyet** (intent) — and also answers the universal questions:
+`POST /v1/route` (or `engine.route(text)`) routes a message in three steps, **alan** (domain), **alt_alan**
+(subdomain) and **niyet** (intent), and answers the universal questions in the same call:
 
 ```json
 {
@@ -290,20 +293,20 @@ Invalid questions return HTTP 422 with the reason. Configuration (environment va
 | `kriz_destek` | Kriz ve Psikososyal Destek | 3 | 9 |
 | `genel_sohbet` | Genel ve Kapsam Dışı | 4 | 8 |
 
-Universal questions (asked of every message):
+Universal questions (asked for every message):
 
 | Name | Type | Options |
 |---|---|---|
 | `aciliyet` | score | Rutin · Yakın · Yüksek · Kritik |
-| `eylem_gerekli` | noul | Does it need a concrete action (ticket, cancel, refund, block, tool call)? |
-| `insana_devret` | noul | Should a human expert take over? |
+| `eylem_gerekli` | noul | Is a concrete action required (ticket, cancellation, refund, block, tool call)? |
+| `insana_devret` | noul | Should the case be handed over to a human expert? |
 | `guvenlik` | choice | `guvenli`, `prompt_enjeksiyonu`, `jailbreak_rol_yapma`, `zararli_veya_yasadisi`, `yetkisiz_islem_talebi`, `spam_anlamsiz` |
 | `duygu` | choice | `notr`, `memnun`, `endiseli`, `uzgun`, `hayal_kirikligi`, `ofkeli`, `caresiz_kriz` |
-| `kisisel_veri` | noul | Does it contain personal or sensitive data? |
+| `kisisel_veri` | noul | Does the message contain personal or sensitive data? |
 
-The full taxonomy with every subdomain and intent is in
-[`pusula/data/taxonomy.yaml`](pusula/data/taxonomy.yaml) and at `GET /v1/taxonomy`. You can also
-reuse any of these questions in your own requests:
+The complete taxonomy, including every subdomain and intent, is provided in
+[`pusula/data/taxonomy.yaml`](pusula/data/taxonomy.yaml) and at `GET /v1/taxonomy`. Any of these questions can also
+be reused in custom requests:
 
 ```python
 from pusula import load_taxonomy
@@ -313,32 +316,35 @@ questions = {"alan": tax.domain_question(), **tax.universal, "my_question": {...
 
 ## Writing good questions
 
-- **Describe every option.** The model reads the description; `"iade": "Teslim alınan ürünü geri göndermek"`
-  works much better than a bare key.
-- **Keep options mutually exclusive.** When two options overlap, say where the line is
-  (`"Kapsamaz: ..."` / "does not cover").
-- **Write instructions and options in Turkish.** That is what the model is trained on.
-- **Prefer up to ~20 options per question.** For larger label sets, ask hierarchically
-  (category first, then the options inside it), like `/v1/route` does.
-- **Use the right type.** Yes/no → `noul`; ordered levels → `score` (lowest first); everything else → `choice`.
-- **Add a catch-all** (`"diger": "Yukarıdakilerin hiçbiri"`) when the input may fall outside your options.
+- **Every option should be described.** The model reads the descriptions; `"iade": "Teslim alınan ürünü geri
+  göndermek"` performs considerably better than a bare key.
+- **Options should be mutually exclusive.** Where two options overlap, the boundary should be stated
+  (`"Kapsamaz: ..."`, i.e. "does not cover").
+- **Instructions and options should be written in Turkish,** the language the model was trained on.
+- **Up to about 20 options per question are recommended.** Larger label sets are best handled hierarchically
+  (category first, then the options within it), as `/v1/route` does.
+- **The appropriate type should be used.** Yes/no questions use `noul`, ordered levels use `score` (lowest first),
+  and all other questions use `choice`.
+- **A catch-all option** (`"diger": "Yukarıdakilerin hiçbiri"`) should be added when inputs may fall outside the
+  listed options.
 
 ## Using confidence
 
-- `choice` / `score`: `confidence` is the probability of the chosen option.
-- `noul`: the answer itself is a probability; pick your own threshold (e.g. `> 0.5`, or `> 0.8` for risky actions).
-- A typical pattern: act automatically above a high threshold, ask for confirmation in the middle band,
-  hand over to a human below it. Tune the thresholds on a sample of your own traffic.
+- `choice` / `score`: `confidence` is the probability of the selected option.
+- `noul`: the answer itself is a probability, and the threshold is chosen by the application (for example `> 0.5`,
+  or `> 0.8` for high-risk actions).
+- A common pattern is to act automatically above a high threshold, to request confirmation in the middle band and
+  to hand over to a human below it. Thresholds should be calibrated on a sample of the application's own traffic.
 
 ## Examples
 
-- [`examples/agentic_router.py`](examples/agentic_router.py) — guardrail check, tool selection, approval
-  and urgency for an agent, in a single call.
+- [`examples/agentic_router.py`](examples/agentic_router.py): guardrail check, tool selection, approval and urgency
+  for an agent, obtained in a single call.
 
 ## Training your own model
 
-Everything used to build Pusula is in this repository, so you can fine-tune Decision 3.0 on your own
-domain or language data. The pipeline writes labeled decision data with a local LLM, cleans it, and
+All components used to build Pusula are included in this repository, so Decision 3.0 can be fine-tuned on data
+from other domains or languages. The pipeline generates labeled decision data with a local LLM, cleans it and
 fine-tunes d3 with QLoRA:
 
 ```bash
@@ -347,21 +353,21 @@ bash scripts/pipeline.sh my-run
 # generate → judge → fetch_d3 → teach → build → curate → gold → d3train → evaluate
 ```
 
-Each stage is resumable. See the module docstrings in [`pusula/`](pusula/) for options.
+Each stage can be resumed. Options are documented in the module docstrings in [`pusula/`](pusula/).
 
-The judgment questions (urgency, human handoff, action needed) follow one written
-[labeling policy](pusula/data/label_policy.md); edit it to match your own product. After a policy change,
-`python -m pusula.judge --policy --refresh --questions …` relabels those questions with the open-weight judge and
-`python -m pusula.relabel` measures the new labels against your gold set and swaps them into the training data.
-`python -m pusula.annotate` (`pip install -e ".[annotate]"`, Claude API) builds blind gold and benchmark labels with
-two annotators and adjudication. Use such labels only to evaluate: most commercial model terms do not allow training
-competing models on their outputs.
+The judgment questions (urgency, human handoff, action required) follow a single written
+[labeling policy](pusula/data/label_policy.md), which can be adapted to a specific product. After a policy change,
+`python -m pusula.judge --policy --refresh --questions …` relabels these questions with the open-weight judge, and
+`python -m pusula.relabel` measures the new labels against the gold set and replaces them in the training data.
+`python -m pusula.annotate` (`pip install -e ".[annotate]"`, Claude API) produces blind gold and benchmark labels with
+two annotators and adjudication. Such labels should be used for evaluation only, since the terms of most commercial
+models do not permit training competing models on their outputs.
 
 ## License and acknowledgements
 
-Apache 2.0. Pusula builds on
+Pusula is released under the Apache 2.0 license and builds on
 [TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) (Boğaziçi University TABILAB),
 [vllm-sr/d3](https://huggingface.co/vllm-sr/d3) (vLLM Semantic Router) and
-[Qwen3.8](https://huggingface.co/Qwen/Qwen3.8-27B), all Apache 2.0. The d3 prompt contract and
-non-causal attention hook in `pusula/d3model.py` follow vllm-sr/d3 (adapted there from
-perplexity-ai/pplx-decider-v1.1-27b), Apache 2.0.
+[Qwen3.8](https://huggingface.co/Qwen/Qwen3.8-27B), all licensed under Apache 2.0. The d3 prompt contract and the
+non-causal attention hook in `pusula/d3model.py` follow vllm-sr/d3 (where they were adapted from
+perplexity-ai/pplx-decider-v1.1-27b, Apache 2.0).

@@ -1,22 +1,23 @@
 # Turkish Decision Benchmark
 
-`tr_decision_bench_v1.jsonl` — 2,194 realistic Turkish messages with about 20,000 labeled decision questions, for
-measuring how well a decision model (Decision 3.0, Pusula, or any other) handles Turkish.
+`tr_decision_bench_v1.jsonl` contains 2,194 realistic Turkish messages with about 20,000 labeled decision questions.
+It is intended for measuring the performance of decision models (Decision 3.0, Pusula or others) on Turkish.
 
-- **Coverage:** all 20 domains of the Pusula taxonomy and its 299 intents; 12 writing styles (formal e-mails,
+- **Coverage:** all 20 domains of the Pusula taxonomy and its 299 intents are represented; 12 writing styles are included (formal e-mails,
   everyday chat, no Turkish characters and typos, angry capitals, long and rambling, one short line, Turkish–English
   code-switching, an elderly user's roundabout politeness, young and emoji-heavy, several issues with the real request
   last, error codes and logs, voice dictation without punctuation); about 10% security probes (prompt injection,
   jailbreak, unauthorized access, harmful requests, spam); fake personal data in about 30%.
-- **Urgency is about the situation, not the tone:** "acil" appears in 696 messages, and 55% of those are routine or
-  can wait a few days.
+- **Urgency reflects the situation, not the tone:** the word "acil" appears in 696 messages, 55% of which are routine
+  or can wait a few days.
 - **Questions per message:** `alan` / `alt_alan` / `niyet` (domain → subdomain → intent routing), the six universal
   questions (`aciliyet`, `eylem_gerekli`, `insana_devret`, `guvenlik`, `duygu`, `kisisel_veri`) and, for some messages,
   an ad-hoc business question with its own options.
-- **Labels:** two annotators answered every question blind and independently; where they disagreed, a third, more
-  careful pass decided. All of them follow one written [labeling policy](../pusula/data/label_policy.md), which sets
-  the boundaries of the judgment questions (when urgency is high, when to hand off to a person, when an action is
-  needed). Annotator agreement before adjudication, i.e. how ambiguous each question is:
+- **Labels:** every question was answered blind and independently by two annotators; disagreements were resolved by
+  a third, more careful pass. All labels follow a single written [labeling policy](../pusula/data/label_policy.md),
+  which defines the boundaries of the judgment questions (when urgency is high, when a case should be handed off to a
+  person, and when an action is required). Annotator agreement before adjudication, which indicates the ambiguity of
+  each question, is shown below:
 
   | question | agreement |
   |---|---|
@@ -28,10 +29,10 @@ measuring how well a decision model (Decision 3.0, Pusula, or any other) handles
   | duygu | 90.2 |
   | kisisel_veri | 96.8 |
 
-- **How it was made:** messages were written from randomized recipes (intent × style × length × situation) by Claude
-  (Anthropic) and labeled with Claude models, for evaluation only; near-duplicates were removed. No real people,
-  companies or personal data. Messages that the annotation model declined to label (a handful of harmful-content
-  probes) are not included.
+- **Construction:** messages were written by Claude (Anthropic) from randomized recipes (intent × style × length ×
+  situation) and labeled with Claude models for evaluation purposes only; near-duplicates were removed. The benchmark
+  contains no real people, companies or personal data. Messages that the annotation model declined to label (a small
+  number of harmful-content probes) are not included.
 
 ## Results
 
@@ -64,4 +65,4 @@ Each question is a complete d3 `systemone` question, so any d3-compatible model 
 python -m pusula.d3train eval --d3 ~/d3 --data benchmark/tr_decision_bench_v1.jsonl --out base_d3.json
 ```
 
-Please do not train on this benchmark.
+This benchmark is intended for evaluation only and should not be used for training.
