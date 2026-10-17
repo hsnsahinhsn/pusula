@@ -368,9 +368,12 @@ vermediğinden bu etiketler yalnızca değerlendirme amacıyla kullanılmalıdı
 
 ## Katkıda bulunanlar ve atıf
 
-Pusula, [Hasan Şahin](https://github.com/hsnsahinhsn) (proje yürütücüsü) tarafından geliştirilmektedir. Projeye
-[Ahmet Sayman](https://github.com/asayman) ([Hugging Face](https://huggingface.co/asaymantr)) tarafından önemli
-katkılar sağlanmıştır.
+Pusula, aşağıdaki kişiler tarafından geliştirilmektedir:
+
+| Ad | Rol | GitHub | Hugging Face |
+|---|---|---|---|
+| Hasan Şahin | Proje yürütücüsü | [hsnsahinhsn](https://github.com/hsnsahinhsn) | [hsnsahinhsn](https://huggingface.co/hsnsahinhsn) |
+| Ahmet Sayman | Katkıda bulunan | [asayman](https://github.com/asayman) | [asaymantr](https://huggingface.co/asaymantr) |
 
 Pusula'nın bir araştırmada veya üründe kullanılması durumunda aşağıdaki atıf rica edilir. Aynı bilgi
 [`CITATION.cff`](CITATION.cff) dosyasında ve GitHub'daki "Cite this repository" düğmesinde de yer almaktadır.

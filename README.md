@@ -366,8 +366,12 @@ models do not permit training competing models on their outputs.
 
 ## Contributors and citation
 
-Pusula is developed by [Hasan Şahin](https://github.com/hsnsahinhsn) (project lead). Substantial contributions have
-been made by [Ahmet Sayman](https://github.com/asayman) ([Hugging Face](https://huggingface.co/asaymantr)).
+Pusula is developed by the following contributors:
+
+| Name | Role | GitHub | Hugging Face |
+|---|---|---|---|
+| Hasan Şahin | Project lead | [hsnsahinhsn](https://github.com/hsnsahinhsn) | [hsnsahinhsn](https://huggingface.co/hsnsahinhsn) |
+| Ahmet Sayman | Contributor | [asayman](https://github.com/asayman) | [asaymantr](https://huggingface.co/asaymantr) |
 
 If Pusula is used in research or in a product, the following citation is requested. The same information is provided
 in [`CITATION.cff`](CITATION.cff) and through the "Cite this repository" button on GitHub.
