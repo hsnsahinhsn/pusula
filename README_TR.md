@@ -4,7 +4,7 @@
 
 ### İlk Türkçe tam donanımlı karar modeli
 
-[English](README.md) • [Türkçe](README_TR.md)
+[English](README.md) • [Türkçe](README_TR.md) • [Web sitesi](https://hsnsahinhsn.github.io/pusula/tr/)
 
 [![CI](https://github.com/hsnsahinhsn/pusula/actions/workflows/ci.yml/badge.svg)](https://github.com/hsnsahinhsn/pusula/actions)
 [![Lisans: Apache 2.0](https://img.shields.io/badge/Lisans-Apache%202.0-blue.svg)](LICENSE)

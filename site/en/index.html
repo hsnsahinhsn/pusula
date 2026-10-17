@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Pusula: the first full-featured Turkish decision model</title>
+<meta name="description" content="Pusula is Decision 3.0 adapted to Turkish. It answers typed questions about a text and returns a probability for every option. Open source, Apache 2.0.">
+<link rel="canonical" href="https://hsnsahinhsn.github.io/pusula/en/">
+<link rel="alternate" hreflang="en" href="https://hsnsahinhsn.github.io/pusula/en/">
+<link rel="alternate" hreflang="tr" href="https://hsnsahinhsn.github.io/pusula/tr/">
+<link rel="alternate" hreflang="x-default" href="https://hsnsahinhsn.github.io/pusula/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Pusula: the first full-featured Turkish decision model">
+<meta property="og:description" content="Decision 3.0 adapted to Turkish. Open source, Apache 2.0.">
+<meta property="og:url" content="https://hsnsahinhsn.github.io/pusula/en/">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="../assets/favicon.svg" alt="" width="26" height="26">Pusula</a>
+    <nav class="nav" aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#models">Models</a>
+      <a href="#results">Results</a>
+      <a href="#start">Quick start</a>
+      <a class="gh" href="https://github.com/hsnsahinhsn/pusula">GitHub</a>
+      <a class="lang" href="../tr/" data-lang="tr" hreflang="tr" lang="tr">Türkçe</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="wrap hero">
+  <p class="eyebrow">Open source · Apache 2.0 · v1.0</p>
+  <h1>The first full-featured<br>Turkish decision model</h1>
+  <p class="lead">Decision models answer typed questions about a text (for example, which team should handle a ticket,
+  how urgent it is or whether a human should take over) and return a <strong>probability for every option</strong>
+  instead of generated text. Existing decision models were developed for English, and their accuracy on Turkish is
+  limited. <strong>Pusula is Decision 3.0 adapted to Turkish.</strong></p>
+  <div class="cta">
+    <a class="btn primary" href="#start">Get started</a>
+    <a class="btn" href="https://github.com/hsnsahinhsn/pusula">GitHub</a>
+    <a class="btn" href="https://huggingface.co/hsnsahinhsn/pusula">Hugging Face</a>
+  </div>
+
+  <div class="tiles">
+    <div class="tile">
+      <p class="label">Real customer messages</p>
+      <p class="value">84.1</p>
+      <p class="delta">Decision 3.0: 77.4 · <strong>+6.7</strong></p>
+    </div>
+    <div class="tile">
+      <p class="label">Turkish Decision Benchmark</p>
+      <p class="value">92.1</p>
+      <p class="delta">Decision 3.0: 88.5 · <strong>+3.6</strong></p>
+    </div>
+    <div class="tile">
+      <p class="label">Gold test set</p>
+      <p class="value">90.6</p>
+      <p class="delta">Decision 3.0: 85.5 · <strong>+5.1</strong></p>
+    </div>
+  </div>
+  <p class="note">Accuracy (%) of Pusula. The evaluation method is described under <a href="#results">Results</a>.</p>
+</div>
+
+<section id="how">
+  <div class="wrap">
+    <h2>How it works</h2>
+    <p class="sub">A request consists of a text (<code>state</code>) and named questions. The options of each question
+    are defined in the request itself, so new labels can be introduced without retraining.</p>
+    <div class="stack">
+      <div>
+        <p class="code-title">Request</p>
+<pre><code>{
+  "state": "Kartımdan bilgim dışında 4.500 TL çekilmiş, hemen bloke edin!",
+  "questions": {
+    "ekip": {
+      "type": "choice",
+      "instructions": "Bu talebi hangi ekip ele almalı?",
+      "criteria": {
+        "dolandiricilik": "Şüpheli işlem ve dolandırıcılık",
+        "kart_islemleri": "Kart başvurusu, limit ve şifre",
+        "genel_destek": "Diğer sorular"
+      }
+    },
+    "acil": { "type": "noul", "instructions": "Hemen müdahale gerekiyor mu?" },
+    "risk": {
+      "type": "score",
+      "instructions": "Finansal risk ne düzeyde?",
+      "criteria": ["Düşük", "Orta", "Yüksek"]
+    }
+  }
+}</code></pre>
+      </div>
+      <div>
+        <p class="code-title">Answer (illustrative values)</p>
+<pre><code>{
+  "answers": {
+    "ekip": {
+      "type": "choice",
+      "choice": "dolandiricilik",
+      "probabilities": {"dolandiricilik": 0.94, "kart_islemleri": 0.05, "genel_destek": 0.01},
+      "confidence": 0.94
+    },
+    "acil": {"type": "noul", "noul": 0.97},
+    "risk": {
+      "type": "score",
+      "score": 1.86,
+      "probabilities": {"0": 0.02, "1": 0.10, "2": 0.88},
+      "confidence": 0.88,
+      "legend": {"0": "Düşük", "1": "Orta", "2": "Yüksek"}
+    }
+  },
+  "model": "pusula"
+}</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2>Features</h2>
+    <p class="sub">Pusula preserves the interface of Decision 3.0 and extends it for Turkish text.</p>
+    <div class="grid three">
+      <div class="card"><h3>Turkish first</h3><p>Decision 3.0 has been fine-tuned on Turkish decision data from 20
+      domains, including banking, law, health, e-commerce, logistics and public services. Informal writing, typos,
+      missing Turkish characters and mixed Turkish–English text are covered.</p></div>
+      <div class="card"><h3>Options defined at request time</h3><p>Questions and their options are specified in each
+      request. The model is not limited to a fixed label set.</p></div>
+      <div class="card"><h3>Three question types</h3><p><code>choice</code> (one option), <code>noul</code> (yes/no)
+      and <code>score</code> (ordered levels). Every answer carries a probability for each option.</p></div>
+      <div class="card"><h3>Drop-in d3 replacement</h3><p>The request and answer format of the
+      <code>/v1/systemone</code> endpoint of Decision 3.0 is preserved, so Pusula can replace d3 in existing
+      integrations.</p></div>
+      <div class="card"><h3>Built-in Turkish taxonomy</h3><p>20 domains, 86 subdomains and 299 intents are provided,
+      together with six universal checks: urgency, action required, human handoff, security risk, emotion and
+      personal data.</p></div>
+      <div class="card"><h3>Independent evaluation</h3><p>Pusula has been evaluated against the base Decision 3.0
+      model on independently labeled Turkish test sets. The Turkish Decision Benchmark is published with the
+      model.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="models">
+  <div class="wrap">
+    <h2>Models</h2>
+    <p class="sub">Two models are provided. Both accept identical requests.</p>
+    <div class="grid two">
+      <div class="card">
+        <span class="tag">Highest accuracy</span>
+        <h3>Pusula (Turkish Decision 3.0)</h3>
+        <p>Recommended for built-in and custom questions, including tasks with many options.</p>
+        <dl>
+          <dt>Size</dt><dd>26B: a 0.9 GB LoRA adapter on top of <code>vllm-sr/d3</code></dd>
+          <dt>Runs on</dt><dd>GPU: ≥ 64 GB in BF16, ≥ 24 GB in 4-bit</dd>
+          <dt>Benchmark / gold</dt><dd>92.1 / 90.6</dd>
+          <dt>Weights</dt><dd><a href="https://huggingface.co/hsnsahinhsn/pusula">hsnsahinhsn/pusula</a></dd>
+        </dl>
+      </div>
+      <div class="card">
+        <span class="tag">Fast, runs on CPU</span>
+        <h3>Pusula Nano</h3>
+        <p>Recommended for high volume and low latency on the built-in questions.</p>
+        <dl>
+          <dt>Size</dt><dd>149M (<a href="https://huggingface.co/boun-tabilab/TabiBERT">TabiBERT</a> cross-encoder)</dd>
+          <dt>Runs on</dt><dd>CPU or any GPU</dd>
+          <dt>Benchmark / gold</dt><dd>82.1 / 84.3</dd>
+          <dt>Weights</dt><dd><a href="https://huggingface.co/hsnsahinhsn/pusula-nano">hsnsahinhsn/pusula-nano</a></dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="results">
+  <div class="wrap">
+    <h2>Results</h2>
+    <p class="sub">Accuracy (%). Evaluation labels were assigned blind and independently by two annotators (Claude Opus
+    5.5 and Claude Sonnet 5.5); disagreements were adjudicated, and all labels follow the published
+    <a href="https://github.com/hsnsahinhsn/pusula/blob/main/pusula/data/label_policy.md">labeling policy</a>.
+    Evaluation labels are used exclusively for evaluation and are never used as training labels.</p>
+
+    <figure class="chart" data-chart="dumbbell">
+      <h3>Decision 3.0 and Pusula, accuracy (%)</h3>
+      <p class="chart-sub">Each row shows the change from the base model to Pusula. All values are listed in the table below.</p>
+      <ul class="legend">
+        <li><span class="dot d-base-key"></span>Decision 3.0</li>
+        <li><span class="dot d-pusula-key"></span>Pusula</li>
+      </ul>
+    </figure>
+    <script type="application/json" id="chart-data">
+{"title": "Decision 3.0 and Pusula, accuracy (%)", "domain": [75, 100], "step": 5, "series": ["Decision 3.0", "Pusula"],
+ "rows": [
+  {"label": "Real customer messages", "base": 77.4, "pusula": 84.1},
+  {"label": "Turkish Decision Benchmark", "base": 88.5, "pusula": 92.1},
+  {"label": "Gold test set", "base": 85.5, "pusula": 90.6},
+  {"label": "Your own questions", "base": 94.8, "pusula": 94.7},
+  {"label": "MASSIVE tr-TR, intent", "base": 85.3, "pusula": 85.1},
+  {"label": "OffensEval 2020 Turkish", "base": 88.4, "pusula": 88.6}
+ ]}
+    </script>
+
+    <div class="table-wrap">
+      <table class="results">
+        <thead><tr><th>Evaluation</th><th class="num">Questions</th><th class="num">Decision 3.0</th><th class="num">Pusula</th><th class="num">Pusula Nano</th></tr></thead>
+        <tbody>
+          <tr><td>Real customer messages (500 held-out, licensed)</td><td class="num">4,500</td><td class="num">77.4</td><td class="num best">84.1</td><td class="num">82.9</td></tr>
+          <tr><td><a href="https://github.com/hsnsahinhsn/pusula/blob/main/benchmark/README.md">Turkish Decision Benchmark</a> (2,194 messages)</td><td class="num">19,861</td><td class="num">88.5</td><td class="num best">92.1</td><td class="num">82.1</td></tr>
+          <tr><td>Gold test set (759 held-out messages)</td><td class="num">7,015</td><td class="num">85.5</td><td class="num best">90.6</td><td class="num">84.3</td></tr>
+          <tr><td>Your own questions (497 messages × 3 ad-hoc questions)</td><td class="num">1,491</td><td class="num best">94.8</td><td class="num">94.7</td><td class="num">86.8</td></tr>
+          <tr><td>MASSIVE tr-TR, 60-way intent, zero-shot (human-written)</td><td class="num">2,974</td><td class="num best">85.3</td><td class="num">85.1</td><td class="num">36.1</td></tr>
+          <tr><td>OffensEval 2020 Turkish, offensive language (real tweets)</td><td class="num">3,528</td><td class="num">88.4</td><td class="num best">88.6</td><td class="num">37.2</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="mt">Gold test set, per question</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Question</th><th class="num">Decision 3.0</th><th class="num">Pusula</th></tr></thead>
+        <tbody>
+          <tr><td>Urgency (4 levels)</td><td class="num">53.2</td><td class="num best">81.0</td></tr>
+          <tr><td>Human handoff</td><td class="num">81.5</td><td class="num best">88.4</td></tr>
+          <tr><td>Domain</td><td class="num">82.1</td><td class="num best">87.0</td></tr>
+          <tr><td>Emotion</td><td class="num">85.0</td><td class="num best">87.2</td></tr>
+          <tr><td>Security risk</td><td class="num">94.2</td><td class="num best">97.9</td></tr>
+          <tr><td>Action required</td><td class="num">88.9</td><td class="num best">90.6</td></tr>
+          <tr><td>Personal data</td><td class="num">96.4</td><td class="num">96.4</td></tr>
+          <tr><td>Intent</td><td class="num">96.8</td><td class="num">96.8</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ul class="notes">
+      <li><strong>Real customer messages:</strong> Evaluation was performed on a held-out set of 500 anonymized customer
+      messages (reviews, complaints and questions) licensed from a commercial partner. This set is not published.</li>
+      <li><strong>Urgency is partly subjective:</strong> the two annotators agree on 84.4% of messages; a score of 81.0
+      is therefore close to the attainable ceiling.</li>
+      <li><strong>Pusula Nano</strong> was trained mainly on the built-in questions. For tasks that differ from the
+      built-in questions, or that have many options, Pusula is recommended.</li>
+      <li>MASSIVE and OffensEval are not included in the training data.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap stack">
+    <h2>Quick start</h2>
+    <p class="sub">A CUDA build of PyTorch should be installed beforehand. Pusula Nano requires only the
+    <code>serve</code> extra and runs on CPU.</p>
+    <div>
+      <p class="code-title">Installation</p>
+<pre><code>pip install "pusula[serve,d3] @ git+https://github.com/hsnsahinhsn/pusula"
+hf download vllm-sr/d3 --local-dir ~/d3 --exclude "assets/*"     # base Decision 3.0 weights (~52 GB)
+hf download hsnsahinhsn/pusula --local-dir ~/pusula                # Pusula adapter (~0.9 GB)
+# or the small model, which needs no base weights:
+hf download hsnsahinhsn/pusula-nano --local-dir ~/pusula-nano      # Pusula Nano (~0.6 GB)</code></pre>
+    </div>
+    <div>
+      <p class="code-title">Python</p>
+<pre><code>from pusula.inference import D3Engine, DecisionEngine
+
+engine = D3Engine.load("~/d3", adapter="~/pusula")      # Pusula (Turkish Decision 3.0)
+# engine = DecisionEngine.load("~/pusula-nano")          # Pusula Nano (GPU or CPU)
+
+answers = engine.decide(
+    "Siparişim 5 gündür kargoda, hâlâ gelmedi. Artık iptal etmek istiyorum.",
+    {
+        "niyet": {
+            "type": "choice",
+            "instructions": "Müşteri ne istiyor?",
+            "criteria": {
+                "kargo_takip": "Gönderinin nerede olduğunu öğrenmek",
+                "iptal": "Siparişi iptal etmek",
+                "iade": "Teslim alınan ürünü iade etmek",
+            },
+        },
+        "temsilci": {"type": "noul", "instructions": "Bir insan temsilciye aktarılmalı mı?"},
+    },
+)
+print(answers["niyet"]["choice"], answers["niyet"]["confidence"])</code></pre>
+    </div>
+    <p>The HTTP API, the built-in taxonomy, guidance on writing questions and the use of confidence values are
+    documented in the <a href="https://github.com/hsnsahinhsn/pusula#readme">README</a>.</p>
+  </div>
+</section>
+
+<section id="train">
+  <div class="wrap">
+    <h2>Training your own model</h2>
+    <p class="sub">All components used to build Pusula are included in the repository, so Decision 3.0 can be
+    fine-tuned on data from other domains or languages. Labeled decision data is generated with a local open-weight
+    model, cleaned and used to fine-tune d3 with QLoRA. Each stage can be resumed.</p>
+    <p><a href="https://github.com/hsnsahinhsn/pusula#training-your-own-model">Training guide in the README</a></p>
+  </div>
+</section>
+
+<section id="license">
+  <div class="wrap">
+    <h2>License and acknowledgements</h2>
+    <p class="sub">Pusula is released under the <a href="https://github.com/hsnsahinhsn/pusula/blob/main/LICENSE">Apache
+    2.0 license</a> and builds on <a href="https://huggingface.co/vllm-sr/d3">vllm-sr/d3</a> (vLLM Semantic Router),
+    <a href="https://huggingface.co/Qwen/Qwen3.8-27B">Qwen3.8</a> (Qwen Team, Alibaba Cloud) and
+    <a href="https://huggingface.co/boun-tabilab/TabiBERT">TabiBERT</a> (Boğaziçi University TABILAB), all licensed
+    under Apache 2.0.</p>
+    <div class="card">
+      <h3>Data provenance</h3>
+      <p>Pusula models were trained primarily on synthetic Turkish data generated for this project. A limited set of
+      real customer messages, licensed from a commercial partner, was also included in the training data. These
+      messages were anonymized prior to use and are not redistributed in any form.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Hasan Şahin · Apache 2.0</span>
+    <span><a href="https://github.com/hsnsahinhsn/pusula">GitHub</a> · <a href="https://huggingface.co/hsnsahinhsn/pusula">Pusula</a> · <a href="https://huggingface.co/hsnsahinhsn/pusula-nano">Pusula Nano</a> · <a href="https://github.com/hsnsahinhsn/pusula/blob/main/NOTICE">NOTICE</a></span>
+  </div>
+</footer>
+</body>
+</html>

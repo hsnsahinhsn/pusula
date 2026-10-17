@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Pusula: İlk Türkçe tam donanımlı karar modeli</title>
+<meta name="description" content="Pusula, Türkçeye uyarlanmış Decision 3.0'dır. Bir metin hakkındaki tanımlı soruları cevaplar ve her seçenek için bir olasılık döndürür. Açık kaynak, Apache 2.0.">
+<link rel="canonical" href="https://hsnsahinhsn.github.io/pusula/tr/">
+<link rel="alternate" hreflang="en" href="https://hsnsahinhsn.github.io/pusula/en/">
+<link rel="alternate" hreflang="tr" href="https://hsnsahinhsn.github.io/pusula/tr/">
+<link rel="alternate" hreflang="x-default" href="https://hsnsahinhsn.github.io/pusula/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Pusula: İlk Türkçe tam donanımlı karar modeli">
+<meta property="og:description" content="Türkçeye uyarlanmış Decision 3.0. Açık kaynak, Apache 2.0.">
+<meta property="og:url" content="https://hsnsahinhsn.github.io/pusula/tr/">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="../assets/favicon.svg" alt="" width="26" height="26">Pusula</a>
+    <nav class="nav" aria-label="Ana menü">
+      <a href="#how">Nasıl çalışır</a>
+      <a href="#models">Modeller</a>
+      <a href="#results">Sonuçlar</a>
+      <a href="#start">Hızlı başlangıç</a>
+      <a class="gh" href="https://github.com/hsnsahinhsn/pusula">GitHub</a>
+      <a class="lang" href="../en/" data-lang="en" hreflang="en" lang="en">English</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="wrap hero">
+  <p class="eyebrow">Açık kaynak · Apache 2.0 · v1.0</p>
+  <h1>İlk Türkçe tam donanımlı<br>karar modeli</h1>
+  <p class="lead">Karar modelleri, bir metin hakkında tanımlı sorulara (örneğin bir kaydın hangi ekibe
+  yönlendirileceği, ne kadar acil olduğu ya da bir insana devredilmesinin gerekip gerekmediği) cevap verir ve metin
+  üretmek yerine <strong>her seçenek için bir olasılık</strong> döndürür. Mevcut karar modelleri İngilizce için
+  geliştirilmiştir ve Türkçedeki doğrulukları sınırlıdır. <strong>Pusula, Türkçeye uyarlanmış Decision
+  3.0'dır.</strong></p>
+  <div class="cta">
+    <a class="btn primary" href="#start">Kullanmaya başlayın</a>
+    <a class="btn" href="https://github.com/hsnsahinhsn/pusula">GitHub</a>
+    <a class="btn" href="https://huggingface.co/hsnsahinhsn/pusula">Hugging Face</a>
+  </div>
+
+  <div class="tiles">
+    <div class="tile">
+      <p class="label">Gerçek müşteri mesajları</p>
+      <p class="value">84,1</p>
+      <p class="delta">Decision 3.0: 77,4 · <strong>+6,7</strong></p>
+    </div>
+    <div class="tile">
+      <p class="label">Türkçe Karar Benchmark'ı</p>
+      <p class="value">92,1</p>
+      <p class="delta">Decision 3.0: 88,5 · <strong>+3,6</strong></p>
+    </div>
+    <div class="tile">
+      <p class="label">Altın test seti</p>
+      <p class="value">90,6</p>
+      <p class="delta">Decision 3.0: 85,5 · <strong>+5,1</strong></p>
+    </div>
+  </div>
+  <p class="note">Pusula'nın doğruluğu (%). Değerlendirme yöntemi <a href="#results">Sonuçlar</a> bölümünde açıklanmıştır.</p>
+</div>
+
+<section id="how">
+  <div class="wrap">
+    <h2>Nasıl çalışır</h2>
+    <p class="sub">Bir istek, bir metinden (<code>state</code>) ve adlandırılmış sorulardan oluşur. Her sorunun
+    seçenekleri isteğin içinde tanımlanır; bu sayede yeni etiketler yeniden eğitim gerektirmeden eklenebilir.</p>
+    <div class="stack">
+      <div>
+        <p class="code-title">İstek</p>
+<pre><code>{
+  "state": "Kartımdan bilgim dışında 4.500 TL çekilmiş, hemen bloke edin!",
+  "questions": {
+    "ekip": {
+      "type": "choice",
+      "instructions": "Bu talebi hangi ekip ele almalı?",
+      "criteria": {
+        "dolandiricilik": "Şüpheli işlem ve dolandırıcılık",
+        "kart_islemleri": "Kart başvurusu, limit ve şifre",
+        "genel_destek": "Diğer sorular"
+      }
+    },
+    "acil": { "type": "noul", "instructions": "Hemen müdahale gerekiyor mu?" },
+    "risk": {
+      "type": "score",
+      "instructions": "Finansal risk ne düzeyde?",
+      "criteria": ["Düşük", "Orta", "Yüksek"]
+    }
+  }
+}</code></pre>
+      </div>
+      <div>
+        <p class="code-title">Cevap (temsilî değerler)</p>
+<pre><code>{
+  "answers": {
+    "ekip": {
+      "type": "choice",
+      "choice": "dolandiricilik",
+      "probabilities": {"dolandiricilik": 0.94, "kart_islemleri": 0.05, "genel_destek": 0.01},
+      "confidence": 0.94
+    },
+    "acil": {"type": "noul", "noul": 0.97},
+    "risk": {
+      "type": "score",
+      "score": 1.86,
+      "probabilities": {"0": 0.02, "1": 0.10, "2": 0.88},
+      "confidence": 0.88,
+      "legend": {"0": "Düşük", "1": "Orta", "2": "Yüksek"}
+    }
+  },
+  "model": "pusula"
+}</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2>Özellikler</h2>
+    <p class="sub">Decision 3.0'ın arayüzü korunmuş ve Türkçe metinler için genişletilmiştir.</p>
+    <div class="grid three">
+      <div class="card"><h3>Önce Türkçe</h3><p>Decision 3.0; bankacılık, hukuk, sağlık, e-ticaret, lojistik ve kamu
+      hizmetleri dahil 20 alandan Türkçe karar verisiyle ince ayarlanmıştır. Gündelik yazım, yazım hataları, eksik
+      Türkçe karakterler ve Türkçe–İngilizce karışık metinler kapsanmaktadır.</p></div>
+      <div class="card"><h3>İstek anında tanımlanan seçenekler</h3><p>Sorular ve seçenekleri her istekte ayrıca
+      belirtilir. Model sabit bir etiket kümesiyle sınırlı değildir.</p></div>
+      <div class="card"><h3>Üç soru tipi</h3><p><code>choice</code> (tek seçenek), <code>noul</code> (evet/hayır) ve
+      <code>score</code> (sıralı seviyeler). Her cevapta her seçenek için bir olasılık döndürülür.</p></div>
+      <div class="card"><h3>d3 ile doğrudan değiştirilebilir</h3><p>Decision 3.0'ın <code>/v1/systemone</code> istek
+      ve cevap biçimi aynen korunmuştur; bu nedenle Pusula, mevcut entegrasyonlarda d3'ün yerine
+      kullanılabilir.</p></div>
+      <div class="card"><h3>Hazır Türkçe taksonomi</h3><p>20 alan, 86 alt alan ve 299 niyetin yanı sıra altı evrensel
+      kontrol sunulmaktadır: aciliyet, eylem gerekliliği, insana devir, güvenlik riski, duygu ve kişisel veri.</p></div>
+      <div class="card"><h3>Bağımsız değerlendirme</h3><p>Pusula, bağımsız olarak etiketlenmiş Türkçe test
+      setlerinde ham Decision 3.0 ile karşılaştırılmıştır. Türkçe Karar Benchmark'ı modelle birlikte
+      yayımlanmaktadır.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="models">
+  <div class="wrap">
+    <h2>Modeller</h2>
+    <p class="sub">İki model sunulmaktadır. Her iki model de aynı istekleri kabul eder.</p>
+    <div class="grid two">
+      <div class="card">
+        <span class="tag">En yüksek doğruluk</span>
+        <h3>Pusula (Türkçe Decision 3.0)</h3>
+        <p>Çok seçenekli görevler dahil, hazır ve özel sorular için önerilmektedir.</p>
+        <dl>
+          <dt>Boyut</dt><dd>26B: <code>vllm-sr/d3</code> üzerine 0,9 GB'lık LoRA adaptörü</dd>
+          <dt>Çalıştığı yer</dt><dd>GPU: BF16'da ≥ 64 GB, 4-bit'te ≥ 24 GB</dd>
+          <dt>Benchmark / altın</dt><dd>92,1 / 90,6</dd>
+          <dt>Ağırlıklar</dt><dd><a href="https://huggingface.co/hsnsahinhsn/pusula">hsnsahinhsn/pusula</a></dd>
+        </dl>
+      </div>
+      <div class="card">
+        <span class="tag">Hızlı, CPU'da çalışır</span>
+        <h3>Pusula Nano</h3>
+        <p>Hazır sorularda yüksek hacim ve düşük gecikme için önerilmektedir.</p>
+        <dl>
+          <dt>Boyut</dt><dd>149M (<a href="https://huggingface.co/boun-tabilab/TabiBERT">TabiBERT</a> cross-encoder)</dd>
+          <dt>Çalıştığı yer</dt><dd>CPU veya herhangi bir GPU</dd>
+          <dt>Benchmark / altın</dt><dd>82,1 / 84,3</dd>
+          <dt>Ağırlıklar</dt><dd><a href="https://huggingface.co/hsnsahinhsn/pusula-nano">hsnsahinhsn/pusula-nano</a></dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="results">
+  <div class="wrap">
+    <h2>Sonuçlar</h2>
+    <p class="sub">Doğruluk (%). Değerlendirme etiketleri, birbirinden bağımsız ve kör çalışan iki etiketçi (Claude
+    Opus 5.5 ve Claude Sonnet 5.5) tarafından atanmış; ayrışmalar hakem tarafından karara bağlanmıştır. Tüm etiketler
+    yayımlanan <a href="https://github.com/hsnsahinhsn/pusula/blob/main/pusula/data/label_policy.md">etiketleme
+    politikasına</a> uygundur. Değerlendirme etiketleri yalnızca ölçüm amacıyla kullanılmakta olup hiçbir zaman eğitim
+    etiketi olarak kullanılmamaktadır.</p>
+
+    <figure class="chart" data-chart="dumbbell">
+      <h3>Decision 3.0 ve Pusula, doğruluk (%)</h3>
+      <p class="chart-sub">Her satır, temel modelden Pusula'ya olan değişimi göstermektedir. Tüm değerler aşağıdaki tabloda yer almaktadır.</p>
+      <ul class="legend">
+        <li><span class="dot d-base-key"></span>Decision 3.0</li>
+        <li><span class="dot d-pusula-key"></span>Pusula</li>
+      </ul>
+    </figure>
+    <script type="application/json" id="chart-data">
+{"title": "Decision 3.0 ve Pusula, doğruluk (%)", "domain": [75, 100], "step": 5, "series": ["Decision 3.0", "Pusula"],
+ "rows": [
+  {"label": "Gerçek müşteri mesajları", "base": 77.4, "pusula": 84.1},
+  {"label": "Türkçe Karar Benchmark'ı", "base": 88.5, "pusula": 92.1},
+  {"label": "Altın test seti", "base": 85.5, "pusula": 90.6},
+  {"label": "Kendi sorularınız", "base": 94.8, "pusula": 94.7},
+  {"label": "MASSIVE tr-TR, niyet", "base": 85.3, "pusula": 85.1},
+  {"label": "OffensEval 2020 Türkçe", "base": 88.4, "pusula": 88.6}
+ ]}
+    </script>
+
+    <div class="table-wrap">
+      <table class="results">
+        <thead><tr><th>Değerlendirme</th><th class="num">Soru</th><th class="num">Decision 3.0</th><th class="num">Pusula</th><th class="num">Pusula Nano</th></tr></thead>
+        <tbody>
+          <tr><td>Gerçek müşteri mesajları (500, eğitim dışı, lisanslı)</td><td class="num">4.500</td><td class="num">77,4</td><td class="num best">84,1</td><td class="num">82,9</td></tr>
+          <tr><td><a href="https://github.com/hsnsahinhsn/pusula/blob/main/benchmark/README.md">Türkçe Karar Benchmark'ı</a> (2.194 mesaj)</td><td class="num">19.861</td><td class="num">88,5</td><td class="num best">92,1</td><td class="num">82,1</td></tr>
+          <tr><td>Altın test seti (eğitimde olmayan 759 mesaj)</td><td class="num">7.015</td><td class="num">85,5</td><td class="num best">90,6</td><td class="num">84,3</td></tr>
+          <tr><td>Kendi sorularınız (497 mesaj × 3 özel soru)</td><td class="num">1.491</td><td class="num best">94,8</td><td class="num">94,7</td><td class="num">86,8</td></tr>
+          <tr><td>MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı)</td><td class="num">2.974</td><td class="num best">85,3</td><td class="num">85,1</td><td class="num">36,1</td></tr>
+          <tr><td>OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler)</td><td class="num">3.528</td><td class="num">88,4</td><td class="num best">88,6</td><td class="num">37,2</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="mt">Altın test seti, soru bazında</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Soru</th><th class="num">Decision 3.0</th><th class="num">Pusula</th></tr></thead>
+        <tbody>
+          <tr><td>Aciliyet (4 seviye)</td><td class="num">53,2</td><td class="num best">81,0</td></tr>
+          <tr><td>İnsana devretme</td><td class="num">81,5</td><td class="num best">88,4</td></tr>
+          <tr><td>Alan</td><td class="num">82,1</td><td class="num best">87,0</td></tr>
+          <tr><td>Duygu</td><td class="num">85,0</td><td class="num best">87,2</td></tr>
+          <tr><td>Güvenlik riski</td><td class="num">94,2</td><td class="num best">97,9</td></tr>
+          <tr><td>Eylem gerekli mi</td><td class="num">88,9</td><td class="num best">90,6</td></tr>
+          <tr><td>Kişisel veri</td><td class="num">96,4</td><td class="num">96,4</td></tr>
+          <tr><td>Niyet</td><td class="num">96,8</td><td class="num">96,8</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ul class="notes">
+      <li><strong>Gerçek müşteri mesajları:</strong> Değerlendirme, ticari bir iş ortağından lisanslanan ve eğitimde
+      kullanılmayan 500 anonim müşteri mesajı (yorum, şikâyet ve soru) üzerinde yapılmıştır. Bu set
+      yayımlanmamaktadır.</li>
+      <li><strong>Aciliyet kısmen özneldir:</strong> iki etiketçi mesajların %84,4'ünde aynı cevabı vermektedir; bu
+      nedenle 81,0'lık sonuç ulaşılabilir tavana yakındır.</li>
+      <li><strong>Pusula Nano</strong> ağırlıklı olarak hazır sorularla eğitilmiştir. Hazır sorulardan farklı ya da
+      çok seçenekli görevler için Pusula önerilmektedir.</li>
+      <li>MASSIVE ve OffensEval eğitim verisinde yer almamaktadır.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap stack">
+    <h2>Hızlı başlangıç</h2>
+    <p class="sub">PyTorch'un CUDA sürümünün önceden kurulması gerekir. Pusula Nano için yalnızca <code>serve</code>
+    eki yeterlidir; model CPU'da çalışır.</p>
+    <div>
+      <p class="code-title">Kurulum</p>
+<pre><code>pip install "pusula[serve,d3] @ git+https://github.com/hsnsahinhsn/pusula"
+hf download vllm-sr/d3 --local-dir ~/d3 --exclude "assets/*"     # temel Decision 3.0 ağırlıkları (~52 GB)
+hf download hsnsahinhsn/pusula --local-dir ~/pusula                # Pusula adaptörü (~0,9 GB)
+# ya da temel ağırlık gerektirmeyen küçük model:
+hf download hsnsahinhsn/pusula-nano --local-dir ~/pusula-nano      # Pusula Nano (~0,6 GB)</code></pre>
+    </div>
+    <div>
+      <p class="code-title">Python</p>
+<pre><code>from pusula.inference import D3Engine, DecisionEngine
+
+engine = D3Engine.load("~/d3", adapter="~/pusula")      # Pusula (Türkçe Decision 3.0)
+# engine = DecisionEngine.load("~/pusula-nano")          # Pusula Nano (GPU veya CPU)
+
+answers = engine.decide(
+    "Siparişim 5 gündür kargoda, hâlâ gelmedi. Artık iptal etmek istiyorum.",
+    {
+        "niyet": {
+            "type": "choice",
+            "instructions": "Müşteri ne istiyor?",
+            "criteria": {
+                "kargo_takip": "Gönderinin nerede olduğunu öğrenmek",
+                "iptal": "Siparişi iptal etmek",
+                "iade": "Teslim alınan ürünü iade etmek",
+            },
+        },
+        "temsilci": {"type": "noul", "instructions": "Bir insan temsilciye aktarılmalı mı?"},
+    },
+)
+print(answers["niyet"]["choice"], answers["niyet"]["confidence"])</code></pre>
+    </div>
+    <p>HTTP API, hazır taksonomi, soru yazma önerileri ve güven değerlerinin kullanımı
+    <a href="https://github.com/hsnsahinhsn/pusula/blob/main/README_TR.md">README</a> dosyasında açıklanmıştır.</p>
+  </div>
+</section>
+
+<section id="train">
+  <div class="wrap">
+    <h2>Kendi modelinizi eğitmek</h2>
+    <p class="sub">Pusula'nın oluşturulmasında kullanılan tüm bileşenler depoda yer almaktadır; bu sayede Decision
+    3.0 başka alanların ya da dillerin verisiyle ince ayarlanabilir. Etiketli karar verisi yerel bir açık ağırlıklı
+    modelle üretilir, temizlenir ve d3'ün QLoRA ile ince ayarında kullanılır. Her aşama kaldığı yerden
+    sürdürülebilir.</p>
+    <p><a href="https://github.com/hsnsahinhsn/pusula/blob/main/README_TR.md#kendi-modelinizi-eğitmek">README'deki eğitim kılavuzu</a></p>
+  </div>
+</section>
+
+<section id="license">
+  <div class="wrap">
+    <h2>Lisans ve teşekkürler</h2>
+    <p class="sub">Pusula, <a href="https://github.com/hsnsahinhsn/pusula/blob/main/LICENSE">Apache 2.0
+    lisansıyla</a> yayımlanmaktadır ve tümü Apache 2.0 lisanslı olan
+    <a href="https://huggingface.co/vllm-sr/d3">vllm-sr/d3</a> (vLLM Semantic Router),
+    <a href="https://huggingface.co/Qwen/Qwen3.8-27B">Qwen3.8</a> (Qwen Team, Alibaba Cloud) ve
+    <a href="https://huggingface.co/boun-tabilab/TabiBERT">TabiBERT</a> (Boğaziçi Üniversitesi TABILAB) üzerine
+    kurulmuştur.</p>
+    <div class="card">
+      <h3>Veri kaynağı</h3>
+      <p>Pusula modelleri ağırlıklı olarak bu proje için üretilmiş sentetik Türkçe veriyle eğitilmiştir. Ticari bir
+      iş ortağından lisanslanan sınırlı sayıda gerçek müşteri mesajı da eğitim verisine dahil edilmiştir. Bu mesajlar
+      kullanımdan önce anonimleştirilmiş olup hiçbir biçimde yeniden dağıtılmamaktadır.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Hasan Şahin · Apache 2.0</span>
+    <span><a href="https://github.com/hsnsahinhsn/pusula">GitHub</a> · <a href="https://huggingface.co/hsnsahinhsn/pusula">Pusula</a> · <a href="https://huggingface.co/hsnsahinhsn/pusula-nano">Pusula Nano</a> · <a href="https://github.com/hsnsahinhsn/pusula/blob/main/NOTICE">NOTICE</a></span>
+  </div>
+</footer>
+</body>
+</html>
