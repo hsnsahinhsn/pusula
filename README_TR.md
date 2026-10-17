@@ -95,6 +95,7 @@ Altın test seti, soru bazında:
 - [Güven değerini kullanmak](#güven-değerini-kullanmak)
 - [Örnekler](#örnekler)
 - [Kendi modelinizi eğitmek](#kendi-modelinizi-eğitmek)
+- [Katkıda bulunanlar ve atıf](#katkıda-bulunanlar-ve-atıf)
 - [Lisans ve teşekkürler](#lisans-ve-teşekkürler)
 
 ---
@@ -364,6 +365,26 @@ yeniden etiketler; `python -m pusula.relabel` ise yeni etiketleri altın setle �
 `python -m pusula.annotate` (`pip install -e ".[annotate]"`, Claude API) iki etiketçi ve hakemle kör altın set ve
 benchmark etiketleri üretir. Ticari modellerin çoğunun kullanım şartları, çıktılarıyla rakip model eğitilmesine izin
 vermediğinden bu etiketler yalnızca değerlendirme amacıyla kullanılmalıdır.
+
+## Katkıda bulunanlar ve atıf
+
+Pusula, [Hasan Şahin](https://github.com/hsnsahinhsn) (proje yürütücüsü) tarafından geliştirilmektedir. Projeye
+[Ahmet Sayman](https://github.com/asayman) ([Hugging Face](https://huggingface.co/asaymantr)) tarafından önemli
+katkılar sağlanmıştır.
+
+Pusula'nın bir araştırmada veya üründe kullanılması durumunda aşağıdaki atıf rica edilir. Aynı bilgi
+[`CITATION.cff`](CITATION.cff) dosyasında ve GitHub'daki "Cite this repository" düğmesinde de yer almaktadır.
+
+```bibtex
+@software{pusula2026,
+  title   = {Pusula: The First Full-Featured Turkish Decision Model},
+  author  = {{\c{S}}ahin, Hasan and Sayman, Ahmet},
+  year    = {2026},
+  version = {1.0},
+  url     = {https://github.com/hsnsahinhsn/pusula},
+  license = {Apache-2.0}
+}
+```
 
 ## Lisans ve teşekkürler
 

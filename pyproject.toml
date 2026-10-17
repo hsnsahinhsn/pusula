@@ -7,7 +7,7 @@ name = "pusula"
 version = "2.0.0"
 description = "Pusula: fast, calibrated Turkish decision engine — answers choice / yes-no / score questions about any text in milliseconds"
 readme = "README.md"
-authors = [{ name = "Hasan Şahin" }]
+authors = [{ name = "Hasan Şahin" }, { name = "Ahmet Sayman" }]
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 keywords = ["turkish", "nlp", "decision", "routing", "triage", "classification", "agents", "guardrails"]

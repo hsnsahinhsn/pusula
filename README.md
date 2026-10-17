@@ -94,6 +94,7 @@ Gold test set, per question:
 - [Using confidence](#using-confidence)
 - [Examples](#examples)
 - [Training your own model](#training-your-own-model)
+- [Contributors and citation](#contributors-and-citation)
 - [License and acknowledgements](#license-and-acknowledgements)
 
 ---
@@ -362,6 +363,25 @@ The judgment questions (urgency, human handoff, action required) follow a single
 `python -m pusula.annotate` (`pip install -e ".[annotate]"`, Claude API) produces blind gold and benchmark labels with
 two annotators and adjudication. Such labels should be used for evaluation only, since the terms of most commercial
 models do not permit training competing models on their outputs.
+
+## Contributors and citation
+
+Pusula is developed by [Hasan Şahin](https://github.com/hsnsahinhsn) (project lead). Substantial contributions have
+been made by [Ahmet Sayman](https://github.com/asayman) ([Hugging Face](https://huggingface.co/asaymantr)).
+
+If Pusula is used in research or in a product, the following citation is requested. The same information is provided
+in [`CITATION.cff`](CITATION.cff) and through the "Cite this repository" button on GitHub.
+
+```bibtex
+@software{pusula2026,
+  title   = {Pusula: The First Full-Featured Turkish Decision Model},
+  author  = {{\c{S}}ahin, Hasan and Sayman, Ahmet},
+  year    = {2026},
+  version = {1.0},
+  url     = {https://github.com/hsnsahinhsn/pusula},
+  license = {Apache-2.0}
+}
+```
 
 ## License and acknowledgements
 

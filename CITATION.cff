@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If Pusula is used in research or in a product, please cite it as below."
+title: "Pusula: The First Full-Featured Turkish Decision Model"
+abstract: >-
+  Pusula is a Turkish decision model family: Pusula (a Turkish-trained LoRA adapter on vllm-sr/d3) and Pusula Nano
+  (a TabiBERT cross-encoder).
+type: software
+authors:
+  - given-names: Hasan
+    family-names: Şahin
+    alias: hsnsahinhsn
+  - given-names: Ahmet
+    family-names: Sayman
+    alias: asayman
+repository-code: "https://github.com/hsnsahinhsn/pusula"
+url: "https://hsnsahinhsn.github.io/pusula/"
+license: Apache-2.0
+version: "1.0"
+date-released: "2026-10-17"
+keywords:
+  - turkish
+  - decision model
+  - classification
+  - nlp
