@@ -6,7 +6,9 @@ train and eval splits. Everything runs on this machine; nothing is sent anywhere
 
     python -m pusula.clean_real --inp raw.csv --text-field metin --out-dir OUT \\
         --eval-n 500 --strata kanal --id-prefix kurum --seed 0 \\
-        [--no-ner] [--ner-model akdeniz27/bert-base-turkish-cased-ner] [--ner-min-score 0.5]
+        [--no-ner] [--ner-model akdeniz27/bert-base-turkish-cased-ner] [--ner-min-score 0.5] [--repair-glued]
+
+With --repair-glued, provider tags glued into words are repaired (see ``repair_glued``) instead of dropping the row.
 """
 from __future__ import annotations
 
@@ -24,7 +26,7 @@ from typing import Callable, Iterator
 from .anonymize import FIRST, LAST, Anonymizer, fake_tckn, luhn_ok, needs_review
 
 TAG_RE = re.compile(r"<[A-ZÇĞİÖŞÜ_]+>")
-# A tag glued to letters ("Ç<AD>ŞAN" for "ÇALIŞAN"): the provider replaced a name inside a word, the word is lost.
+# A tag glued to letters ("Ç<AD>ŞAN" for "ÇALIŞAN"): the provider replaced a name inside a word (see repair_glued).
 GLUED_TAG = re.compile(r"[^\W\d_]<[A-ZÇĞİÖŞÜ_]+>|<[A-ZÇĞİÖŞÜ_]+>[^\W\d_]")
 # "<AD>" followed by more capitalized words or tags is one person ("<AD> Akkaya", "<AD> <AD>"); forms of address stay.
 NAME_RUN = re.compile(
@@ -121,6 +123,79 @@ def _normalize_text(text: str) -> str:
 
 def tr_lower(s: str) -> str:
     return s.replace("İ", "i").replace("I", "ı").casefold()
+
+
+def tr_upper(s: str) -> str:
+    return s.replace("i", "İ").replace("ı", "I").upper()
+
+
+# Common words the provider took for names inside longer words ("Ç<AD>ŞIYORSUN" = ÇALIŞIYORSUN, "<AD>ımız" = canımız).
+GLUE_FILLS = ("can", "alı", "ali", "ece", "nur", "naz", "gül", "şen", "han", "ay", "su", "efe", "cem", "ilk", "er")
+TAG_GLUE_LEFT_OK = {"KURUM", "ADRES", "AD"}  # a stray word prefix before these is dropped, the placeholder stays
+
+
+class Vocab:
+    """Lower-cased Turkish words seen in clean text; answers 'is this a known word or a prefix of one'."""
+
+    def __init__(self, texts):
+        import bisect
+
+        self._bisect = bisect
+        self.words = sorted({tr_lower(w) for t in texts for w in WORD_RE.findall(t)})
+
+    def known_prefix(self, s: str) -> int:
+        """Length of the longest prefix of ``s`` that starts some known word."""
+        lo = 0
+        for n in range(len(s), 0, -1):
+            p = s[:n]
+            i = self._bisect.bisect_left(self.words, p, lo)
+            if i < len(self.words) and self.words[i].startswith(p):
+                return n
+        return 0
+
+
+def repair_glued(text: str, vocab: Vocab) -> str | None:
+    """Repair provider tags glued into words; None if one cannot be repaired (the row is then dropped).
+
+    A tag with letters only before it ("Bu ş<KURUM> raporu") keeps the placeholder and drops the stray prefix.
+    An <AD> glued to letters after it is a common word the provider took for a name: the fill from GLUE_FILLS whose
+    word is known (or the longest known prefix covering the fill and two more letters) replaces the tag.
+    """
+    out: list[str] = []
+    pos = 0
+    for m in TAG_RE.finditer(text):
+        tag = m.group(0)[1:-1]
+        s, e = m.span()
+        ls = s
+        while ls > pos and LETTER_RE.match(text[ls - 1]):
+            ls -= 1
+        re_ = e
+        while re_ < len(text) and LETTER_RE.match(text[re_]):
+            re_ += 1
+        left, right = text[ls:s], text[e:re_]
+        if not left and not right:
+            continue
+        if right and tag == "AD":
+            upper = (left + right).isupper()
+            best, best_n = None, len(left) + 1
+            for fill in GLUE_FILLS:
+                word = tr_lower(left + fill + right)
+                n = vocab.known_prefix(word)
+                need = min(len(word), len(left) + len(fill) + 2)
+                if n >= need and n > best_n:
+                    best, best_n = fill, n
+            if best is None:
+                return None
+            out.append(text[pos:s] + (tr_upper(best) if upper else best))
+            pos = e
+        elif left and not right and tag in TAG_GLUE_LEFT_OK:
+            out.append(text[pos:ls].rstrip() + (" " if ls > 0 else "") + m.group(0))
+            pos = e
+        else:
+            return None
+    out.append(text[pos:])
+    fixed = "".join(out)
+    return None if GLUED_TAG.search(fixed) else fixed
 
 
 def dedupe_key(text: str) -> str:
@@ -367,6 +442,7 @@ def process_rows(
     use_ner: bool,
     name_finder: NameFinder | None,
     ner_min_score: float,
+    repair_vocab: Vocab | None = None,
 ) -> tuple[list[dict], list[dict], list[dict], list[dict], dict]:
     """Run the cleaning pipeline; returns train, eval, dropped, review rows, and report dict."""
     anon = Anonymizer(seed)
@@ -407,9 +483,13 @@ def process_rows(
         row_rng = random.Random(seed ^ meta["source_row"])
 
         if GLUED_TAG.search(text):
-            dropped.append({"source_row": meta["source_row"], "reason": "bozuk_etiket", "text": raw_text})
-            stats["bozuk_etiket"] += 1
-            continue
+            fixed = repair_glued(text, repair_vocab) if repair_vocab is not None else None
+            if fixed is None:
+                dropped.append({"source_row": meta["source_row"], "reason": "bozuk_etiket", "text": raw_text})
+                stats["bozuk_etiket"] += 1
+                continue
+            text = fixed
+            stats["etiket_onarildi"] += 1
 
         if use_ner and finder is not None:
             text = apply_ner(text, finder, ner_min_score, ner_counts)
@@ -498,6 +578,7 @@ def run(
     ner_model: str,
     ner_min_score: float,
     name_finder: NameFinder | None = None,
+    repair: bool = False,
 ) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_dir.chmod(0o700)
@@ -507,6 +588,7 @@ def run(
         finder = HFNameFinder(ner_model)
 
     items = list(iter_rows(inp, text_field))
+    vocab = Vocab(_normalize_text(fix_mojibake(t) or t) for _, t, _ in items) if repair else None
     train, eval_rows, dropped, review_rows, report = process_rows(
         items,
         seed=seed,
@@ -516,6 +598,7 @@ def run(
         use_ner=use_ner,
         name_finder=finder if use_ner else None,
         ner_min_score=ner_min_score,
+        repair_vocab=vocab,
     )
     if use_ner and name_finder is None:
         report["ner_model"] = ner_model
@@ -553,6 +636,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--no-ner", action="store_true")
     p.add_argument("--ner-model", default="akdeniz27/bert-base-turkish-cased-ner")
     p.add_argument("--ner-min-score", type=float, default=0.5)
+    p.add_argument("--repair-glued", action="store_true", help="repair tags glued into words instead of dropping the row")
     a = p.parse_args(argv)
     report = run(
         a.inp,
@@ -565,6 +649,7 @@ def main(argv: list[str] | None = None) -> None:
         use_ner=not a.no_ner,
         ner_model=a.ner_model,
         ner_min_score=a.ner_min_score,
+        repair=a.repair_glued,
     )
     print(json.dumps(report, ensure_ascii=False))
 

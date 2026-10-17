@@ -110,6 +110,33 @@ def test_glued_tags_dropped_and_name_runs_merged():
     assert NAME_RUN.sub("<AD>", "<AD> Hanım geldi") == "<AD> Hanım geldi"
 
 
+def test_repair_glued_tags():
+    from pusula.clean_real import Vocab, repair_glued
+
+    v = Vocab(["Çalışıyorsun ama canımız sıkkın", "şirketin raporu", "içeceğinizi içip gidin"])
+    assert repair_glued("MAİL ATMAYA Ç<AD>ŞIYORSUN", v) == "MAİL ATMAYA ÇALIŞIYORSUN"
+    assert repair_glued("çok <AD>ımız sıkkın", v) == "çok canımız sıkkın"
+    assert repair_glued("oturup iç<AD>ğinizi içip", v) == "oturup içeceğinizi içip"
+    assert repair_glued("Bu ş<KURUM> raporu", v) == "Bu <KURUM> raporu"
+    assert repair_glued("<AD>'ye söyledim", v) == "<AD>'ye söyledim"  # not glued: unchanged
+    assert repair_glued("Süreci <KOD>ğim yok", v) is None  # code glued to a suffix: unknown word, row dropped
+    assert repair_glued("bir <AD>xyzq var", v) is None  # no fill gives a known word
+
+
+def test_process_rows_repairs_glued_with_vocab():
+    from pusula.clean_real import Vocab
+
+    items = [(1, "Personel Ç<AD>ŞIYOR ama yavaş", {"kanal": "web"}), (2, "Süreci <KOD>ğim yok", {"kanal": "web"})]
+    for i, (_, _, m) in enumerate(items, 1):
+        m["source_row"] = i
+    kw = dict(seed=0, id_prefix="t", eval_n=0, strata="kanal", use_ner=False, name_finder=None, ner_min_score=0.5)
+    train, _, dropped, _, report = process_rows(items, **kw)
+    assert not train and report["dropped"]["bozuk_etiket"] == 2
+    train, _, dropped, _, report = process_rows(items, **kw, repair_vocab=Vocab(["çalışıyor"]))
+    assert [r["state"] for r in train] == ["Personel ÇALIŞIYOR ama yavaş"]
+    assert report["dropped"] == {"etiket_onarildi": 1, "bozuk_etiket": 1}
+
+
 def test_leftover_address_and_title():
     assert has_leftover_risk("Atatürk Cad. No: 5")
     assert has_leftover_risk("Çiçek Sokak 12'de oturuyorum")
