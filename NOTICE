@@ -11,4 +11,9 @@ This product includes or builds on the following Apache-2.0 licensed works:
 - TabiBERT, https://huggingface.co/boun-tabilab/TabiBERT (Boğaziçi University TABILAB).
 
 Pusula model weights are LoRA adapters and a code readout trained on top of vllm-sr/d3 (Pusula)
-and a fine-tuned TabiBERT cross-encoder (Pusula Nano). Their training data was generated synthetically; it contains no scraped or personal data.
+and a fine-tuned TabiBERT cross-encoder (Pusula Nano).
+
+Data provenance. Pusula models were trained primarily on synthetic Turkish data generated for this
+project. A limited set of real customer messages, licensed from a commercial partner, was also
+included in the training data. These messages were anonymized prior to use and are not redistributed
+in any form.

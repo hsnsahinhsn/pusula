@@ -36,8 +36,8 @@ Bugünkü karar modelleri (Decision 3.0, Jev, Laya, ...) İngilizce için kurulm
 
 | Model | Boyut | Çalıştığı yer | Benchmark / altın set | Ne için |
 |---|---|---|---|---|
-| **Pusula** (Türkçe Decision 3.0) | 26B: `vllm-sr/d3` üzerine 0,9 GB'lık LoRA adaptörü | GPU: BF16'da ≥ 64 GB, 4-bit'te ≥ 24 GB | **92,8 / 90,3** | En yüksek doğruluk; hazır sorularda da sizin sorularınızda da |
-| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU veya herhangi bir GPU | 81,8 / 84,2 | Hazır sorularda yüksek hacim ve düşük gecikme |
+| **Pusula** (Türkçe Decision 3.0) | 26B: `vllm-sr/d3` üzerine 0,9 GB'lık LoRA adaptörü | GPU: BF16'da ≥ 64 GB, 4-bit'te ≥ 24 GB | **92,1 / 90,6** | En yüksek doğruluk; hazır sorularda da sizin sorularınızda da |
+| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU veya herhangi bir GPU | 82,1 / 84,3 | Hazır sorularda yüksek hacim ve düşük gecikme |
 
 İkisi de birebir aynı istekleri cevaplar.
 
@@ -47,35 +47,39 @@ Bugünkü karar modelleri (Decision 3.0, Jev, Laya, ...) İngilizce için kurulm
 
 Doğruluk (%). Değerlendirme etiketleri birbirini görmeden çalışan iki etiketçiden gelir (Claude Opus 5.5 ve Claude
 Sonnet 5.5); ayrıştıkları yerde hakem karar verir ve hepsi yayınlanan [etiketleme politikasına](pusula/data/label_policy.md)
-uyar. Bu etiketler yalnız ölçüm için kullanılır, hiçbir zaman eğitim etiketi olarak kullanılmaz.
+uyar. Gerçek müşteri mesajlarını Claude aynı politikayla kör olarak etiketledi. Ölçüm etiketleri yalnız ölçüm için
+kullanılır, hiçbir zaman eğitim etiketi olarak kullanılmaz.
 
 | Değerlendirme | Soru | Decision 3.0 | **Pusula** | Pusula Nano |
 |---|---|---|---|---|
-| [Türkçe Karar Benchmark'ı](benchmark/README.md) (2.194 mesaj) | 19.861 | 88,5 | **92,8** | 81,8 |
-| Altın test seti (eğitimde olmayan 759 mesaj) | 7.015 | 85,5 | **90,3** | 84,2 |
-| Kendi sorularınız (497 mesaj × 3 özel soru) | 1.491 | **94,8** | 93,1 | 85,6 |
-| MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı) | 2.974 | **85,3** | 84,7 | 30,9 |
-| OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler) | 3.528 | 88,4 | **88,8** | 27,5 |
+| Gerçek müşteri mesajları (500, eğitim dışı, lisanslı) | 4.500 | 77,4 | **84,1** | 82,9 |
+| [Türkçe Karar Benchmark'ı](benchmark/README.md) (2.194 mesaj) | 19.861 | 88,5 | **92,1** | 82,1 |
+| Altın test seti (eğitimde olmayan 759 mesaj) | 7.015 | 85,5 | **90,6** | 84,3 |
+| Kendi sorularınız (497 mesaj × 3 özel soru) | 1.491 | **94,8** | 94,7 | 86,8 |
+| MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı) | 2.974 | **85,3** | 85,1 | 36,1 |
+| OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler) | 3.528 | 88,4 | **88,6** | 37,2 |
 
 Altın test seti, soru bazında:
 
 | Soru | Decision 3.0 | **Pusula** |
 |---|---|---|
-| Aciliyet (4 seviye) | 53,2 | **80,2** |
-| İnsana devretme | 81,5 | **89,1** |
-| Alan | 82,1 | **87,4** |
-| Duygu | 85,0 | **88,9** |
-| Güvenlik riski | 94,2 | **97,8** |
-| Eylem gerekli mi | 88,9 | **89,2** |
-| Kişisel veri | **96,4** | 96,0 |
-| Niyet | **96,8** | 95,1 |
+| Aciliyet (4 seviye) | 53,2 | **81,0** |
+| İnsana devretme | 81,5 | **88,4** |
+| Alan | 82,1 | **87,0** |
+| Duygu | 85,0 | **87,2** |
+| Güvenlik riski | 94,2 | **97,9** |
+| Eylem gerekli mi | 88,9 | **90,6** |
+| Kişisel veri | 96,4 | 96,4 |
+| Niyet | 96,8 | 96,8 |
 
-- **Aciliyet kısmen öznel:** iki etiketçi mesajların %84,4'ünde aynı cevabı veriyor; 80,2 bu tavana yakın.
-- **Kendi sorularınız:** Pusula genel olarak Decision 3.0 ile aynı seviyede (altın setteki özel sorularda +2,2,
-  OffensEval'de +0,4, MASSIVE'de −0,6), ancak 10 ve üzeri seçenekli sorularda geride (86,7'ye 90,1). Uzun seçenek
-  listeleri için bir güncelleme planlandı.
-- **Nano** ağırlıkla hazır sorularla eğitildi. Bunlara benzemeyen ya da çok seçenekli görevler için Pusula'yı
-  kullanın (OffensEval'de 88,8'e 27,5, MASSIVE'de 84,7'ye 30,9).
+- **Gerçek müşteri mesajları:** Değerlendirme, ticari bir iş ortağından lisanslanan ve eğitimde kullanılmayan 500
+  anonim müşteri mesajı (yorum, şikâyet ve soru) üzerinde yapılmıştır. Bu set yayımlanmamaktadır. Aynı kaynaktan
+  alınan diğer mesajlar eğitimde kullanılmış ve açık bir model (Qwen) tarafından etiketlenmiştir.
+- **Aciliyet kısmen öznel:** iki etiketçi mesajların %84,4'ünde aynı cevabı veriyor; 81,0 bu tavana yakın.
+- **Kendi sorularınız:** Pusula Decision 3.0 ile aynı seviyede (94,7'ye 94,8; altın setteki özel sorularda +2,7,
+  OffensEval'de +0,2, MASSIVE'de −0,2).
+- **Nano** ağırlıkla hazır sorularla eğitildi. Gerçek mesajlarda Pusula'ya yakın (82,9'a 84,1). Hazır sorulara
+  benzemeyen ya da çok seçenekli görevler için Pusula'yı kullanın (OffensEval'de 88,6'ya 37,2, MASSIVE'de 85,1'e 36,1).
 - MASSIVE ve OffensEval eğitim verisinde yok.
 
 ## İçindekiler

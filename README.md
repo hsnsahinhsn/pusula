@@ -35,8 +35,8 @@ decision models (Decision 3.0, Jev, Laya, ...) are built for English and stumble
 
 | Model | Size | Runs on | Benchmark / gold set | Use it for |
 |---|---|---|---|---|
-| **Pusula** (Turkish Decision 3.0) | 26B: a 0.9 GB LoRA adapter on top of `vllm-sr/d3` | GPU: ≥ 64 GB in BF16, ≥ 24 GB in 4-bit | **92.8 / 90.3** | The highest accuracy, for the built-in questions and your own |
-| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU or any GPU | 81.8 / 84.2 | High volume and low latency on the built-in questions |
+| **Pusula** (Turkish Decision 3.0) | 26B: a 0.9 GB LoRA adapter on top of `vllm-sr/d3` | GPU: ≥ 64 GB in BF16, ≥ 24 GB in 4-bit | **92.1 / 90.6** | The highest accuracy, for the built-in questions and your own |
+| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU or any GPU | 82.1 / 84.3 | High volume and low latency on the built-in questions |
 
 Both answer exactly the same requests.
 
@@ -46,35 +46,39 @@ Both answer exactly the same requests.
 
 Accuracy (%). The evaluation labels come from two annotators working blind and independently (Claude Opus 5.5 and
 Claude Sonnet 5.5), with disagreements adjudicated, all following the published
-[labeling policy](pusula/data/label_policy.md). They are used only for evaluation, never as training labels.
+[labeling policy](pusula/data/label_policy.md). The real customer messages were labeled blind by Claude with the same
+policy. Evaluation labels are used only for evaluation, never as training labels.
 
 | Evaluation | Questions | Decision 3.0 | **Pusula** | Pusula Nano |
 |---|---|---|---|---|
-| [Turkish Decision Benchmark](benchmark/README.md) (2,194 messages) | 19,861 | 88.5 | **92.8** | 81.8 |
-| Gold test set (759 held-out messages) | 7,015 | 85.5 | **90.3** | 84.2 |
-| Your own questions (497 messages × 3 ad-hoc questions) | 1,491 | **94.8** | 93.1 | 85.6 |
-| MASSIVE tr-TR, 60-way intent, zero-shot (human-written) | 2,974 | **85.3** | 84.7 | 30.9 |
-| OffensEval 2020 Turkish, offensive language (real tweets) | 3,528 | 88.4 | **88.8** | 27.5 |
+| Real customer messages (500 held-out, licensed) | 4,500 | 77.4 | **84.1** | 82.9 |
+| [Turkish Decision Benchmark](benchmark/README.md) (2,194 messages) | 19,861 | 88.5 | **92.1** | 82.1 |
+| Gold test set (759 held-out messages) | 7,015 | 85.5 | **90.6** | 84.3 |
+| Your own questions (497 messages × 3 ad-hoc questions) | 1,491 | **94.8** | 94.7 | 86.8 |
+| MASSIVE tr-TR, 60-way intent, zero-shot (human-written) | 2,974 | **85.3** | 85.1 | 36.1 |
+| OffensEval 2020 Turkish, offensive language (real tweets) | 3,528 | 88.4 | **88.6** | 37.2 |
 
 Gold test set, per question:
 
 | Question | Decision 3.0 | **Pusula** |
 |---|---|---|
-| Urgency (4 levels) | 53.2 | **80.2** |
-| Human handoff | 81.5 | **89.1** |
-| Domain | 82.1 | **87.4** |
-| Emotion | 85.0 | **88.9** |
-| Security risk | 94.2 | **97.8** |
-| Action required | 88.9 | **89.2** |
-| Personal data | **96.4** | 96.0 |
-| Intent | **96.8** | 95.1 |
+| Urgency (4 levels) | 53.2 | **81.0** |
+| Human handoff | 81.5 | **88.4** |
+| Domain | 82.1 | **87.0** |
+| Emotion | 85.0 | **87.2** |
+| Security risk | 94.2 | **97.9** |
+| Action required | 88.9 | **90.6** |
+| Personal data | 96.4 | 96.4 |
+| Intent | 96.8 | 96.8 |
 
-- **Urgency is partly subjective:** the two annotators agree on 84.4% of messages, so 80.2 is close to the ceiling.
-- **Your own questions:** Pusula is on par with Decision 3.0 overall (custom questions in the gold set +2.2, OffensEval
-  +0.4, MASSIVE −0.6) but behind on questions with 10 or more options (86.7 vs 90.1). An update for long option lists
-  is planned.
-- **Nano** is trained mainly on the built-in questions. For tasks unlike them, or with many options, use Pusula
-  (OffensEval 88.8 vs 27.5, MASSIVE 84.7 vs 30.9).
+- **Real customer messages:** Evaluation was performed on a held-out set of 500 anonymized customer messages
+  (reviews, complaints and questions) licensed from a commercial partner. This set is not published. Other messages
+  from the same source were used for training and were labeled by an open model (Qwen).
+- **Urgency is partly subjective:** the two annotators agree on 84.4% of messages, so 81.0 is close to the ceiling.
+- **Your own questions:** Pusula is on par with Decision 3.0 (94.7 vs 94.8; custom questions in the gold set +2.7,
+  OffensEval +0.2, MASSIVE −0.2).
+- **Nano** is trained mainly on the built-in questions. On real messages it is close to Pusula (82.9 vs 84.1). For
+  tasks unlike the built-in questions, or with many options, use Pusula (OffensEval 88.6 vs 37.2, MASSIVE 85.1 vs 36.1).
 - MASSIVE and OffensEval are not part of the training data.
 
 ## Contents
