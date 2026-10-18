@@ -8,7 +8,7 @@
 Endpoints:
     POST /v1/systemone        {"state": str, "questions": {name: {type, instructions, criteria}}}
     POST /v1/systemone/batch  {"requests": [ {state, questions}, ... ]}
-    POST /v1/route            {"state": str, "universal": true}  -> taxonomy routing
+    POST /v1/route            {"state": str, "universal": true | [names]}  -> taxonomy routing
                               {"state": str, "topics": {key: description | {"description", "intents"}}}
                               -> routing through the institution's own list (konu -> niyet)
     GET  /v1/taxonomy         built-in taxonomy
@@ -24,7 +24,7 @@ import hmac
 import os
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,7 +32,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from . import __version__
 from .schema import Question
-from .taxonomy import load_taxonomy, topic_questions
+from .taxonomy import load_taxonomy, topic_questions, universal_subset
 
 MAX_STATE_CHARS = int(os.getenv("PUSULA_MAX_STATE_CHARS", "60000"))
 MAX_QUESTIONS = int(os.getenv("PUSULA_MAX_QUESTIONS", "32"))
@@ -58,9 +58,16 @@ class BatchRequest(BaseModel):
 
 class RouteRequest(BaseModel):
     state: str = Field(..., min_length=1, max_length=MAX_STATE_CHARS)
-    universal: bool = True
+    # true: every universal question; false: none; a list of names: only those (fewer questions, faster answers)
+    universal: Union[bool, list[str]] = True
     # An institution's own routing list (konu -> niyet); without it the built-in taxonomy is used.
     topics: Optional[dict[str, Any]] = None
+
+    @field_validator("universal")
+    @classmethod
+    def _valid_universal(cls, v):
+        universal_subset(load_taxonomy(), v)  # raises ValueError (-> 422) for unknown names
+        return v
 
     @field_validator("topics")
     @classmethod

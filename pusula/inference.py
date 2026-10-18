@@ -19,7 +19,8 @@ import torch
 
 from .model import PairEncoder, PusulaModel
 from .schema import Question, answer_from_probs
-from .taxonomy import Q_DOMAIN, Q_INTENT, Q_SUBDOMAIN, Q_TOPIC, Taxonomy, load_taxonomy, topic_questions
+from .taxonomy import (Q_DOMAIN, Q_INTENT, Q_SUBDOMAIN, Q_TOPIC, Taxonomy, load_taxonomy, topic_questions,
+                       universal_subset)
 
 QuestionsIn = Mapping[str, Question | Mapping[str, Any]]
 
@@ -110,18 +111,18 @@ class BaseEngine:
     def decide(self, state: str, questions: QuestionsIn) -> dict[str, dict[str, Any]]:
         return self.decide_many([(state, questions)])[0]
 
-    def route(self, state: str, taxonomy: Optional[Taxonomy] = None, universal: bool = True,
+    def route(self, state: str, taxonomy: Optional[Taxonomy] = None, universal: bool | Sequence[str] = True,
               topics: Optional[Mapping[str, Any]] = None) -> dict[str, Any]:
         """Hierarchical routing alan -> alt_alan -> niyet (three passes), plus the universal questions.
 
-        With ``topics`` (an institution's own list, see ``taxonomy.topic_questions``) the route is konu -> niyet
-        instead: one pass for the topic and, when that topic lists intents, one pass for the intent."""
-        if topics is not None:
-            return self._route_topics(state, topics, universal)
+        ``universal``: True asks every universal question, False none, a list of names only those (fewer questions,
+        faster answers). With ``topics`` (an institution's own list, see ``taxonomy.topic_questions``) the route is
+        konu -> niyet instead: one pass for the topic and, when that topic lists intents, one pass for the intent."""
         tax = taxonomy or load_taxonomy()
-        first = {Q_DOMAIN: tax.domain_question()}
-        if universal:
-            first.update(tax.universal)
+        extra = universal_subset(tax, universal)
+        if topics is not None:
+            return self._route_topics(state, topics, extra)
+        first = {Q_DOMAIN: tax.domain_question(), **extra}
         answers = self.decide(state, first)
         domain = answers[Q_DOMAIN]["choice"]
         answers.update(self.decide(state, {Q_SUBDOMAIN: tax.subdomain_question(domain)}))
@@ -132,12 +133,9 @@ class BaseEngine:
             "answers": answers,
         }
 
-    def _route_topics(self, state: str, topics: Mapping[str, Any], universal: bool) -> dict[str, Any]:
+    def _route_topics(self, state: str, topics: Mapping[str, Any], extra: dict[str, Question]) -> dict[str, Any]:
         topic_q, intent_qs = topic_questions(dict(topics))
-        first = {Q_TOPIC: topic_q}
-        if universal:
-            first.update(load_taxonomy().universal)
-        answers = self.decide(state, first)
+        answers = self.decide(state, {Q_TOPIC: topic_q, **extra})
         topic = answers[Q_TOPIC]["choice"]
         if topic not in intent_qs:
             return {"path": topic, "answers": answers}

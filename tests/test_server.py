@@ -125,3 +125,8 @@ def test_route_with_own_topics_is_passed_through():
 @pytest.mark.parametrize("topics", [{"tek": "Tek konu"}, {"a": {"description": "x", "baska": {}}}, {"": "bos"}, []])
 def test_route_rejects_invalid_topics(client, topics):
     assert client.post("/v1/route", json={"state": "x", "topics": topics}).status_code == 422
+
+
+def test_route_universal_list(client):
+    assert client.post("/v1/route", json={"state": "x", "universal": ["aciliyet"]}).status_code == 200
+    assert client.post("/v1/route", json={"state": "x", "universal": ["yok_boyle"]}).status_code == 422

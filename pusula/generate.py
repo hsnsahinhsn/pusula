@@ -101,8 +101,8 @@ def make_specs(tax: Taxonomy, start: int, count: int, seed: int, adhoc_rate: flo
         siblings = [k for k in sub.intents if k != path.intent]
         confusable = rng.choice(siblings) if siblings and rng.random() < hard_rate else None
         guv = rng.choice(guv_keys) if rng.random() < unsafe_rate else "guvenli"
-        duygu = "caresiz_kriz" if path.domain == "kriz_destek" and rng.random() < 0.6 else _weighted(
-            rng, [(k, DUYGU_WEIGHTS[k]) for k in duygu_keys])
+        crisis = "caresiz_kriz" in duygu_keys and path.domain == "kriz_destek" and rng.random() < 0.6  # taxonomy v1 only
+        duygu = "caresiz_kriz" if crisis else _weighted(rng, [(k, DUYGU_WEIGHTS[k]) for k in duygu_keys])
         style = rng.choice(STYLES)
         # Short-form styles cannot be 500 words long; keep style and length consistent.
         lengths = LENGTHS[:2] if style in SHORT_STYLES else LENGTHS

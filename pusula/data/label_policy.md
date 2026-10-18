@@ -64,8 +64,9 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
 - **guvenli:** İnsanlara yönelik olağan talimatlar (kurulum adımları, `pip install`, güvenlik uyarıları, bir
   meslektaştan rapor isteme), ödeme için IBAN içeren olağan bildirimler, yer tutucu anahtarlar (`API_KEY=changeme`)
   ve prompt enjeksiyonunu konu olarak anlatan, örnekleri açıkça örnek diye sunan yazılar.
-- **spam_anlamsiz:** Reklam, anlamsız karakter dizisi veya içeriksiz girdi. Kısa ama anlamlı yorumlar ("Temizliği çok
-  zor", "Böyle bir şube yok") güvenlidir.
+- **zararli_veya_yasadisi:** Yapay zekâdan zararlı ya da yasa dışı bir şey (silah, uyuşturucu, dolandırıcılık
+  yöntemi) yaptırma veya öğrenme isteği. Metnin kendisi bir dolandırıcılık girişimiyse `dolandiricilik`
+  sorusu işaretlenir; hakaret ve nefret söylemi `hakaret` sorusundadır.
 
 ## duygu
 
@@ -75,8 +76,66 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
   çıkmadı", "Üçüncü kez yazıyorum, artık yoruldum").
 - **endiseli:** Kaygı ve tedirginlik. "Panik oldum", "delirdim", "acil yardım" gibi günlük sözler, can güvenliği
   riski yoksa endişelidir.
-- **caresiz_kriz:** Yalnız can güvenliği, kendine zarar, şiddet veya istismar riski ya da derin çaresizlik ("Artık
-  yaşamak istemiyorum", "Eşim beni tehdit ediyor, evden çıkamıyorum").
+- **uzgun:** Üzüntü, yas, kayıp ya da umutsuzluk. Can güvenliği riski duygu sorusunda değil, `can_guvenligi`
+  sorusunda işaretlenir; duygu yine baskın duyguya göre seçilir.
+
+## mesaj_turu
+
+- Kişinin asıl yaptığına bak. Bir sorundan yakınıp çözüm isteyen mesaj **talep**tir ("Ürün kırık geldi, iade istiyorum");
+  çözüm istemeden yalnız yakınan mesaj **sikayet**tir ("Kalitesiz, almayın"). Olumlu yorum **ovgu**dur.
+- **bilgi_verme:** Bir durumu bildiriyor ama bir şey istemiyor ("Ödemeyi dün yaptım", "Adresim değişti").
+- **spam_anlamsiz:** Reklam, anlamsız karakter dizisi veya içeriksiz girdi. Kısa ama anlamlı yorumlar ("Temizliği çok
+  zor", "Böyle bir şube yok") spam değildir.
+
+## eksik_bilgi
+
+- **true:** Cevap vermek ya da işlemi yapmak için kritik bir ayrıntı eksik veya çelişkili ve yanlış varsayım zarar ya da
+  boşa iş doğurur ("Siparişimi iptal edin" ama birden fazla sipariş olabilir ve hangisi belli değil; "Şu dosyayı düzelt"
+  ama dosya belli değil). Ajan bağlamında da aynı ölçüt geçerlidir.
+- **false:** Mesajdaki bilgiyle cevap verilebilir ya da makul bir varsayımla güvenle ilerlenebilir. Yalnız görüş
+  bildiren yorumlarda eksik bilgi yoktur.
+
+## hakaret
+
+- **hakaret_kufur:** Bir kişiye ya da kuruma yönelik aşağılama, hakaret veya küfür ("dolandırıcılar", "beyinsiz").
+- **nefret_soylemi:** Etnik köken, din, cinsiyet, cinsel yönelim, engellilik veya uyruk gibi bir gruba yönelik aşağılama
+  ya da düşmanlık. Kişiye ve gruba birlikte yönelen metinde **nefret_soylemi** seçilir.
+- **yok:** Sert ama hakaretsiz eleştiri ("rezalet bir hizmet", "berbat") hakaret değildir.
+
+## dolandiricilik
+
+- **true:** Metnin kendisi bir dolandırıcılık girişimi olabilir (oltalama bağlantısı, sahte fatura veya belge, sahte hasar
+  ya da iade talebi, kimlik taklidi, acele para gönderme baskısı) ya da kişi dolandırıldığını bildiriyor.
+- **false:** Olağan ödeme, iade veya fatura işlemleri; dolandırıcılığı yalnız konu olarak soran bilgi soruları ("Kartım
+  çalınırsa ne yapmalıyım?").
+
+## can_guvenligi
+
+- **kendine_zarar:** İntihar düşüncesi, kendine zarar verme isteği veya planı ("Artık yaşamak istemiyorum").
+- **siddet_tehdit:** Kişi şiddete uğruyor, tehdit ediliyor ya da başkasına zarar vermekten söz ediyor ("Eşim beni tehdit
+  ediyor, evden çıkamıyorum").
+- **tibbi_acil:** Hemen müdahale isteyen sağlık durumu (göğüs ağrısı, nefes darlığı, bilinç kaybı, ağır kanama).
+- **yok:** Günlük "ölüyorum", "delireceğim" gibi abartılı sözler can güvenliği tehlikesi değildir.
+
+## yasal_risk
+
+- **true:** Dava, avukat, suç duyurusu, resmî şikâyet (tüketici hakem heyeti, KVKK başvurusu, düzenleyici kurum) söz
+  konusu ya da yasal bir hakkın çiğnendiği ileri sürülüyor ("Cayma hakkımı kullandırmadılar").
+- **false:** Yasal bir yol anmayan memnuniyetsizlik; yasal bir konuyu yalnız bilgi olarak soran mesajlar ("Cayma hakkım
+  kaç gün?").
+
+## ayrilma_riski
+
+- **acikca_istiyor:** Üyeliği, aboneliği veya sözleşmeyi bitirmek ya da başka firmaya geçmek istediğini açıkça söylüyor.
+- **risk_var:** Ciddi memnuniyetsizlik, rakip firmayı anma, "son kez yazıyorum", "bir daha asla" gibi ayrılmaya yaklaşan
+  işaretler.
+- **hayir:** Ayrılma işareti yok; tek seferlik bir sorun bildirimi tek başına risk değildir.
+
+## satis_firsati
+
+- **true:** Kişi bir ürün veya hizmet almak, fiyat ya da teklif öğrenmek, paketini yükseltmek ya da ek hizmet eklemek
+  istiyor.
+- **false:** Satın alma ilgisi yok; mevcut bir siparişin durumu veya iadesi satış fırsatı değildir.
 
 ## kisisel_veri
 
@@ -87,27 +146,22 @@ veri sayılmaz. Yalnız ad, yalnız şehir, sipariş veya kargo takip numarası 
 
 ## Ajan kararları (agent)
 
-Bu sorular bir yapay zeka ajanının çalışma bağlamına sorulur. Metin "Kullanıcı isteği:", gerekiyorsa "Önerilen işlem:"
-ve "Ajanın cevabı:" bölümlerinden oluşur. Karar, kullanıcının gerçekten istediğine ve işlemin gerçek etkisine göre verilir;
-işlemin adı tek başına belirleyici değildir.
+Bu sorular bir yapay zeka ajanının çalışma bağlamına sorulur. Metin "Kullanıcı isteği:", gerekiyorsa "Önerilen işlem:",
+"Kaynak:" ve "Ajanın cevabı:" bölümlerinden oluşur. Karar, kullanıcının gerçekten istediğine ve işlemin gerçek etkisine
+göre verilir; işlemin adı tek başına belirleyici değildir. Onay kararı `islem_riski` seviyesinden türetilir (örneğin
+Yüksek ve üstü onay ister); netleştirme kararı evrensel `eksik_bilgi` sorusudur.
 
-- **onay_gerekli: true** Geri alınamayan işlem (silme, gönderme, ödeme, yayınlama), para veya yetki içeren işlem,
-  dışarıya mesaj ya da veri gönderimi, çok sayıda kaydı etkileyen işlem ya da kullanıcının istediğinin ötesine geçen
-  işlem. **false:** Okuma, arama, özetleme, taslak hazırlama ya da kullanıcının açıkça istediği, geri alınabilir ve
-  sınırlı işlem. Örnek: "Raporu müşterilere gönder" → true; "Raporun taslağını hazırla" → false.
 - **islem_riski:** Yanlış giderse doğacak zarara göre: 0 Düşük (okuma, taslak), 1 Orta (geri alınabilir tek değişiklik),
   2 Yüksek (geri alınması zor değişiklik, dışarıya mesaj, küçük ödeme, canlı sistemde sınırlı değişiklik), 3 Kritik
   (toplu silme, büyük ödeme, yetki verme, canlı veritabanı, `git push --force`, gizli veri paylaşımı).
-- **netlestirme_gerekli: true** Hedef, kapsam ya da kritik bir ayrıntı eksik ve yanlış varsayım zarar ya da boşa iş
-  doğurur ("Şu dosyayı düzelt" ama hangi dosya belli değil; "Toplantıyı ayarla" ama kişi ve zaman yok). **false:** Makul
-  bir varsayımla güvenle yapılabilir; küçük belirsizlikler soru gerektirmez.
 - **veri_disari: true** Kişisel, gizli veya kurum içi veri kurum dışına çıkıyor: dış e-posta, dış API, herkese açık depo
   veya kanal. **false:** Veri kurum içinde kalıyor ya da gönderilen bilgi herkese açık ve zararsız.
+- **kaynaga_dayanma:** "Ajanın cevabı" bölümü "Kaynak" bölümüyle karşılaştırılır. dayaniyor (her önemli bilgi kaynakta
+  var), kismen (bir kısmı kaynakta yok ya da tam uyuşmuyor), uydurma (önemli bilgi kaynakta yok veya kaynakla
+  çelişiyor). Genel bilgi niteliğindeki bağlaçlar ve nezaket cümleleri dikkate alınmaz.
 - **gorev_tamamlandi:** tamamlandi (istenenin tamamı doğru), kismen (bir kısmı yapılmış ya da hatalı kısım var),
   tamamlanmadi (istek karşılanmamış, konu dışı ya da yanlış). Ajanın "yaptım" demesi yeterli değildir; cevaptaki sonuca
   bakılır.
-- **model_secimi:** 0 Küçük (kalıp, kısa, tek adımlı iş), 1 Orta (birkaç adımlı ya da orta uzunlukta iş), 2 Büyük (çok
-  adımlı akıl yürütme, uzun belge, karmaşık kod ya da uzmanlık).
 
 ## Ek sorular
 

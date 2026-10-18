@@ -106,3 +106,10 @@ def test_route_with_own_topics(tiny_engine):
         assert len(parts) == 1 and "niyet" not in out["answers"]
     assert "aciliyet" in out["answers"]
     assert "aciliyet" not in tiny_engine.route("x", topics=topics, universal=False)["answers"]
+
+
+def test_route_asks_only_chosen_templates(tiny_engine):
+    out = tiny_engine.route("Kargom gelmedi.", universal=["aciliyet", "mesaj_turu"])
+    assert {"aciliyet", "mesaj_turu"} <= set(out["answers"]) and "duygu" not in out["answers"]
+    with pytest.raises(ValueError):
+        tiny_engine.route("x", universal=["boyle_bir_soru_yok"])

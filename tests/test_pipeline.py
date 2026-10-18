@@ -25,7 +25,9 @@ def _llm_output(adhoc_answer="hizli"):
     return {
         "senaryo": "...", "state": "Siparişim üç gündür kargoda görünmüyor, ne zaman gelir?",
         "aciliyet": 1, "eylem_gerekli": True, "insana_devret": False, "guvenlik": "guvenli",
-        "duygu": "endiseli", "kisisel_veri": False,
+        "duygu": "endiseli", "kisisel_veri": False, "mesaj_turu": "soru", "eksik_bilgi": False, "hakaret": "yok",
+        "dolandiricilik": False, "can_guvenligi": "yok", "yasal_risk": False, "ayrilma_riski": "hayir",
+        "satis_firsati": False,
         ADHOC_QUESTION: {"soru": "Kargo firmasına hangi kanaldan yazılsın?", "cevap": adhoc_answer,
                          "secenekler": [{"anahtar": "hizli", "aciklama": "Hızlı kanal"},
                                         {"anahtar": "normal", "aciklama": "Normal kanal"},
@@ -90,7 +92,7 @@ def _labeled(example, n=40):
         ex.teacher = {name: [1.0 if k == d3[name] else 0.0 for k in q.option_keys()]
                       for name, q in ex.questions.items()}
         if i % 5 == 0:  # three different answers -> contested
-            ex.labels["judge"]["guvenlik"] = "spam_anlamsiz"
+            ex.labels["judge"]["guvenlik"] = "zararli_veya_yasadisi"
             ex.labels["d3"]["guvenlik"] = "jailbreak_rol_yapma"
         rows.append(ex)
     return rows

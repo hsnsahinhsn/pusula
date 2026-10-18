@@ -39,7 +39,9 @@ def example(tax):
     qs = tax.questions_for(path)
     gen = path.as_labels()
     gen.update({"aciliyet": "2", "eylem_gerekli": "true", "insana_devret": "false", "guvenlik": "guvenli",
-                "duygu": "endiseli", "kisisel_veri": "false"})
+                "duygu": "endiseli", "kisisel_veri": "false", "mesaj_turu": "talep", "eksik_bilgi": "false",
+                "hakaret": "yok", "dolandiricilik": "true", "can_guvenligi": "yok", "yasal_risk": "false",
+                "ayrilma_riski": "hayir", "satis_firsati": "false"})
     return Example(id="ex1", state="Kartımdan bilgim dışında para çekildi.", questions=qs,
                    meta={"path": str(path)}, labels={"generator": gen})
 

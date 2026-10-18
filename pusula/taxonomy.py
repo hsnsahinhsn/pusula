@@ -24,6 +24,20 @@ ROUTING_QUESTIONS = (Q_DOMAIN, Q_SUBDOMAIN, Q_INTENT)
 Q_TOPIC = "konu"
 
 
+def universal_subset(tax: "Taxonomy", universal) -> dict[str, Question]:
+    """True -> every universal question, False/None -> none, a list of names -> only those (ValueError for unknown names)."""
+    if universal is True:
+        return dict(tax.universal)
+    if not universal:
+        return {}
+    if isinstance(universal, str) or not all(isinstance(n, str) for n in universal):
+        raise ValueError("universal must be true, false or a list of question names")
+    unknown = [n for n in universal if n not in tax.universal]
+    if unknown:
+        raise ValueError(f"unknown universal questions: {unknown}; choose from {list(tax.universal)}")
+    return {n: tax.universal[n] for n in universal}
+
+
 def topic_questions(topics: dict) -> tuple[Question, dict[str, Question]]:
     """An institution's own routing list -> (topic question, intent question per topic that has intents).
 

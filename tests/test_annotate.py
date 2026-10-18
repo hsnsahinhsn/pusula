@@ -46,6 +46,8 @@ def test_parse_and_validate():
     ex, p = _example(Question(type="choice", instructions="Hangi ekip?", criteria={"kart": "Kart", "fraud": "Fraud"}))
     out = parse_json('düşündüm...\n{"alan": "%s", "alt_alan": "%s", "niyet": "%s", "aciliyet": 3, "eylem_gerekli": true,'
                      ' "insana_devret": "true", "guvenlik": "guvenli", "duygu": "endiseli", "kisisel_veri": false,'
+                     ' "mesaj_turu": "talep", "eksik_bilgi": false, "hakaret": "yok", "dolandiricilik": true,'
+                     ' "can_guvenligi": "yok", "yasal_risk": false, "ayrilma_riski": "hayir", "satis_firsati": false,'
                      ' "ozel": "fraud", "confidence": "high", "drop": false, "note": ""}' % (p.domain, p.subdomain, p.intent))
     labels, errors = validate(load_taxonomy(), ex, out)
     assert errors == []

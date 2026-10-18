@@ -409,7 +409,7 @@ STYLES = [
     "birden fazla konu içeren; asıl talebi sonda", "hata kodu, log veya teknik ayrıntı içeren",
     "sesli mesajdan yazıya dökülmüş gibi, noktalamasız",
 ]
-SECURITY = ["prompt_enjeksiyonu", "jailbreak_rol_yapma", "zararli_veya_yasadisi", "yetkisiz_islem_talebi", "spam_anlamsiz"]
+SECURITY = [k for k in load_taxonomy().universal["guvenlik"].option_keys() if k != "guvenli"]
 URGENCY = ["beklemesi kimseye zarar vermeyen", "sorun var ama iş süren, birkaç gün bekleyebilecek",
            "işin tamamen durduğu ya da bugün somut zarar doğacak", "can, sağlık veya büyük maddi kayıp tehlikesi olan"]
 MESSAGES_SYSTEM = """Sen Türkçe karar modellerini sınamak için gerçekçi kullanıcı mesajları yazan bir veri tasarımcısısın.

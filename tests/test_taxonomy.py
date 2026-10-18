@@ -37,8 +37,8 @@ def test_to_dict_is_json(tax):
 
 
 def test_agent_questions(tax):
-    assert set(tax.agent) == {"onay_gerekli", "islem_riski", "netlestirme_gerekli", "veri_disari", "gorev_tamamlandi",
-                              "model_secimi"}
+    assert set(tax.agent) == {"islem_riski", "veri_disari", "kaynaga_dayanma", "gorev_tamamlandi"}
+    assert tax.agent["kaynaga_dayanma"].option_keys() == ["dayaniyor", "kismen", "uydurma"]
     assert tax.agent["islem_riski"].type == "score" and len(tax.agent["islem_riski"].option_keys()) == 4
     assert tax.agent["gorev_tamamlandi"].option_keys() == ["tamamlandi", "kismen", "tamamlanmadi"]
     assert "agent" in tax.to_dict() and not set(tax.agent) & set(tax.universal)
@@ -54,3 +54,12 @@ def test_topic_questions():
                 {"a": "A", "b": {"aciklama": "yanlış anahtar"}}, ["a", "b"]):
         with pytest.raises(ValueError):
             topic_questions(bad)
+
+
+def test_twenty_templates(tax):
+    """v2.0 (19 Oct 2026): 2 routing templates (alan > alt_alan > niyet) + 14 universal + 4 agent questions."""
+    assert len(tax.universal) == 14 and len(tax.agent) == 4
+    assert "caresiz_kriz" not in tax.universal["duygu"].option_keys()
+    assert "spam_anlamsiz" not in tax.universal["guvenlik"].option_keys()
+    assert "spam_anlamsiz" in tax.universal["mesaj_turu"].option_keys()
+    assert tax.universal["can_guvenligi"].option_keys() == ["yok", "kendine_zarar", "siddet_tehdit", "tibbi_acil"]
