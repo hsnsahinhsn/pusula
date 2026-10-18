@@ -24,8 +24,9 @@ geliştirilmiştir ve Türkçedeki doğrulukları sınırlıdır. **Pusula, Tür
 - **İstek anında tanımlanan seçenekler.** Sorular ve seçenekleri her istekte ayrıca belirtilir.
 - **Üç soru tipi.** `choice` (tek seçenek), `noul` (evet/hayır) ve `score` (sıralı seviyeler).
 - **d3 ile doğrudan değiştirilebilir.** d3'ün `/v1/systemone` istek ve cevap biçimi aynen korunmuştur.
-- **Hazır Türkçe taksonomi.** 20 alan, 86 alt alan ve 299 niyetin yanı sıra altı evrensel kontrol (aciliyet, eylem
-  gerekliliği, insana devir, güvenlik riski, duygu ve kişisel veri) sunulmaktadır.
+- **Hazır Türkçe taksonomi ve şablonlar.** 20 alan, 103 alt alan ve 333 niyetin yanı sıra 20 hazır şablon (konu ve
+  niyet, mesajlar için 14 kontrol ve yapay zekâ ajanları için 4 kontrol) sunulmaktadır. Kurumun kendi konu listesiyle
+  yönlendirme de desteklenmektedir.
 - **Türkçe karar benchmark'ı.** Pusula, bağımsız olarak etiketlenmiş Türkçe test setlerinde ham Decision 3.0 ile
   karşılaştırılmıştır; sonuçlar modelle birlikte yayımlanmaktadır. Benchmark,
   [Hugging Face](https://huggingface.co/datasets/hsnsahinhsn/turkish-decision-benchmark) üzerinde de sunulmaktadır.
@@ -95,6 +96,8 @@ Altın test seti, soru bazında:
 - [Python API](#python-api)
 - [HTTP API](#http-api)
 - [Hazır taksonomi ve yönlendirme](#hazır-taksonomi-ve-yönlendirme)
+  - [Kurumun kendi listesiyle yönlendirme](#kurumun-kendi-listesiyle-yönlendirme)
+  - [20 şablon](#20-şablon)
 - [İyi soru yazmak](#iyi-soru-yazmak)
 - [Güven değerini kullanmak](#güven-değerini-kullanmak)
 - [Örnekler](#örnekler)
@@ -233,6 +236,7 @@ PUSULA_API_KEY=degistirin PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve --ho
 |---|---|---|
 | `POST` | `/v1/systemone` | Tek `{state, questions}` isteği (d3 uyumlu) |
 | `POST` | `/v1/systemone/batch` | `{"requests": [...]}`, en fazla 64 istek |
+| `POST` | `/v1/scan` | Uzun metni parça parça denetler (bkz. [Uzun metinler](#uzun-metinler)) |
 | `POST` | `/v1/route` | Mesajı hazır taksonomide yönlendirir |
 | `GET` | `/v1/taxonomy` | Hazır taksonominin JSON hâli |
 | `GET` | `/health` | Canlılık; her zaman 200 |
@@ -260,8 +264,21 @@ Geçersiz sorular HTTP 422 ve gerekçesiyle reddedilir. Sunucu, ortam değişken
 | `PUSULA_MAX_QUESTIONS` | 32 | İstek başına soru sayısı |
 | `PUSULA_MAX_BATCH` | 64 | Toplu çağrıdaki istek sayısı |
 | `PUSULA_MAX_STATE_CHARS` | 60000 | En uzun durum metni |
+| `PUSULA_MAX_SCAN_CHARS` | 200000 | `/v1/scan` için en uzun metin |
+
+### Uzun metinler
+
+`POST /v1/scan` (ya da `engine.scan(metin, sorular)`) web sayfası, belge veya e-posta yazışması gibi uzun bir metni
+parça parça denetler. Metin, modelin bütünüyle okuyabildiği ve birbiriyle örtüşen parçalara bölünür; her soru için en
+güçlü bulgunun çıktığı parçanın cevabı, `part` alanındaki parça numarasıyla birlikte döndürülür. İstek biçimi
+`/v1/systemone` ile aynıdır; parça boyu `window_chars` ile belirlenebilir. `choice` sorularında nötr seçenek ilk sırada
+verilmelidir (`guvenlik` sorusundaki `guvenli` gibi). En fazla 200.000 karakterlik metinler kabul edilir
+(`PUSULA_MAX_SCAN_CHARS`).
 
 ## Hazır taksonomi ve yönlendirme
+
+> Bu bölümde anlatılan 20 şablon ve kurumun kendi listesiyle yönlendirme v2.0 ile gelmektedir (geliştirme
+> aşamasında). v1.0 ve önceki modeller, önceki altı evrensel soruyla eğitilmiştir.
 
 `POST /v1/route` (ya da `engine.route(metin)`) mesajı üç adımda (**alan**, **alt_alan** ve **niyet**) yönlendirir ve
 evrensel soruları aynı çağrıda cevaplar:
@@ -277,48 +294,121 @@ evrensel soruları aynı çağrıda cevaplar:
 }
 ```
 
+Cevaplanacak evrensel sorular `universal` ile seçilir: `true` (varsayılan) 14 sorunun tamamını, `false` hiçbirini,
+bir ad listesi ise yalnızca o soruları sorar. Daha az soru, daha hızlı cevap sağlar:
+
+```bash
+curl -s localhost:8080/v1/route -H 'Content-Type: application/json' -d '{
+  "state": "Kartımdan bilgim dışında 4.500 TL çekilmiş, hemen bloke edin!",
+  "universal": ["aciliyet", "dolandiricilik", "insana_devret"]
+}'
+```
+
+### Kurumun kendi listesiyle yönlendirme
+
+Kurumun kendi konu listesi `topics` ile verilebilir; bu durumda hazır alanlar kullanılmaz. Her konu bir açıklamayla
+verilir; bir konunun altında niyetler de listelenebilir. Önce konu (`konu`) belirlenir; seçilen konunun niyetleri
+varsa ardından niyet (`niyet`) belirlenir:
+
+```json
+{
+  "state": "Geçen hafta yaptırdığım EKG'nin sonucunu sistemde göremiyorum.",
+  "universal": ["aciliyet"],
+  "topics": {
+    "kardiyoloji": {
+      "description": "Kalp ve damar hastalıkları",
+      "intents": {"randevu": "Kardiyoloji randevusu almak veya değiştirmek",
+                  "sonuc": "Tetkik veya test sonucunu sormak"}
+    },
+    "faturalama": "Ödeme, fatura ve sigorta işlemleri",
+    "diger": "Yukarıdakilerin hiçbiri"
+  }
+}
+```
+
+Cevapta `"path": "kardiyoloji.sonuc"` ile birlikte `konu`, `niyet` ve seçilen evrensel soruların cevapları yer alır.
+Geçersiz bir liste HTTP 422 ile reddedilir. Python'da aynı çağrı
+`engine.route(metin, topics={...}, universal=["aciliyet"])` biçimindedir.
+
+### Hazır alanlar
+
 | Alan anahtarı | Alan | Alt alan | Niyet |
 |---|---|---:|---:|
-| `finans_bankacilik` | Finans ve Bankacılık | 6 | 26 |
-| `muhasebe_vergi` | Muhasebe ve Vergi | 5 | 20 |
-| `hukuk_uyum` | Hukuk ve Mevzuat Uyumu | 5 | 20 |
-| `saglik` | Sağlık | 5 | 15 |
-| `sigorta_sosyal_guvenlik` | Sigorta ve Sosyal Güvenlik | 3 | 12 |
-| `ticaret_eticaret` | Ticaret ve E-Ticaret | 5 | 19 |
-| `lojistik_tedarik` | Lojistik ve Tedarik Zinciri | 5 | 21 |
-| `abonelik_hizmetleri` | Telekom ve Enerji Abonelikleri | 3 | 13 |
-| `teknoloji_bt` | Teknoloji ve Bilgi İşlem | 6 | 22 |
-| `insan_kaynaklari` | İnsan Kaynakları | 5 | 17 |
-| `kamu_hizmetleri` | Kamu Hizmetleri | 4 | 13 |
-| `egitim` | Eğitim | 4 | 13 |
-| `seyahat_konaklama` | Seyahat ve Konaklama | 4 | 13 |
-| `gayrimenkul` | Gayrimenkul | 3 | 10 |
-| `otomotiv_mobilite` | Otomotiv ve Mobilite | 4 | 11 |
-| `sanayi_uretim_tarim` | Sanayi, Üretim ve Tarım | 4 | 15 |
+| `finans_bankacilik` | Finans ve Bankacılık | 7 | 28 |
+| `muhasebe_vergi` | Muhasebe ve Vergi | 6 | 22 |
+| `hukuk_uyum` | Hukuk ve Mevzuat Uyumu | 6 | 22 |
+| `saglik` | Sağlık | 6 | 17 |
+| `sigorta_sosyal_guvenlik` | Sigorta ve Sosyal Güvenlik | 4 | 14 |
+| `ticaret_eticaret` | Ticaret ve E-Ticaret | 6 | 21 |
+| `lojistik_tedarik` | Lojistik ve Tedarik Zinciri | 6 | 23 |
+| `abonelik_hizmetleri` | Telekom ve Enerji Abonelikleri | 4 | 15 |
+| `teknoloji_bt` | Teknoloji ve Bilgi İşlem | 7 | 24 |
+| `insan_kaynaklari` | İnsan Kaynakları | 6 | 19 |
+| `kamu_hizmetleri` | Kamu Hizmetleri | 5 | 15 |
+| `egitim` | Eğitim | 5 | 15 |
+| `seyahat_konaklama` | Seyahat ve Konaklama | 5 | 15 |
+| `gayrimenkul` | Gayrimenkul | 4 | 12 |
+| `otomotiv_mobilite` | Otomotiv ve Mobilite | 5 | 13 |
+| `sanayi_uretim_tarim` | Sanayi, Üretim ve Tarım | 5 | 17 |
 | `kisisel_verimlilik` | Kişisel Verimlilik ve Ofis | 4 | 12 |
-| `medya_eglence` | Medya ve Eğlence | 4 | 10 |
+| `medya_eglence` | Medya ve Eğlence | 5 | 12 |
 | `kriz_destek` | Kriz ve Psikososyal Destek | 3 | 9 |
 | `genel_sohbet` | Genel ve Kapsam Dışı | 4 | 8 |
 
-Evrensel sorular (her mesaj için sorulur):
+`kisisel_verimlilik` ve `kriz_destek` dışındaki her alanda bir `geri_bildirim` alt alanı (o alanın hizmetlerine
+ilişkin, talep içermeyen şikâyet ve memnuniyet) bulunur; böylece bir yorum, ilgili olduğu alana yönlendirilir.
 
-| Ad | Tip | Seçenekler |
-|---|---|---|
-| `aciliyet` | score | Rutin · Yakın · Yüksek · Kritik |
-| `eylem_gerekli` | noul | Somut bir işlem (kayıt, iptal, iade, bloke, araç çağrısı) gerekiyor mu? |
-| `insana_devret` | noul | Talep bir insan uzmana devredilmeli mi? |
-| `guvenlik` | choice | `guvenli`, `prompt_enjeksiyonu`, `jailbreak_rol_yapma`, `zararli_veya_yasadisi`, `yetkisiz_islem_talebi`, `spam_anlamsiz` |
-| `duygu` | choice | `notr`, `memnun`, `endiseli`, `uzgun`, `hayal_kirikligi`, `ofkeli`, `caresiz_kriz` |
-| `kisisel_veri` | noul | Kişisel veya hassas veri içeriyor mu? |
+### 20 şablon
 
-Tüm alt alanlar ve niyetlerle birlikte taksonominin tamamı
-[`pusula/data/taxonomy.yaml`](pusula/data/taxonomy.yaml) dosyasında ve `GET /v1/taxonomy` adresinde sunulmaktadır.
-Bu sorular özel isteklerde de yeniden kullanılabilir:
+En sık verilen kararlar için hazır sorular sunulmaktadır. Şablon, önceden yazılmış sıradan bir sorudur; şablonlar ve
+özel sorular tek bir istekte birlikte kullanılabilir.
+
+| # | Ad | Tip | Soru | Seçenekler |
+|---:|---|---|---|---|
+| 1 | `alan` / `konu` | choice | Konu nedir? | 20 hazır alan ya da kurumun kendi listesi |
+| 2 | `niyet` | choice | Niyet nedir? | Seçilen alanın ya da konunun niyetleri; alt alan ara adım olarak belirlenir |
+| 3 | `mesaj_turu` | choice | Mesajın türü nedir? | `soru`, `talep`, `sikayet`, `ovgu`, `oneri`, `bilgi_verme`, `spam_anlamsiz` |
+| 4 | `aciliyet` | score | Ne kadar hızlı ele alınmalı? | Rutin · Yakın · Yüksek · Kritik |
+| 5 | `duygu` | choice | Yazanın baskın duygusu nedir? | `notr`, `memnun`, `endiseli`, `uzgun`, `hayal_kirikligi`, `ofkeli` |
+| 6 | `eksik_bilgi` | noul | Kritik bir ayrıntı eksik ya da çelişkili olduğu için önce soru sormak gerekiyor mu? | |
+| 7 | `eylem_gerekli` | noul | Cevabın ötesinde somut bir işlem (kayıt, iptal, iade, bloke, araç çağrısı) gerekiyor mu? | |
+| 8 | `insana_devret` | noul | Talep bir insan uzmana devredilmeli mi? | |
+| 9 | `kisisel_veri` | noul | Metin kişisel veya hassas veri içeriyor mu? | |
+| 10 | `guvenlik` | choice | Yapay zekâya saldırı veya kandırma girişimi var mı? | `guvenli`, `prompt_enjeksiyonu`, `jailbreak_rol_yapma`, `zararli_veya_yasadisi`, `yetkisiz_islem_talebi` |
+| 11 | `hakaret` | choice | Metinde hakaret, küfür veya nefret söylemi var mı? | `yok`, `hakaret_kufur`, `nefret_soylemi` |
+| 12 | `dolandiricilik` | noul | Dolandırıcılık şüphesi (oltalama, sahte belge, kimlik taklidi ya da dolandırıldığını bildirme) var mı? | |
+| 13 | `can_guvenligi` | choice | Can güvenliği tehlikesi var mı? | `yok`, `kendine_zarar`, `siddet_tehdit`, `tibbi_acil` |
+| 14 | `yasal_risk` | noul | Metin kurum için yasal bir risk taşıyor mu? | |
+| 15 | `ayrilma_riski` | choice | Yazan, ayrılma veya iptal eğiliminde mi? | `hayir`, `risk_var`, `acikca_istiyor` |
+| 16 | `satis_firsati` | noul | Satış fırsatı var mı? | |
+| 17 | `islem_riski` | score | Ajanın önerdiği işlem ne kadar zarar doğurabilir? | Düşük · Orta · Yüksek · Kritik |
+| 18 | `veri_disari` | noul | Önerilen işlem gizli veriyi kurum dışına gönderiyor mu? | |
+| 19 | `kaynaga_dayanma` | choice | Ajanın cevabı verilen kaynağa dayanıyor mu? | `dayaniyor`, `kismen`, `uydurma` |
+| 20 | `gorev_tamamlandi` | choice | Ajanın sonucu isteği karşılıyor mu? | `tamamlandi`, `kismen`, `tamamlanmadi` |
+
+1 ve 2 numaralı şablonlar yukarıdaki yönlendirme adımlarıdır; 3–16 numaralı şablonlar `/v1/route`'un evrensel
+sorularıdır. 17–20 numaralı şablonlar, bir yapay zekâ ajanının çalışma bağlamına sorulur. Bu tür bir metin, gerektiği
+kadar etiketli bölümle yazılır: `Kullanıcı isteği:`, `Önerilen işlem:`, `Kaynak:` ve `Ajanın cevabı:`. Bir işlemin
+onay gerektirip gerektirmediği `islem_riski` seviyesinden (örneğin `Yüksek` ve üstü) türetilir; netleştirme ihtiyacı
+`eksik_bilgi` sorusuyla belirlenir.
 
 ```python
 from pusula import load_taxonomy
 tax = load_taxonomy()
-sorular = {"alan": tax.domain_question(), **tax.universal, "benim_sorum": {...}}
+state = ("Kullanıcı isteği: İade süresi kaç gün?\n"
+         "Kaynak: Ürünler teslim tarihinden itibaren 14 gün içinde iade edilebilir.\n"
+         "Ajanın cevabı: Ürünü 30 gün içinde iade edebilirsiniz.")
+cevaplar = engine.decide(state, {"kaynaga_dayanma": tax.agent["kaynaga_dayanma"],
+                                 "gorev_tamamlandi": tax.agent["gorev_tamamlandi"]})
+```
+
+Tüm alt alanlar ve niyetlerle birlikte taksonominin tamamı
+[`pusula/data/taxonomy.yaml`](pusula/data/taxonomy.yaml) dosyasında ve `GET /v1/taxonomy` adresinde sunulmaktadır;
+her şablonun sınır durumları [etiketleme politikasında](pusula/data/label_policy.md) anlatılmaktadır. Bu sorular
+özel isteklerde de yeniden kullanılabilir:
+
+```python
+sorular = {"alan": tax.domain_question(), "aciliyet": tax.universal["aciliyet"], "benim_sorum": {...}}
 ```
 
 ## İyi soru yazmak

@@ -8,6 +8,7 @@
 Endpoints:
     POST /v1/systemone        {"state": str, "questions": {name: {type, instructions, criteria}}}
     POST /v1/systemone/batch  {"requests": [ {state, questions}, ... ]}
+    POST /v1/scan             {"state": str, "questions": {...}, "window_chars": int?}  -> long text, part by part
     POST /v1/route            {"state": str, "universal": true | [names]}  -> taxonomy routing
                               {"state": str, "topics": {key: description | {"description", "intents"}}}
                               -> routing through the institution's own list (konu -> niyet)

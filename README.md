@@ -24,8 +24,9 @@ accuracy on Turkish is limited. **Pusula is Decision 3.0 adapted to Turkish.**
 - **Options defined at request time.** Questions and their options are specified in each request.
 - **Three question types.** `choice` (one option), `noul` (yes/no) and `score` (ordered levels).
 - **Drop-in d3 replacement.** The request and answer format of d3's `/v1/systemone` is preserved.
-- **Built-in Turkish taxonomy.** 20 domains, 86 subdomains and 299 intents, together with six universal checks
-  (urgency, action required, human handoff, security risk, emotion and personal data).
+- **Built-in Turkish taxonomy and templates.** 20 domains, 103 subdomains and 333 intents, together with 20
+  ready-made templates (topic and intent, 14 checks for messages and 4 for AI agents). Routing through an
+  institution's own topic list is also supported.
 - **Turkish decision benchmark.** Pusula has been evaluated against the base Decision 3.0 model on independently
   labeled Turkish test sets; the results are published with the model. The benchmark is available on
   [Hugging Face](https://huggingface.co/datasets/hsnsahinhsn/turkish-decision-benchmark).
@@ -94,6 +95,8 @@ Gold test set, per question:
 - [Python API](#python-api)
 - [HTTP API](#http-api)
 - [Built-in taxonomy and routing](#built-in-taxonomy-and-routing)
+  - [Routing through an institution's own list](#routing-through-an-institutions-own-list)
+  - [The 20 templates](#the-20-templates)
 - [Writing good questions](#writing-good-questions)
 - [Using confidence](#using-confidence)
 - [Examples](#examples)
@@ -232,6 +235,7 @@ PUSULA_API_KEY=change-me PUSULA_MODEL_DIR=path/to/pusula-nano pusula-serve --hos
 |---|---|---|
 | `POST` | `/v1/systemone` | One `{state, questions}` request (d3-compatible) |
 | `POST` | `/v1/systemone/batch` | `{"requests": [...]}`, up to 64 requests |
+| `POST` | `/v1/scan` | A long text checked part by part (see [Long texts](#long-texts)) |
 | `POST` | `/v1/route` | Route a message through the built-in taxonomy |
 | `GET` | `/v1/taxonomy` | The built-in taxonomy as JSON |
 | `GET` | `/health` | Liveness; always 200 |
@@ -259,8 +263,21 @@ Invalid questions are rejected with HTTP 422 and the reason. The server is confi
 | `PUSULA_MAX_QUESTIONS` | 32 | Questions per request |
 | `PUSULA_MAX_BATCH` | 64 | Requests per batch call |
 | `PUSULA_MAX_STATE_CHARS` | 60000 | Maximum state length |
+| `PUSULA_MAX_SCAN_CHARS` | 200000 | Maximum text length for `/v1/scan` |
+
+### Long texts
+
+`POST /v1/scan` (or `engine.scan(text, questions)`) checks a long text, such as a web page, a document or an e-mail
+thread, part by part. The text is split into overlapping parts that the model reads whole; for every question, the
+answer of the part with the strongest finding is returned, together with its index in `part`. The request format is
+that of `/v1/systemone`, and the part size may be set with `window_chars`. For `choice` questions, the neutral option
+should be listed first (as `guvenli` is in `guvenlik`). Texts of up to 200,000 characters are accepted
+(`PUSULA_MAX_SCAN_CHARS`).
 
 ## Built-in taxonomy and routing
+
+> The 20 templates and routing through an institution's own list, as described in this section, are introduced in
+> v2.0 (in development). Models up to v1.0 were trained on the earlier six universal questions.
 
 `POST /v1/route` (or `engine.route(text)`) routes a message in three steps, **alan** (domain), **alt_alan**
 (subdomain) and **niyet** (intent), and answers the universal questions in the same call:
@@ -276,48 +293,121 @@ Invalid questions are rejected with HTTP 422 and the reason. The server is confi
 }
 ```
 
+The universal questions to be answered are selected with `universal`: `true` (the default) asks all 14, `false`
+asks none, and a list of names asks only those. Fewer questions give faster answers:
+
+```bash
+curl -s localhost:8080/v1/route -H 'Content-Type: application/json' -d '{
+  "state": "Kartımdan bilgim dışında 4.500 TL çekilmiş, hemen bloke edin!",
+  "universal": ["aciliyet", "dolandiricilik", "insana_devret"]
+}'
+```
+
+### Routing through an institution's own list
+
+An institution's own topic list may be passed in `topics`; the built-in domains are then not used. Each topic is
+given with a description, and intents may be listed under a topic. The topic (`konu`) is decided first; where the
+chosen topic lists intents, the intent (`niyet`) is decided next:
+
+```json
+{
+  "state": "Geçen hafta yaptırdığım EKG'nin sonucunu sistemde göremiyorum.",
+  "universal": ["aciliyet"],
+  "topics": {
+    "kardiyoloji": {
+      "description": "Kalp ve damar hastalıkları",
+      "intents": {"randevu": "Kardiyoloji randevusu almak veya değiştirmek",
+                  "sonuc": "Tetkik veya test sonucunu sormak"}
+    },
+    "faturalama": "Ödeme, fatura ve sigorta işlemleri",
+    "diger": "Yukarıdakilerin hiçbiri"
+  }
+}
+```
+
+The answer contains `"path": "kardiyoloji.sonuc"` together with the answers to `konu`, `niyet` and the selected
+universal questions. An invalid list is rejected with HTTP 422. In Python, the same call is
+`engine.route(text, topics={...}, universal=["aciliyet"])`.
+
+### Built-in domains
+
 | Domain key | Domain | Subdomains | Intents |
 |---|---|---:|---:|
-| `finans_bankacilik` | Finans ve Bankacılık | 6 | 26 |
-| `muhasebe_vergi` | Muhasebe ve Vergi | 5 | 20 |
-| `hukuk_uyum` | Hukuk ve Mevzuat Uyumu | 5 | 20 |
-| `saglik` | Sağlık | 5 | 15 |
-| `sigorta_sosyal_guvenlik` | Sigorta ve Sosyal Güvenlik | 3 | 12 |
-| `ticaret_eticaret` | Ticaret ve E-Ticaret | 5 | 19 |
-| `lojistik_tedarik` | Lojistik ve Tedarik Zinciri | 5 | 21 |
-| `abonelik_hizmetleri` | Telekom ve Enerji Abonelikleri | 3 | 13 |
-| `teknoloji_bt` | Teknoloji ve Bilgi İşlem | 6 | 22 |
-| `insan_kaynaklari` | İnsan Kaynakları | 5 | 17 |
-| `kamu_hizmetleri` | Kamu Hizmetleri | 4 | 13 |
-| `egitim` | Eğitim | 4 | 13 |
-| `seyahat_konaklama` | Seyahat ve Konaklama | 4 | 13 |
-| `gayrimenkul` | Gayrimenkul | 3 | 10 |
-| `otomotiv_mobilite` | Otomotiv ve Mobilite | 4 | 11 |
-| `sanayi_uretim_tarim` | Sanayi, Üretim ve Tarım | 4 | 15 |
+| `finans_bankacilik` | Finans ve Bankacılık | 7 | 28 |
+| `muhasebe_vergi` | Muhasebe ve Vergi | 6 | 22 |
+| `hukuk_uyum` | Hukuk ve Mevzuat Uyumu | 6 | 22 |
+| `saglik` | Sağlık | 6 | 17 |
+| `sigorta_sosyal_guvenlik` | Sigorta ve Sosyal Güvenlik | 4 | 14 |
+| `ticaret_eticaret` | Ticaret ve E-Ticaret | 6 | 21 |
+| `lojistik_tedarik` | Lojistik ve Tedarik Zinciri | 6 | 23 |
+| `abonelik_hizmetleri` | Telekom ve Enerji Abonelikleri | 4 | 15 |
+| `teknoloji_bt` | Teknoloji ve Bilgi İşlem | 7 | 24 |
+| `insan_kaynaklari` | İnsan Kaynakları | 6 | 19 |
+| `kamu_hizmetleri` | Kamu Hizmetleri | 5 | 15 |
+| `egitim` | Eğitim | 5 | 15 |
+| `seyahat_konaklama` | Seyahat ve Konaklama | 5 | 15 |
+| `gayrimenkul` | Gayrimenkul | 4 | 12 |
+| `otomotiv_mobilite` | Otomotiv ve Mobilite | 5 | 13 |
+| `sanayi_uretim_tarim` | Sanayi, Üretim ve Tarım | 5 | 17 |
 | `kisisel_verimlilik` | Kişisel Verimlilik ve Ofis | 4 | 12 |
-| `medya_eglence` | Medya ve Eğlence | 4 | 10 |
+| `medya_eglence` | Medya ve Eğlence | 5 | 12 |
 | `kriz_destek` | Kriz ve Psikososyal Destek | 3 | 9 |
 | `genel_sohbet` | Genel ve Kapsam Dışı | 4 | 8 |
 
-Universal questions (asked for every message):
+Every domain except `kisisel_verimlilik` and `kriz_destek` contains a `geri_bildirim` subdomain (complaints and
+praise about that domain's services that contain no request), so that a review is routed to the domain it is about.
 
-| Name | Type | Options |
-|---|---|---|
-| `aciliyet` | score | Rutin · Yakın · Yüksek · Kritik |
-| `eylem_gerekli` | noul | Is a concrete action required (ticket, cancellation, refund, block, tool call)? |
-| `insana_devret` | noul | Should the case be handed over to a human expert? |
-| `guvenlik` | choice | `guvenli`, `prompt_enjeksiyonu`, `jailbreak_rol_yapma`, `zararli_veya_yasadisi`, `yetkisiz_islem_talebi`, `spam_anlamsiz` |
-| `duygu` | choice | `notr`, `memnun`, `endiseli`, `uzgun`, `hayal_kirikligi`, `ofkeli`, `caresiz_kriz` |
-| `kisisel_veri` | noul | Does the message contain personal or sensitive data? |
+### The 20 templates
 
-The complete taxonomy, including every subdomain and intent, is provided in
-[`pusula/data/taxonomy.yaml`](pusula/data/taxonomy.yaml) and at `GET /v1/taxonomy`. Any of these questions can also
-be reused in custom requests:
+Ready-made questions are provided for the most common decisions. A template is an ordinary question that has been
+written in advance; templates and custom questions may be combined in a single request.
+
+| # | Name | Type | Question | Options |
+|---:|---|---|---|---|
+| 1 | `alan` / `konu` | choice | What is the topic? | The 20 built-in domains, or the institution's own list |
+| 2 | `niyet` | choice | What is the intent? | The intents of the chosen domain or topic; the subdomain is decided as an intermediate step |
+| 3 | `mesaj_turu` | choice | What type of message is it? | `soru`, `talep`, `sikayet`, `ovgu`, `oneri`, `bilgi_verme`, `spam_anlamsiz` |
+| 4 | `aciliyet` | score | How quickly should it be handled? | Rutin · Yakın · Yüksek · Kritik |
+| 5 | `duygu` | choice | What is the writer's dominant emotion? | `notr`, `memnun`, `endiseli`, `uzgun`, `hayal_kirikligi`, `ofkeli` |
+| 6 | `eksik_bilgi` | noul | Is a critical detail missing or contradictory, so that a question must be asked first? | |
+| 7 | `eylem_gerekli` | noul | Is a concrete action (ticket, cancellation, refund, block, tool call) required beyond a reply? | |
+| 8 | `insana_devret` | noul | Should the case be handed over to a human expert? | |
+| 9 | `kisisel_veri` | noul | Does the text contain personal or sensitive data? | |
+| 10 | `guvenlik` | choice | Is there an attack on, or a manipulation attempt against, the AI? | `guvenli`, `prompt_enjeksiyonu`, `jailbreak_rol_yapma`, `zararli_veya_yasadisi`, `yetkisiz_islem_talebi` |
+| 11 | `hakaret` | choice | Does the text contain insults, swearing or hate speech? | `yok`, `hakaret_kufur`, `nefret_soylemi` |
+| 12 | `dolandiricilik` | noul | Is fraud suspected (phishing, a fake document, impersonation, or a report of being defrauded)? | |
+| 13 | `can_guvenligi` | choice | Is anyone's life or safety at risk? | `yok`, `kendine_zarar`, `siddet_tehdit`, `tibbi_acil` |
+| 14 | `yasal_risk` | noul | Does the text carry a legal risk for the institution? | |
+| 15 | `ayrilma_riski` | choice | Is the writer inclined to leave or cancel? | `hayir`, `risk_var`, `acikca_istiyor` |
+| 16 | `satis_firsati` | noul | Is there a sales opportunity? | |
+| 17 | `islem_riski` | score | How much harm could the agent's proposed action cause? | Düşük · Orta · Yüksek · Kritik |
+| 18 | `veri_disari` | noul | Does the proposed action send confidential data outside the institution? | |
+| 19 | `kaynaga_dayanma` | choice | Is the agent's answer grounded in the given source? | `dayaniyor`, `kismen`, `uydurma` |
+| 20 | `gorev_tamamlandi` | choice | Does the agent's result fulfil the request? | `tamamlandi`, `kismen`, `tamamlanmadi` |
+
+Templates 1 and 2 are the routing steps above, and templates 3 to 16 are the universal questions of `/v1/route`.
+Templates 17 to 20 are asked about the working context of an AI agent. Such a state is written in labeled sections,
+as needed: `Kullanıcı isteği:` (the user's request), `Önerilen işlem:` (the proposed action), `Kaynak:` (the
+source) and `Ajanın cevabı:` (the agent's answer). Whether an action needs approval is derived from `islem_riski`
+(for example, from `Yüksek` upward), and the need for clarification is given by `eksik_bilgi`.
 
 ```python
 from pusula import load_taxonomy
 tax = load_taxonomy()
-questions = {"alan": tax.domain_question(), **tax.universal, "my_question": {...}}
+state = ("Kullanıcı isteği: İade süresi kaç gün?\n"
+         "Kaynak: Ürünler teslim tarihinden itibaren 14 gün içinde iade edilebilir.\n"
+         "Ajanın cevabı: Ürünü 30 gün içinde iade edebilirsiniz.")
+answers = engine.decide(state, {"kaynaga_dayanma": tax.agent["kaynaga_dayanma"],
+                                "gorev_tamamlandi": tax.agent["gorev_tamamlandi"]})
+```
+
+The complete taxonomy, including every subdomain and intent, is provided in
+[`pusula/data/taxonomy.yaml`](pusula/data/taxonomy.yaml) and at `GET /v1/taxonomy`; the boundary cases of every
+template are described in the [labeling policy](pusula/data/label_policy.md). Any of these questions can also be
+reused in custom requests:
+
+```python
+questions = {"alan": tax.domain_question(), "aciliyet": tax.universal["aciliyet"], "my_question": {...}}
 ```
 
 ## Writing good questions
