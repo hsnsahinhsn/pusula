@@ -35,6 +35,7 @@ from .taxonomy import load_taxonomy
 MAX_STATE_CHARS = int(os.getenv("PUSULA_MAX_STATE_CHARS", "60000"))
 MAX_QUESTIONS = int(os.getenv("PUSULA_MAX_QUESTIONS", "32"))
 MAX_BATCH = int(os.getenv("PUSULA_MAX_BATCH", "64"))
+MAX_SCAN_CHARS = int(os.getenv("PUSULA_MAX_SCAN_CHARS", "200000"))
 
 
 class DecideRequest(BaseModel):
@@ -56,6 +57,12 @@ class BatchRequest(BaseModel):
 class RouteRequest(BaseModel):
     state: str = Field(..., min_length=1, max_length=MAX_STATE_CHARS)
     universal: bool = True
+
+
+class ScanRequest(DecideRequest):
+    """A long text (web page, document, e-mail thread) checked part by part; see BaseEngine.scan."""
+    state: str = Field(..., min_length=1, max_length=MAX_SCAN_CHARS)
+    window_chars: Optional[int] = Field(None, ge=256, le=60000)
 
 
 def create_app(engine: Any = None, model_dir: Optional[str] = None, api_key: Optional[str] = None) -> FastAPI:
@@ -126,6 +133,14 @@ def create_app(engine: Any = None, model_dir: Optional[str] = None, api_key: Opt
         results = engine.decide_many([(r.state, r.questions) for r in req.requests])
         return {"results": [{"answers": a} for a in results], "model": engine.model_name,
                 "latency_ms": round((time.perf_counter() - t0) * 1000, 2)}
+
+    @app.post("/v1/scan", dependencies=guarded)
+    def scan(req: ScanRequest):
+        engine = get_engine()
+        t0 = time.perf_counter()
+        out = engine.scan(req.state, req.questions, window_chars=req.window_chars)
+        out.update(model=engine.model_name, latency_ms=round((time.perf_counter() - t0) * 1000, 2))
+        return out
 
     @app.post("/v1/route", dependencies=guarded)
     def route(req: RouteRequest):

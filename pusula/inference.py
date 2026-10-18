@@ -28,10 +28,81 @@ def _as_questions(questions: QuestionsIn) -> dict[str, Question]:
     return {k: q if isinstance(q, Question) else Question(**q) for k, q in questions.items()}
 
 
+_CUTS = ("\n\n", "\n", ". ", "! ", "? ", "; ", ", ", " ")
+
+
+def split_text(text: str, window_chars: int, overlap_chars: int = 0) -> list[str]:
+    """Split ``text`` into parts of at most ``window_chars`` characters, cutting at paragraph, line, sentence or word
+    boundaries where possible. Consecutive parts share up to ``overlap_chars`` characters, so that a sentence on a
+    boundary is also seen whole. Every character of ``text`` is in at least one part."""
+    if window_chars < 2:
+        raise ValueError("window_chars must be at least 2")
+    overlap_chars = max(0, min(overlap_chars, window_chars // 2))
+    if len(text) <= window_chars:
+        return [text]
+    parts, start = [], 0
+    while start < len(text):
+        end = start + window_chars
+        if end >= len(text):
+            parts.append(text[start:])
+            break
+        lo = start + window_chars // 2
+        cut = next((i + len(sep) for sep in _CUTS if (i := text.rfind(sep, lo, end - len(sep) + 1)) >= 0), end)
+        parts.append(text[start:cut])
+        nxt = cut - overlap_chars
+        if overlap_chars:
+            sp = text.find(" ", nxt, cut)
+            nxt = sp + 1 if sp >= 0 else nxt
+        start = max(nxt, start + 1)
+    return parts
+
+
+def _finding(answer: Mapping[str, Any]) -> float:
+    """How far an answer is from the neutral one: P(true) for noul, the expected level for score, and one minus the
+    probability of the first option (for example ``guvenli``) for choice."""
+    if answer["type"] == "noul":
+        return answer["noul"]
+    if answer["type"] == "score":
+        return answer["score"]
+    return 1.0 - next(iter(answer["probabilities"].values()))
+
+
 class BaseEngine:
-    """decide() and route() on top of a subclass's decide_many()."""
+    """decide(), route() and scan() on top of a subclass's decide_many()."""
 
     model_name = "pusula"
+    default_window_chars = 12000
+
+    def _fits(self, part: str) -> bool:
+        """Whether a part is read whole in one pass (subclasses with a context limit override this)."""
+        return True
+
+    def _parts(self, state: str, window_chars: int, overlap_chars: int) -> list[str]:
+        parts = []
+        for part in split_text(state, window_chars, overlap_chars):
+            if self._fits(part) or len(part) < 64:
+                parts.append(part)
+            else:
+                parts += self._parts(part, len(part) // 2 + 1, overlap_chars)
+        return parts
+
+    def scan(self, state: str, questions: QuestionsIn, window_chars: Optional[int] = None,
+             overlap_chars: int = 200) -> dict[str, Any]:
+        """Check a long text (a web page, a document, an e-mail thread) part by part.
+
+        The text is split into parts that the model reads whole; every part is answered, and for every question the
+        answer of the part with the strongest finding is returned, together with its index in ``part``: the highest
+        probability of *true* for ``noul``, the highest expected level for ``score`` and the lowest probability of the
+        first option for ``choice``. The first option should therefore be the neutral one (as ``guvenli`` is in the
+        built-in ``guvenlik`` question). A text that fits in one part is answered exactly as with decide()."""
+        qs = _as_questions(questions)
+        parts = self._parts(state, window_chars or self.default_window_chars, overlap_chars)
+        results = self.decide_many([(p, qs) for p in parts])
+        answers = {}
+        for name in qs:
+            best = max(range(len(parts)), key=lambda i: _finding(results[i][name]))
+            answers[name] = {**results[best][name], "part": best}
+        return {"answers": answers, "parts": len(parts)}
 
     def decide_many(self, requests: Sequence[tuple[str, QuestionsIn]]) -> list[dict[str, dict[str, Any]]]:
         raise NotImplementedError
@@ -150,6 +221,12 @@ class DecisionEngine(BaseEngine):
         self.max_pairs = max_pairs_per_pass
         self._option_cache: dict[str, list[list[int]]] = {}
         self._lock = threading.Lock()
+        # room for the text next to the longest option; about 3 characters per token in Turkish text
+        self.state_tokens = max_length - self.enc.max_option_tokens - 3
+        self.default_window_chars = max(256, 3 * self.state_tokens)
+
+    def _fits(self, part: str) -> bool:
+        return len(self.enc._ids([part])[0]) <= self.state_tokens
 
     @classmethod
     def load(cls, path: str, device: Optional[str] = None, dtype: Optional[torch.dtype] = None) -> "DecisionEngine":
