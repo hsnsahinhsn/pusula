@@ -26,7 +26,8 @@ geliştirilmiştir ve Türkçedeki doğrulukları sınırlıdır. **Pusula, Tür
 - **Hazır Türkçe taksonomi.** 20 alan, 86 alt alan ve 299 niyetin yanı sıra altı evrensel kontrol (aciliyet, eylem
   gerekliliği, insana devir, güvenlik riski, duygu ve kişisel veri) sunulmaktadır.
 - **Türkçe karar benchmark'ı.** Pusula, bağımsız olarak etiketlenmiş Türkçe test setlerinde ham Decision 3.0 ile
-  karşılaştırılmıştır; sonuçlar modelle birlikte yayımlanmaktadır.
+  karşılaştırılmıştır; sonuçlar modelle birlikte yayımlanmaktadır. Benchmark,
+  [Hugging Face](https://huggingface.co/datasets/hsnsahinhsn/turkish-decision-benchmark) üzerinde de sunulmaktadır.
 
 > **Durum:** v1.0 (18 Ekim 2026). Ağırlıklar: [Pusula](https://huggingface.co/hsnsahinhsn/pusula) ·
 > [Pusula Nano](https://huggingface.co/hsnsahinhsn/pusula-nano). Önceki sürümler [Sürümler](#sürümler) bölümünde listelenmektedir.

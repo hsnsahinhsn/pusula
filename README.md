@@ -26,7 +26,8 @@ accuracy on Turkish is limited. **Pusula is Decision 3.0 adapted to Turkish.**
 - **Built-in Turkish taxonomy.** 20 domains, 86 subdomains and 299 intents, together with six universal checks
   (urgency, action required, human handoff, security risk, emotion and personal data).
 - **Turkish decision benchmark.** Pusula has been evaluated against the base Decision 3.0 model on independently
-  labeled Turkish test sets; the results are published with the model.
+  labeled Turkish test sets; the results are published with the model. The benchmark is available on
+  [Hugging Face](https://huggingface.co/datasets/hsnsahinhsn/turkish-decision-benchmark).
 
 > **Status:** v1.0 (18 October 2026). Weights: [Pusula](https://huggingface.co/hsnsahinhsn/pusula) ·
 > [Pusula Nano](https://huggingface.co/hsnsahinhsn/pusula-nano). Earlier versions are listed under [Releases](#releases).

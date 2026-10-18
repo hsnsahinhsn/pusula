@@ -2,6 +2,7 @@
 
 `tr_decision_bench_v1.jsonl` contains 2,194 realistic Turkish messages with about 20,000 labeled decision questions.
 It is intended for measuring the performance of decision models (Decision 3.0, Pusula or others) on Turkish.
+The benchmark is also published on Hugging Face as [hsnsahinhsn/turkish-decision-benchmark](https://huggingface.co/datasets/hsnsahinhsn/turkish-decision-benchmark).
 
 - **Coverage:** all 20 domains of the Pusula taxonomy and its 299 intents are represented; 12 writing styles are included (formal e-mails,
   everyday chat, no Turkish characters and typos, angry capitals, long and rambling, one short line, Turkish–English
