@@ -56,6 +56,7 @@ class Taxonomy:
     version: int
     domains: dict[str, Domain]
     universal: dict[str, Question]
+    agent: dict[str, Question] = field(default_factory=dict)  # AI agent decisions (ajan soruları)
     _questions: dict = field(default_factory=dict, repr=False)
 
     # ---- loading -------------------------------------------------------------------------
@@ -75,7 +76,8 @@ class Taxonomy:
             for dk, d in raw["domains"].items()
         }
         universal = {name: Question(**q) for name, q in raw["universal"].items()}
-        tax = cls(version=int(raw["version"]), domains=domains, universal=universal)
+        agent = {name: Question(**q) for name, q in (raw.get("agent") or {}).items()}
+        tax = cls(version=int(raw["version"]), domains=domains, universal=universal, agent=agent)
         tax.validate()
         return tax
 
@@ -98,6 +100,9 @@ class Taxonomy:
         clash = set(self.universal) & set(ROUTING_QUESTIONS)
         if clash:
             raise ValueError(f"universal question names clash with routing: {clash}")
+        clash = set(self.agent) & (set(self.universal) | set(ROUTING_QUESTIONS))
+        if clash:
+            raise ValueError(f"agent question names clash with universal or routing questions: {clash}")
 
     # ---- traversal -----------------------------------------------------------------------
     def intent_paths(self) -> Iterator[IntentPath]:
@@ -164,6 +169,7 @@ class Taxonomy:
         return {
             "version": self.version,
             "universal": {k: q.model_dump(exclude_none=True) for k, q in self.universal.items()},
+            "agent": {k: q.model_dump(exclude_none=True) for k, q in self.agent.items()},
             "domains": {
                 d.key: {
                     "name": d.name,

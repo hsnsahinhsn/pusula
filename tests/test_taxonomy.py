@@ -32,3 +32,11 @@ def test_questions_for_path(tax):
 def test_to_dict_is_json(tax):
     data = json.loads(json.dumps(tax.to_dict(), ensure_ascii=False))
     assert set(data["domains"]) == set(tax.domains)
+
+
+def test_agent_questions(tax):
+    assert set(tax.agent) == {"onay_gerekli", "islem_riski", "netlestirme_gerekli", "veri_disari", "gorev_tamamlandi",
+                              "model_secimi"}
+    assert tax.agent["islem_riski"].type == "score" and len(tax.agent["islem_riski"].option_keys()) == 4
+    assert tax.agent["gorev_tamamlandi"].option_keys() == ["tamamlandi", "kismen", "tamamlanmadi"]
+    assert "agent" in tax.to_dict() and not set(tax.agent) & set(tax.universal)

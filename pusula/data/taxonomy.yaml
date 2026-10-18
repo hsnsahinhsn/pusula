@@ -57,6 +57,50 @@ universal:
       "false": "Hayır: kişisel veya hassas veri yok"
       "true": "Evet: en az bir kişisel veya hassas veri var"
 
+# Ajan soruları (agent): bir yapay zeka ajanının çalışırken verdiği kararlar. Mesajlara değil ajan bağlamına sorulur; önerilen
+# metin biçimi: "Kullanıcı isteği: ...", gerekiyorsa "Önerilen işlem: <araç>(<parametreler>): <açıklama>" ve "Ajanın cevabı: ...".
+agent:
+  onay_gerekli:
+    type: noul
+    instructions: Ajanın önerdiği işlem uygulanmadan önce bir insanın onayı gerekiyor mu? Geri alınamayan, para veya yetki içeren, dışarıya mesaj ya da veri gönderen, çok sayıda kaydı etkileyen ya da kullanıcının açıkça istemediği işlemler onay ister.
+    criteria:
+      "false": "Hayır: yalnız okuma, arama, taslak hazırlama ya da kullanıcının açıkça istediği, geri alınabilir ve sınırlı bir işlem"
+      "true": "Evet: geri alınamaz, para ya da yetki içeren, dışarıya gönderim yapan, toplu etki eden ya da istenenin ötesine geçen bir işlem"
+  islem_riski:
+    type: score
+    instructions: Ajanın önerdiği işlem yanlış giderse doğuracağı zarar ne düzeyde?
+    criteria:
+      - "Düşük: yalnız okuma, arama, özetleme veya taslak; zarar doğurmaz"
+      - "Orta: geri alınabilir değişiklik (tek dosya düzenleme, takvim kaydı, tek kayıt güncelleme)"
+      - "Yüksek: geri alınması zor değişiklik, dışarıya mesaj, küçük tutarlı ödeme ya da canlı sistemde sınırlı değişiklik"
+      - "Kritik: geri alınamaz veya geniş etkili işlem (toplu silme, büyük ödeme, yetki verme, canlı veritabanı, zorla push, gizli veri paylaşımı)"
+  netlestirme_gerekli:
+    type: noul
+    instructions: Kullanıcının isteği, ajanın işe başlamadan önce soru sormasını gerektirecek kadar belirsiz ya da eksik mi?
+    criteria:
+      "false": "Hayır: istek makul bir varsayımla güvenle yerine getirilebilir"
+      "true": "Evet: hedef, kapsam ya da kritik bir ayrıntı eksik veya çelişkili; yanlış varsayım zarar ya da boşa iş doğurur"
+  veri_disari:
+    type: noul
+    instructions: Ajanın önerdiği işlem kişisel, gizli veya kurum içi veriyi dış bir servise, üçüncü bir kişiye ya da herkese açık bir yere gönderiyor mu?
+    criteria:
+      "false": "Hayır: veri kurum içinde kalıyor ya da gönderilen bilgi herkese açık ve zararsız"
+      "true": "Evet: kişisel, gizli veya kurum içi veri dışarıya (e-posta, dış API, herkese açık depo, sohbet kanalı) çıkıyor"
+  gorev_tamamlandi:
+    type: choice
+    instructions: Ajanın cevabı ya da sonucu kullanıcının isteğini karşılıyor mu?
+    criteria:
+      tamamlandi: "Tamamlandı: istenen her şey doğru ve eksiksiz yapılmış"
+      kismen: "Kısmen: bir kısmı yapılmış; eksik ya da hatalı kısım var"
+      tamamlanmadi: "Tamamlanmadı: istek karşılanmamış, konu dışı ya da yanlış bir sonuç verilmiş"
+  model_secimi:
+    type: score
+    instructions: Bu isteği karşılamak için hangi düzeyde bir dil modeli yeterli?
+    criteria:
+      - "Küçük: kısa, kalıp ya da tek adımlı iş (selamlama, basit soru, sınıflandırma, kısa çeviri)"
+      - "Orta: birkaç adımlı ya da orta uzunlukta iş (e-posta yazma, özet, basit kod düzeltme)"
+      - "Büyük: çok adımlı akıl yürütme, uzun belge, karmaşık kod ya da uzmanlık gerektiren iş"
+
 domains:
   finans_bankacilik:
     name: Finans ve Bankacılık
