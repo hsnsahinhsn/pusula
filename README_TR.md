@@ -9,6 +9,7 @@
 [![CI](https://github.com/hsnsahinhsn/pusula/actions/workflows/ci.yml/badge.svg)](https://github.com/hsnsahinhsn/pusula/actions)
 [![Lisans: Apache 2.0](https://img.shields.io/badge/Lisans-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-green.svg)](https://www.python.org/)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hsnsahinhsn/pusula/blob/main/examples/pusula_nano_colab.ipynb)
 
 </div>
 
@@ -347,6 +348,8 @@ sorular = {"alan": tax.domain_question(), **tax.universal, "benim_sorum": {...}}
 
 - [`examples/agentic_router.py`](examples/agentic_router.py): Bir ajan için güvenlik denetimi, araç seçimi, onay ve
   aciliyet kararları tek çağrıda alınır.
+- [`examples/pusula_nano_colab.ipynb`](examples/pusula_nano_colab.ipynb): Pusula Nano'nun Google Colab üzerinde
+  kullanımı (özel sorular, hazır yönlendirme ve toplu işlem); defter kurulum gerektirmeden açılabilir: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hsnsahinhsn/pusula/blob/main/examples/pusula_nano_colab.ipynb)
 
 ## Kendi modelinizi eğitmek
 

@@ -9,6 +9,7 @@
 [![CI](https://github.com/hsnsahinhsn/pusula/actions/workflows/ci.yml/badge.svg)](https://github.com/hsnsahinhsn/pusula/actions)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-green.svg)](https://www.python.org/)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hsnsahinhsn/pusula/blob/main/examples/pusula_nano_colab.ipynb)
 
 </div>
 
@@ -345,6 +346,8 @@ questions = {"alan": tax.domain_question(), **tax.universal, "my_question": {...
 
 - [`examples/agentic_router.py`](examples/agentic_router.py): guardrail check, tool selection, approval and urgency
   for an agent, obtained in a single call.
+- [`examples/pusula_nano_colab.ipynb`](examples/pusula_nano_colab.ipynb): Pusula Nano on Google Colab (custom
+  questions, built-in routing and batch processing), which can be opened without installation: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hsnsahinhsn/pusula/blob/main/examples/pusula_nano_colab.ipynb)
 
 ## Training your own model
 
