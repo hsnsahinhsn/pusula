@@ -58,18 +58,18 @@
   <div class="tiles">
     <div class="tile">
       <p class="label">Gerçek müşteri mesajları</p>
-      <p class="value">84,1</p>
-      <p class="delta">Decision 3.0: 77,4 · <strong>+6,7</strong></p>
+      <p class="value">85,6</p>
+      <p class="delta">Decision 3.0: 77,4 · <strong>+8,2</strong></p>
+    </div>
+    <div class="tile">
+      <p class="label">Uzun müşteri şikâyetleri</p>
+      <p class="value">88,0</p>
+      <p class="delta">Decision 3.0: 81,4 · <strong>+6,6</strong></p>
     </div>
     <div class="tile">
       <p class="label">Türkçe Karar Benchmark'ı</p>
-      <p class="value">92,1</p>
-      <p class="delta">Decision 3.0: 88,5 · <strong>+3,6</strong></p>
-    </div>
-    <div class="tile">
-      <p class="label">Altın test seti</p>
-      <p class="value">90,6</p>
-      <p class="delta">Decision 3.0: 85,5 · <strong>+5,1</strong></p>
+      <p class="value">92,6</p>
+      <p class="delta">Decision 3.0: 88,5 · <strong>+4,1</strong></p>
     </div>
   </div>
   <p class="note">Pusula'nın doğruluğu (%). Değerlendirme yöntemi <a href="#results">Sonuçlar</a> bölümünde açıklanmıştır.</p>
@@ -166,7 +166,7 @@
         <dl>
           <dt>Boyut</dt><dd>26B: <code>vllm-sr/d3</code> üzerine 0,9 GB'lık LoRA adaptörü</dd>
           <dt>Çalıştığı yer</dt><dd>GPU: BF16'da ≥ 64 GB, 4-bit'te ≥ 24 GB</dd>
-          <dt>Benchmark / altın</dt><dd>92,1 / 90,6</dd>
+          <dt>Benchmark / altın</dt><dd>92,6 / 90,4</dd>
           <dt>Ağırlıklar</dt><dd><a href="https://huggingface.co/hsnsahinhsn/pusula">hsnsahinhsn/pusula</a></dd>
         </dl>
       </div>
@@ -177,7 +177,7 @@
         <dl>
           <dt>Boyut</dt><dd>149M (<a href="https://huggingface.co/boun-tabilab/TabiBERT">TabiBERT</a> cross-encoder)</dd>
           <dt>Çalıştığı yer</dt><dd>CPU veya herhangi bir GPU</dd>
-          <dt>Benchmark / altın</dt><dd>82,1 / 84,3</dd>
+          <dt>Benchmark / altın</dt><dd>82,7 / 84,6</dd>
           <dt>Ağırlıklar</dt><dd><a href="https://huggingface.co/hsnsahinhsn/pusula-nano">hsnsahinhsn/pusula-nano</a></dd>
         </dl>
       </div>
@@ -205,12 +205,13 @@
     <script type="application/json" id="chart-data">
 {"title": "Decision 3.0 ve Pusula, doğruluk (%)", "domain": [75, 100], "step": 5, "series": ["Decision 3.0", "Pusula"],
  "rows": [
-  {"label": "Gerçek müşteri mesajları", "base": 77.4, "pusula": 84.1},
-  {"label": "Türkçe Karar Benchmark'ı", "base": 88.5, "pusula": 92.1},
-  {"label": "Altın test seti", "base": 85.5, "pusula": 90.6},
-  {"label": "Kendi sorularınız", "base": 94.8, "pusula": 94.7},
-  {"label": "MASSIVE tr-TR, niyet", "base": 85.3, "pusula": 85.1},
-  {"label": "OffensEval 2020 Türkçe", "base": 88.4, "pusula": 88.6}
+  {"label": "Gerçek müşteri mesajları", "base": 77.4, "pusula": 85.6},
+  {"label": "Uzun müşteri şikâyetleri", "base": 81.4, "pusula": 88.0},
+  {"label": "Türkçe Karar Benchmark'ı", "base": 88.5, "pusula": 92.6},
+  {"label": "Altın test seti", "base": 85.5, "pusula": 90.4},
+  {"label": "Kendi sorularınız", "base": 94.8, "pusula": 94.2},
+  {"label": "MASSIVE tr-TR, niyet", "base": 85.3, "pusula": 85.2},
+  {"label": "OffensEval 2020 Türkçe", "base": 88.4, "pusula": 88.3}
  ]}
     </script>
 
@@ -218,12 +219,13 @@
       <table class="results">
         <thead><tr><th>Değerlendirme</th><th class="num">Soru</th><th class="num">Decision 3.0</th><th class="num">Pusula</th><th class="num">Pusula Nano</th></tr></thead>
         <tbody>
-          <tr><td>Gerçek müşteri mesajları (500, eğitim dışı, lisanslı)</td><td class="num">4.500</td><td class="num">77,4</td><td class="num best">84,1</td><td class="num">82,9</td></tr>
-          <tr><td><a href="https://github.com/hsnsahinhsn/pusula/blob/main/benchmark/README.md">Türkçe Karar Benchmark'ı</a> (2.194 mesaj)</td><td class="num">19.861</td><td class="num">88,5</td><td class="num best">92,1</td><td class="num">82,1</td></tr>
-          <tr><td>Altın test seti (eğitimde olmayan 759 mesaj)</td><td class="num">7.015</td><td class="num">85,5</td><td class="num best">90,6</td><td class="num">84,3</td></tr>
-          <tr><td>Kendi sorularınız (497 mesaj × 3 özel soru)</td><td class="num">1.491</td><td class="num best">94,8</td><td class="num">94,7</td><td class="num">86,8</td></tr>
-          <tr><td>MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı)</td><td class="num">2.974</td><td class="num best">85,3</td><td class="num">85,1</td><td class="num">36,1</td></tr>
-          <tr><td>OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler)</td><td class="num">3.528</td><td class="num">88,4</td><td class="num best">88,6</td><td class="num">37,2</td></tr>
+          <tr><td>Gerçek müşteri mesajları (500, eğitim dışı, lisanslı)</td><td class="num">4.500</td><td class="num">77,4</td><td class="num best">85,6</td><td class="num">84,7</td></tr>
+          <tr><td>Uzun müşteri şikâyetleri (500, eğitim dışı, lisanslı)</td><td class="num">4.500</td><td class="num">81,4</td><td class="num best">88,0</td><td class="num">84,6</td></tr>
+          <tr><td><a href="https://github.com/hsnsahinhsn/pusula/blob/main/benchmark/README.md">Türkçe Karar Benchmark'ı</a> (2.194 mesaj)</td><td class="num">19.861</td><td class="num">88,5</td><td class="num best">92,6</td><td class="num">82,7</td></tr>
+          <tr><td>Altın test seti (eğitimde olmayan 759 mesaj)</td><td class="num">7.015</td><td class="num">85,5</td><td class="num best">90,4</td><td class="num">84,6</td></tr>
+          <tr><td>Kendi sorularınız (497 mesaj × 3 özel soru)</td><td class="num">1.491</td><td class="num best">94,8</td><td class="num">94,2</td><td class="num">87,6</td></tr>
+          <tr><td>MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı)</td><td class="num">2.974</td><td class="num best">85,3</td><td class="num">85,2</td><td class="num">36,4</td></tr>
+          <tr><td>OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler)</td><td class="num">3.528</td><td class="num best">88,4</td><td class="num">88,3</td><td class="num">30,6</td></tr>
         </tbody>
       </table>
     </div>
@@ -233,24 +235,24 @@
       <table>
         <thead><tr><th>Soru</th><th class="num">Decision 3.0</th><th class="num">Pusula</th></tr></thead>
         <tbody>
-          <tr><td>Aciliyet (4 seviye)</td><td class="num">53,2</td><td class="num best">81,0</td></tr>
-          <tr><td>İnsana devretme</td><td class="num">81,5</td><td class="num best">88,4</td></tr>
-          <tr><td>Alan</td><td class="num">82,1</td><td class="num best">87,0</td></tr>
-          <tr><td>Duygu</td><td class="num">85,0</td><td class="num best">87,2</td></tr>
-          <tr><td>Güvenlik riski</td><td class="num">94,2</td><td class="num best">97,9</td></tr>
-          <tr><td>Eylem gerekli mi</td><td class="num">88,9</td><td class="num best">90,6</td></tr>
-          <tr><td>Kişisel veri</td><td class="num">96,4</td><td class="num">96,4</td></tr>
-          <tr><td>Niyet</td><td class="num">96,8</td><td class="num">96,8</td></tr>
+          <tr><td>Aciliyet (4 seviye)</td><td class="num">53,2</td><td class="num best">78,9</td></tr>
+          <tr><td>İnsana devretme</td><td class="num">81,5</td><td class="num best">89,2</td></tr>
+          <tr><td>Alan</td><td class="num">82,1</td><td class="num best">86,8</td></tr>
+          <tr><td>Duygu</td><td class="num">85,0</td><td class="num best">88,3</td></tr>
+          <tr><td>Güvenlik riski</td><td class="num">94,2</td><td class="num best">98,0</td></tr>
+          <tr><td>Eylem gerekli mi</td><td class="num">88,9</td><td class="num best">90,5</td></tr>
+          <tr><td>Kişisel veri</td><td class="num best">96,4</td><td class="num">96,3</td></tr>
+          <tr><td>Niyet</td><td class="num">96,8</td><td class="num best">97,0</td></tr>
         </tbody>
       </table>
     </div>
 
     <ul class="notes">
       <li><strong>Gerçek müşteri mesajları:</strong> Değerlendirme, ticari bir iş ortağından lisanslanan ve eğitimde
-      kullanılmayan 500 anonim müşteri mesajı (yorum, şikâyet ve soru) üzerinde yapılmıştır. Bu set
-      yayımlanmamaktadır.</li>
-      <li><strong>Aciliyet kısmen özneldir:</strong> iki etiketçi mesajların %84,4'ünde aynı cevabı vermektedir; bu
-      nedenle 81,0'lık sonuç ulaşılabilir tavana yakındır.</li>
+      kullanılmayan 500'er anonim mesajdan oluşan iki set üzerinde yapılmıştır: müşteri mesajları (yorum, şikâyet ve
+      soru) ile uzun ve ayrıntılı müşteri şikâyetleri. Bu setler yayımlanmamaktadır.</li>
+      <li><strong>Aciliyet kısmen özneldir:</strong> iki etiketçi mesajların %84,4'ünde aynı cevabı vermektedir;
+      ulaşılabilir sonuç bu oranla sınırlıdır (Pusula: 78,9).</li>
       <li><strong>Pusula Nano</strong> ağırlıklı olarak hazır sorularla eğitilmiştir. Hazır sorulardan farklı ya da
       çok seçenekli görevler için Pusula önerilmektedir.</li>
       <li>MASSIVE ve OffensEval eğitim verisinde yer almamaktadır.</li>

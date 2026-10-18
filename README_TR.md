@@ -28,15 +28,15 @@ geliştirilmiştir ve Türkçedeki doğrulukları sınırlıdır. **Pusula, Tür
 - **Türkçe karar benchmark'ı.** Pusula, bağımsız olarak etiketlenmiş Türkçe test setlerinde ham Decision 3.0 ile
   karşılaştırılmıştır; sonuçlar modelle birlikte yayımlanmaktadır.
 
-> **Durum:** v1.0. Ağırlıklar: [Pusula](https://huggingface.co/hsnsahinhsn/pusula) ·
-> [Pusula Nano](https://huggingface.co/hsnsahinhsn/pusula-nano).
+> **Durum:** v1.0 (18 Ekim 2026). Ağırlıklar: [Pusula](https://huggingface.co/hsnsahinhsn/pusula) ·
+> [Pusula Nano](https://huggingface.co/hsnsahinhsn/pusula-nano). Önceki sürümler [Sürümler](#sürümler) bölümünde listelenmektedir.
 
 ## Modeller
 
 | Model | Boyut | Çalıştığı yer | Benchmark / altın set | Ne için |
 |---|---|---|---|---|
-| **Pusula** (Türkçe Decision 3.0) | 26B: `vllm-sr/d3` üzerine 0,9 GB'lık LoRA adaptörü | GPU: BF16'da ≥ 64 GB, 4-bit'te ≥ 24 GB | **92,1 / 90,6** | En yüksek doğruluk; hazır ve özel sorular için |
-| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU veya herhangi bir GPU | 82,1 / 84,3 | Hazır sorularda yüksek hacim ve düşük gecikme |
+| **Pusula** (Türkçe Decision 3.0) | 26B: `vllm-sr/d3` üzerine 0,9 GB'lık LoRA adaptörü | GPU: BF16'da ≥ 64 GB, 4-bit'te ≥ 24 GB | **92,6 / 90,4** | En yüksek doğruluk; hazır ve özel sorular için |
+| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU veya herhangi bir GPU | 82,7 / 84,6 | Hazır sorularda yüksek hacim ve düşük gecikme |
 
 Her iki model de aynı istekleri kabul eder.
 
@@ -52,36 +52,38 @@ kullanılmakta olup hiçbir zaman eğitim etiketi olarak kullanılmamaktadır.
 
 | Değerlendirme | Soru | Decision 3.0 | **Pusula** | Pusula Nano |
 |---|---|---|---|---|
-| Gerçek müşteri mesajları (500, eğitim dışı, lisanslı) | 4.500 | 77,4 | **84,1** | 82,9 |
-| [Türkçe Karar Benchmark'ı](benchmark/README.md) (2.194 mesaj) | 19.861 | 88,5 | **92,1** | 82,1 |
-| Altın test seti (eğitimde olmayan 759 mesaj) | 7.015 | 85,5 | **90,6** | 84,3 |
-| Kendi sorularınız (497 mesaj × 3 özel soru) | 1.491 | **94,8** | 94,7 | 86,8 |
-| MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı) | 2.974 | **85,3** | 85,1 | 36,1 |
-| OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler) | 3.528 | 88,4 | **88,6** | 37,2 |
+| Gerçek müşteri mesajları (500, eğitim dışı, lisanslı) | 4.500 | 77,4 | **85,6** | 84,7 |
+| Uzun müşteri şikâyetleri (500, eğitim dışı, lisanslı) | 4.500 | 81,4 | **88,0** | 84,6 |
+| [Türkçe Karar Benchmark'ı](benchmark/README.md) (2.194 mesaj) | 19.861 | 88,5 | **92,6** | 82,7 |
+| Altın test seti (eğitimde olmayan 759 mesaj) | 7.015 | 85,5 | **90,4** | 84,6 |
+| Kendi sorularınız (497 mesaj × 3 özel soru) | 1.491 | **94,8** | 94,2 | 87,6 |
+| MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı) | 2.974 | **85,3** | 85,2 | 36,4 |
+| OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler) | 3.528 | **88,4** | 88,3 | 30,6 |
 
 Altın test seti, soru bazında:
 
 | Soru | Decision 3.0 | **Pusula** |
 |---|---|---|
-| Aciliyet (4 seviye) | 53,2 | **81,0** |
-| İnsana devretme | 81,5 | **88,4** |
-| Alan | 82,1 | **87,0** |
-| Duygu | 85,0 | **87,2** |
-| Güvenlik riski | 94,2 | **97,9** |
-| Eylem gerekli mi | 88,9 | **90,6** |
-| Kişisel veri | 96,4 | 96,4 |
-| Niyet | 96,8 | 96,8 |
+| Aciliyet (4 seviye) | 53,2 | **78,9** |
+| İnsana devretme | 81,5 | **89,2** |
+| Alan | 82,1 | **86,8** |
+| Duygu | 85,0 | **88,3** |
+| Güvenlik riski | 94,2 | **98,0** |
+| Eylem gerekli mi | 88,9 | **90,5** |
+| Kişisel veri | **96,4** | 96,3 |
+| Niyet | 96,8 | **97,0** |
 
-- **Gerçek müşteri mesajları:** Değerlendirme, ticari bir iş ortağından lisanslanan ve eğitimde kullanılmayan 500
-  anonim müşteri mesajı (yorum, şikâyet ve soru) üzerinde yapılmıştır. Bu set yayımlanmamaktadır. Aynı kaynaktan
-  alınan diğer mesajlar eğitimde kullanılmış ve açık bir model (Qwen) tarafından etiketlenmiştir.
-- **Aciliyet kısmen özneldir:** iki etiketçi mesajların %84,4'ünde aynı cevabı vermektedir; bu nedenle 81,0'lık
-  sonuç ulaşılabilir tavana yakındır.
-- **Özel sorular:** Pusula, Decision 3.0 ile aynı düzeydedir (94,7'ye 94,8; altın setteki özel sorularda +2,7,
-  OffensEval'de +0,2, MASSIVE'de −0,2).
+- **Gerçek müşteri mesajları:** Değerlendirme, ticari bir iş ortağından lisanslanan ve eğitimde kullanılmayan
+  500'er anonim mesajdan oluşan iki set üzerinde yapılmıştır: müşteri mesajları (yorum, şikâyet ve soru) ile uzun ve
+  ayrıntılı müşteri şikâyetleri. Bu setler yayımlanmamaktadır. Aynı kaynaklardan alınan diğer mesajlar eğitimde
+  kullanılmış ve açık bir model (Qwen) tarafından etiketlenmiştir.
+- **Aciliyet kısmen özneldir:** iki etiketçi mesajların %84,4'ünde aynı cevabı vermektedir; ulaşılabilir sonuç bu
+  oranla sınırlıdır (Pusula: 78,9).
+- **Özel sorular:** Pusula, Decision 3.0 ile aynı düzeydedir (94,2'ye 94,8; altın setteki özel sorularda +1,6,
+  OffensEval'de −0,1, MASSIVE'de −0,1).
 - **Pusula Nano** ağırlıklı olarak hazır sorularla eğitilmiştir. Gerçek mesajlardaki doğruluğu Pusula'ya yakındır
-  (82,9'a 84,1). Hazır sorulardan farklı ya da çok seçenekli görevler için Pusula önerilmektedir (OffensEval'de
-  88,6'ya 37,2, MASSIVE'de 85,1'e 36,1).
+  (84,7'ye 85,6). Hazır sorulardan farklı ya da çok seçenekli görevler için Pusula önerilmektedir (OffensEval'de
+  88,3'e 30,6, MASSIVE'de 85,2'ye 36,4).
 - MASSIVE ve OffensEval eğitim verisinde yer almamaktadır.
 
 ## İçindekiler
@@ -95,6 +97,7 @@ Altın test seti, soru bazında:
 - [Güven değerini kullanmak](#güven-değerini-kullanmak)
 - [Örnekler](#örnekler)
 - [Kendi modelinizi eğitmek](#kendi-modelinizi-eğitmek)
+- [Sürümler](#sürümler)
 - [Katkıda bulunanlar ve atıf](#katkıda-bulunanlar-ve-atıf)
 - [Lisans ve teşekkürler](#lisans-ve-teşekkürler)
 
@@ -365,6 +368,16 @@ yeniden etiketler; `python -m pusula.relabel` ise yeni etiketleri altın setle �
 `python -m pusula.annotate` (`pip install -e ".[annotate]"`, Claude API) iki etiketçi ve hakemle kör altın set ve
 benchmark etiketleri üretir. Ticari modellerin çoğunun kullanım şartları, çıktılarıyla rakip model eğitilmesine izin
 vermediğinden bu etiketler yalnızca değerlendirme amacıyla kullanılmalıdır.
+
+## Sürümler
+
+Her sürüm bu depoda ve iki Hugging Face deposunda etiketlenmektedir. Önceki ağırlıklar
+`hf download hsnsahinhsn/pusula --revision <etiket>` komutuyla indirilir.
+
+| Sürüm | Tarih | Gerçek müşteri mesajları (Pusula / Nano) | Notlar |
+|---|---|---|---|
+| `v1.0` | 18 Ekim 2026 | 85,6 / 84,7 | Güncel sürüm. Ek lisanslı eğitim verisi (uzun müşteri şikâyetleri) ve eğitim dışı ikinci bir gerçek ölçüm seti. |
+| `v1.0-onizleme` | 17 Ekim 2026 | 84,1 / 82,9 | Önizleme sürümü. |
 
 ## Katkıda bulunanlar ve atıf
 

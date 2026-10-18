@@ -28,15 +28,15 @@ accuracy on Turkish is limited. **Pusula is Decision 3.0 adapted to Turkish.**
 - **Turkish decision benchmark.** Pusula has been evaluated against the base Decision 3.0 model on independently
   labeled Turkish test sets; the results are published with the model.
 
-> **Status:** v1.0. Weights: [Pusula](https://huggingface.co/hsnsahinhsn/pusula) ·
-> [Pusula Nano](https://huggingface.co/hsnsahinhsn/pusula-nano).
+> **Status:** v1.0 (18 October 2026). Weights: [Pusula](https://huggingface.co/hsnsahinhsn/pusula) ·
+> [Pusula Nano](https://huggingface.co/hsnsahinhsn/pusula-nano). Earlier versions are listed under [Releases](#releases).
 
 ## Models
 
 | Model | Size | Runs on | Benchmark / gold set | Use it for |
 |---|---|---|---|---|
-| **Pusula** (Turkish Decision 3.0) | 26B: a 0.9 GB LoRA adapter on top of `vllm-sr/d3` | GPU: ≥ 64 GB in BF16, ≥ 24 GB in 4-bit | **92.1 / 90.6** | Highest accuracy, for built-in and custom questions |
-| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU or any GPU | 82.1 / 84.3 | High volume and low latency on the built-in questions |
+| **Pusula** (Turkish Decision 3.0) | 26B: a 0.9 GB LoRA adapter on top of `vllm-sr/d3` | GPU: ≥ 64 GB in BF16, ≥ 24 GB in 4-bit | **92.6 / 90.4** | Highest accuracy, for built-in and custom questions |
+| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU or any GPU | 82.7 / 84.6 | High volume and low latency on the built-in questions |
 
 Both models accept identical requests.
 
@@ -51,36 +51,38 @@ policy. Evaluation labels are used exclusively for evaluation and are never used
 
 | Evaluation | Questions | Decision 3.0 | **Pusula** | Pusula Nano |
 |---|---|---|---|---|
-| Real customer messages (500 held-out, licensed) | 4,500 | 77.4 | **84.1** | 82.9 |
-| [Turkish Decision Benchmark](benchmark/README.md) (2,194 messages) | 19,861 | 88.5 | **92.1** | 82.1 |
-| Gold test set (759 held-out messages) | 7,015 | 85.5 | **90.6** | 84.3 |
-| Your own questions (497 messages × 3 ad-hoc questions) | 1,491 | **94.8** | 94.7 | 86.8 |
-| MASSIVE tr-TR, 60-way intent, zero-shot (human-written) | 2,974 | **85.3** | 85.1 | 36.1 |
-| OffensEval 2020 Turkish, offensive language (real tweets) | 3,528 | 88.4 | **88.6** | 37.2 |
+| Real customer messages (500 held-out, licensed) | 4,500 | 77.4 | **85.6** | 84.7 |
+| Long customer complaints (500 held-out, licensed) | 4,500 | 81.4 | **88.0** | 84.6 |
+| [Turkish Decision Benchmark](benchmark/README.md) (2,194 messages) | 19,861 | 88.5 | **92.6** | 82.7 |
+| Gold test set (759 held-out messages) | 7,015 | 85.5 | **90.4** | 84.6 |
+| Your own questions (497 messages × 3 ad-hoc questions) | 1,491 | **94.8** | 94.2 | 87.6 |
+| MASSIVE tr-TR, 60-way intent, zero-shot (human-written) | 2,974 | **85.3** | 85.2 | 36.4 |
+| OffensEval 2020 Turkish, offensive language (real tweets) | 3,528 | **88.4** | 88.3 | 30.6 |
 
 Gold test set, per question:
 
 | Question | Decision 3.0 | **Pusula** |
 |---|---|---|
-| Urgency (4 levels) | 53.2 | **81.0** |
-| Human handoff | 81.5 | **88.4** |
-| Domain | 82.1 | **87.0** |
-| Emotion | 85.0 | **87.2** |
-| Security risk | 94.2 | **97.9** |
-| Action required | 88.9 | **90.6** |
-| Personal data | 96.4 | 96.4 |
-| Intent | 96.8 | 96.8 |
+| Urgency (4 levels) | 53.2 | **78.9** |
+| Human handoff | 81.5 | **89.2** |
+| Domain | 82.1 | **86.8** |
+| Emotion | 85.0 | **88.3** |
+| Security risk | 94.2 | **98.0** |
+| Action required | 88.9 | **90.5** |
+| Personal data | **96.4** | 96.3 |
+| Intent | 96.8 | **97.0** |
 
-- **Real customer messages:** Evaluation was performed on a held-out set of 500 anonymized customer messages
-  (reviews, complaints and questions) licensed from a commercial partner. This set is not published. Other messages
-  from the same source were used for training and were labeled by an open model (Qwen).
-- **Urgency is partly subjective:** the two annotators agree on 84.4% of messages; a score of 81.0 is therefore
-  close to the attainable ceiling.
-- **Custom questions:** Pusula performs on par with Decision 3.0 (94.7 vs 94.8; custom questions in the gold set
-  +2.7, OffensEval +0.2, MASSIVE −0.2).
+- **Real customer messages:** Evaluation was performed on two held-out sets of 500 anonymized messages licensed
+  from a commercial partner: customer messages (reviews, complaints and questions) and long, detailed customer
+  complaints. These sets are not published. Other messages from the same sources were used for training and were
+  labeled by an open model (Qwen).
+- **Urgency is partly subjective:** the two annotators agree on 84.4% of messages, which bounds the attainable
+  score (Pusula: 78.9).
+- **Custom questions:** Pusula performs on par with Decision 3.0 (94.2 vs 94.8; custom questions in the gold set
+  +1.6, OffensEval −0.1, MASSIVE −0.1).
 - **Pusula Nano** was trained mainly on the built-in questions. On real messages its accuracy is close to that of
-  Pusula (82.9 vs 84.1). For tasks that differ from the built-in questions, or that have many options, Pusula is
-  recommended (OffensEval 88.6 vs 37.2, MASSIVE 85.1 vs 36.1).
+  Pusula (84.7 vs 85.6). For tasks that differ from the built-in questions, or that have many options, Pusula is
+  recommended (OffensEval 88.3 vs 30.6, MASSIVE 85.2 vs 36.4).
 - MASSIVE and OffensEval are not included in the training data.
 
 ## Contents
@@ -94,6 +96,7 @@ Gold test set, per question:
 - [Using confidence](#using-confidence)
 - [Examples](#examples)
 - [Training your own model](#training-your-own-model)
+- [Releases](#releases)
 - [Contributors and citation](#contributors-and-citation)
 - [License and acknowledgements](#license-and-acknowledgements)
 
@@ -363,6 +366,16 @@ The judgment questions (urgency, human handoff, action required) follow a single
 `python -m pusula.annotate` (`pip install -e ".[annotate]"`, Claude API) produces blind gold and benchmark labels with
 two annotators and adjudication. Such labels should be used for evaluation only, since the terms of most commercial
 models do not permit training competing models on their outputs.
+
+## Releases
+
+Each release is tagged in this repository and in both Hugging Face repositories. Earlier weights are obtained with
+`hf download hsnsahinhsn/pusula --revision <tag>`.
+
+| Version | Date | Real customer messages (Pusula / Nano) | Notes |
+|---|---|---|---|
+| `v1.0` | 18 October 2026 | 85.6 / 84.7 | Current release. Additional licensed training data (long customer complaints) and a second held-out real evaluation set. |
+| `v1.0-onizleme` | 17 October 2026 | 84.1 / 82.9 | Preview release. |
 
 ## Contributors and citation
 

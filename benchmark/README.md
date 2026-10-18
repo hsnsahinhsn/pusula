@@ -41,8 +41,8 @@ Accuracy (%) on this benchmark (19,861 questions):
 | Model | Accuracy |
 |---|---|
 | Decision 3.0 (`vllm-sr/d3`) | 88.5 |
-| **Pusula** | **92.1** |
-| Pusula Nano | 82.1 |
+| **Pusula** | **92.6** |
+| Pusula Nano | 82.7 |
 
 ## Format
 
