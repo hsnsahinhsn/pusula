@@ -13,11 +13,17 @@ Mesajı, hizmet veren kurumun vermesi gereken karar açısından oku. Yazarın t
 - Kişinin ulaşmak istediği sonuca bak; mesajda birden fazla konu varsa asıl talebi seç.
 - Açıklamalardaki "Kapsamaz" notlarına uy; en özgül niyeti seç.
 - Yorumlar (mağaza, ürün, kurum veya hizmet değerlendirmesi): mesaj somut bir sorun ya da talep anlatmıyorsa,
-  yalnız genel bir görüş bildiriyorsa `genel_sohbet > geri_bildirim > genel_memnuniyet` seç ("Kalitesiz, almayın",
-  "Personel çok kaba"). Somut bir sorun veya talep varsa o konunun alanını ve niyetini seç ("Yanlış renk geldi"
-  → eksik/yanlış ürün, "Ürün kırık geldi, iade istiyorum" → iade talebi, "Kargom 10 gündür şubede" → kargo
-  takibi, "3 gündür internet yok" → internet arızası). Yorumun yazıldığı yer (harita, ürün sayfası) ve
-  sektörün adı tek başına alanı belirlemez.
+  yalnız görüş bildiriyorsa yorumun konusu olan alanın `geri_bildirim` dalını seç; olumsuz görüş `sikayet`, olumlu
+  görüş `memnuniyet` olur ("Hastanenin doktorları çok kaba" → sağlık > geri bildirim > şikâyet; "Kalitesiz, almayın"
+  → ticaret > geri bildirim > şikâyet; "Kargo çok hızlıydı, teşekkürler" → lojistik > geri bildirim > memnuniyet).
+  Konusu hiçbir alana girmeyen ya da anlaşılamayan görüşler `genel_sohbet > geri_bildirim > genel_memnuniyet` olur
+  ("Çok güzel bir yer"). Somut bir sorun veya talep varsa o konunun niyetini seç ("Yanlış renk geldi" → eksik/yanlış
+  ürün, "Ürün kırık geldi, iade istiyorum" → iade talebi, "Kargom 10 gündür şubede" → kargo takibi, "3 gündür
+  internet yok" → internet arızası). Yorumun yazıldığı yer (harita, ürün sayfası) tek başına alanı belirlemez;
+  yorumun konusu belirler.
+- Bozuk veya kısa sürede arızalanan ürün, mesaj bir hak ya da yasal yol anmıyorsa `ticaret_eticaret` içinde kalır
+  (talep yoksa geri bildirim > şikâyet, iade isteniyorsa iade talebi). `hukuk_uyum > tuketici_haklari` yalnız mesaj
+  cayma hakkı, ayıplı mal hakları, hakem heyeti, avukat veya dava gibi bir hak ya da yasal yol andığında seçilir.
 
 ## aciliyet
 
@@ -58,6 +64,19 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
 - **guvenli:** İnsanlara yönelik olağan talimatlar (kurulum adımları, `pip install`, güvenlik uyarıları, bir
   meslektaştan rapor isteme), ödeme için IBAN içeren olağan bildirimler, yer tutucu anahtarlar (`API_KEY=changeme`)
   ve prompt enjeksiyonunu konu olarak anlatan, örnekleri açıkça örnek diye sunan yazılar.
+- **spam_anlamsiz:** Reklam, anlamsız karakter dizisi veya içeriksiz girdi. Kısa ama anlamlı yorumlar ("Temizliği çok
+  zor", "Böyle bir şube yok") güvenlidir.
+
+## duygu
+
+- **ofkeli:** Suçlama, hakaret, küfür, tehdit veya sert öfke sözleri ("rezalet", "yazıklar olsun", "kimse almasın",
+  "bir daha asla") ve boykot çağrısı.
+- **hayal_kirikligi:** Beklentisi karşılanmamış, kırgın veya bıkmış ama sakin ya da yorgun ton ("Beklediğim gibi
+  çıkmadı", "Üçüncü kez yazıyorum, artık yoruldum").
+- **endiseli:** Kaygı ve tedirginlik. "Panik oldum", "delirdim", "acil yardım" gibi günlük sözler, can güvenliği
+  riski yoksa endişelidir.
+- **caresiz_kriz:** Yalnız can güvenliği, kendine zarar, şiddet veya istismar riski ya da derin çaresizlik ("Artık
+  yaşamak istemiyorum", "Eşim beni tehdit ediyor, evden çıkamıyorum").
 
 ## kisisel_veri
 

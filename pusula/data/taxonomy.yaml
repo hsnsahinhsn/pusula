@@ -6,7 +6,7 @@
 #  - Açıklamalar modele girdi olarak verilir (cross-encoder seçeneği bu metinle okur); kısa, ayırt edici ve Türkçe olmalı.
 #
 # Evrensel boyutlar (universal) her mesaja alandan bağımsız uygulanır.
-version: 1
+version: 2
 
 universal:
   aciliyet:
@@ -45,11 +45,11 @@ universal:
     criteria:
       notr: Sakin, olgusal
       memnun: Memnun, teşekkür eden, olumlu
-      endiseli: Kaygılı, tedirgin, emin olamayan
+      endiseli: Kaygılı, tedirgin, emin olamayan; tehlikede olmadan "panik oldum", "acil" diyen dahil
       uzgun: Üzgün, yas veya kayıp yaşayan, kederli
-      hayal_kirikligi: Kırgın, bıkmış, tekrar eden sorundan yorulmuş
-      ofkeli: Öfkeli, suçlayıcı, tehditkar
-      caresiz_kriz: Çaresiz, panik halinde veya kendine zarar riski taşıyan
+      hayal_kirikligi: Kırgın, bıkmış, tekrar eden sorundan yorulmuş; sakin veya yorgun tonla
+      ofkeli: Öfkeli, suçlayıcı, tehditkar; "rezalet", "yazıklar olsun", "kimse almasın" gibi sert sözler dahil
+      caresiz_kriz: Can güvenliği, kendine zarar veya şiddet riski taşıyan ya da derin çaresizlik içinde
   kisisel_veri:
     type: noul
     instructions: Mesaj kişisel veya hassas veri (TC kimlik no, kart/IBAN, şifre veya kapı kodu, sağlık bilgisi, açık adres, telefon, kişiye ait e-posta adresi) içeriyor mu?
@@ -156,6 +156,12 @@ domains:
           komisyon_ve_bloke: POS komisyonu, bloke süresi veya bloke çözme
           sanal_pos_entegrasyon: Sanal POS veya ödeme geçidi entegrasyonu
           isyeri_hesap_hareketi: Üye işyeri hesabına geçen tutarlar ve mutabakat
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Banka veya finans hizmeti hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Banka veya finans hizmeti hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Banka veya finans hizmeti hakkında övgü, teşekkür veya olumlu değerlendirme
 
   muhasebe_vergi:
     name: Muhasebe ve Vergi
@@ -201,6 +207,12 @@ domains:
           mali_tablolar: Bilanço veya gelir tablosu hazırlama ve yorumlama
           butce_nakit_akisi: Bütçe, nakit akışı veya maliyet analizi
           denetim_talebi: Bağımsız denetim veya iç denetim talebi
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Muhasebe, vergi veya mali müşavirlik hizmeti hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Muhasebe, vergi veya mali müşavirlik hizmeti hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Muhasebe, vergi veya mali müşavirlik hizmeti hakkında övgü, teşekkür veya olumlu değerlendirme
 
   hukuk_uyum:
     name: Hukuk ve Mevzuat Uyumu
@@ -246,6 +258,12 @@ domains:
           dava_sureci: Açılan veya açılacak dava hakkında bilgi
           arabuluculuk: Zorunlu veya ihtiyari arabuluculuk
           avukat_talebi: Avukatla görüşme veya hukuki temsil talebi
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Hukuk bürosu, noter veya hukuki hizmet hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Hukuk bürosu, noter veya hukuki hizmet hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Hukuk bürosu, noter veya hukuki hizmet hakkında övgü, teşekkür veya olumlu değerlendirme
 
   saglik:
     name: Sağlık
@@ -286,6 +304,12 @@ domains:
           provizyon_onay: Sigorta provizyonu veya ön onay bekleniyor
           fark_ucreti: Özel hastane fark ücreti sorusu
           masraf_iadesi: Sağlık harcamasının geri ödenmesi
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Hastane, doktor, eczane veya sağlık hizmeti hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Hastane, doktor, eczane veya sağlık hizmeti hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Hastane, doktor, eczane veya sağlık hizmeti hakkında övgü, teşekkür veya olumlu değerlendirme
 
   sigorta_sosyal_guvenlik:
     name: Sigorta ve Sosyal Güvenlik
@@ -315,6 +339,12 @@ domains:
           emeklilik_hesaplama: Emeklilik yaşı veya maaşı hesaplama
           issizlik_maasi: İşsizlik ödeneği başvurusu
           gss_borcu: Genel sağlık sigortası borcu veya tescili
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Sigorta şirketi veya sosyal güvenlik hizmeti hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Sigorta şirketi veya sosyal güvenlik hizmeti hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Sigorta şirketi veya sosyal güvenlik hizmeti hakkında övgü, teşekkür veya olumlu değerlendirme
 
   ticaret_eticaret:
     name: Ticaret ve E-Ticaret
@@ -359,6 +389,12 @@ domains:
           urun_listeleme: Ürün yükleme, katalog veya listeleme hatası
           komisyon_hakedis: Komisyon oranı veya hakediş ödemesi
           performans_ceza: Satıcı puanı, ceza veya hesap askıya alma
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Ürün, mağaza, satıcı veya alışveriş deneyimi hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Ürün, mağaza, satıcı veya alışveriş deneyimi hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Ürün, mağaza, satıcı veya alışveriş deneyimi hakkında övgü, teşekkür veya olumlu değerlendirme
 
   lojistik_tedarik:
     name: Lojistik ve Tedarik Zinciri
@@ -405,6 +441,12 @@ domains:
           yolda_arac_arizasi: Seferdeki aracın arızalanması
           surucu_yonetimi: Sürücü vardiyası, ihlal veya performans
           yakit_maliyet: Yakıt tüketimi veya taşıma maliyeti
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Kargo, kurye, depo veya tedarik hizmeti hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Kargo, kurye, depo veya tedarik hizmeti hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Kargo, kurye, depo veya tedarik hizmeti hakkında övgü, teşekkür veya olumlu değerlendirme
 
   abonelik_hizmetleri:
     name: Telekom ve Enerji Abonelikleri
@@ -435,6 +477,12 @@ domains:
           yuksek_fatura: Beklenenden yüksek fatura
           odeme_talimati: Fatura ödeme veya otomatik talimat
           borc_kesinti_uyarisi: Borç nedeniyle kesinti uyarısı
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Telekom, internet, enerji veya su hizmeti hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Telekom, internet, enerji veya su hizmeti hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Telekom, internet, enerji veya su hizmeti hakkında övgü, teşekkür veya olumlu değerlendirme
 
   teknoloji_bt:
     name: Teknoloji ve Bilgi İşlem
@@ -486,6 +534,12 @@ domains:
           kod_hatasi_yardimi: Koddaki hatanın ayıklanması
           mimari_danisma: Mimari veya teknoloji seçimi
           dokumantasyon_talebi: Dokümantasyon veya örnek kod isteme
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Yazılım, uygulama, cihaz veya BT hizmeti hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Yazılım, uygulama, cihaz veya BT hizmeti hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Yazılım, uygulama, cihaz veya BT hizmeti hakkında övgü, teşekkür veya olumlu değerlendirme
 
   insan_kaynaklari:
     name: İnsan Kaynakları
@@ -528,6 +582,12 @@ domains:
           sikayet_ihbar: Yönetici veya iş arkadaşı hakkında şikayet
           is_sagligi_guvenligi: İş yerinde sağlık veya güvenlik riski
           ic_iletisim: Duyuru, etkinlik veya kurum içi iletişim
+      geri_bildirim:
+        name: Geri Bildirim
+        description: İşveren, işyeri veya işe alım süreci hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: İşveren, işyeri veya işe alım süreci hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: İşveren, işyeri veya işe alım süreci hakkında övgü, teşekkür veya olumlu değerlendirme
 
   kamu_hizmetleri:
     name: Kamu Hizmetleri
@@ -562,6 +622,12 @@ domains:
           sikayet_basvurusu: CİMER veya savcılığa şikayet
           adli_sicil: Adli sicil kaydı belgesi
           uyap_islemi: UYAP üzerinden dosya sorgulama
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Belediye, kamu kurumu veya devlet hizmeti hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Belediye, kamu kurumu veya devlet hizmeti hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Belediye, kamu kurumu veya devlet hizmeti hakkında övgü, teşekkür veya olumlu değerlendirme
 
   egitim:
     name: Eğitim
@@ -596,6 +662,12 @@ domains:
           matematik_fen: Matematik, fizik, kimya veya biyoloji sorusu
           dil_edebiyat: Dil bilgisi, edebiyat veya yabancı dil sorusu
           sosyal_bilimler: Tarih, coğrafya, felsefe veya ekonomi sorusu
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Okul, üniversite, kurs veya eğitim hizmeti hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Okul, üniversite, kurs veya eğitim hizmeti hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Okul, üniversite, kurs veya eğitim hizmeti hakkında övgü, teşekkür veya olumlu değerlendirme
 
   seyahat_konaklama:
     name: Seyahat ve Konaklama
@@ -616,7 +688,7 @@ domains:
         intents:
           otel_rezervasyon: Otel rezervasyonu
           konaklama_iptal_iade: Rezervasyon iptali veya iade
-          tesis_sikayeti: Oda, temizlik veya hizmet şikayeti
+          tesis_sikayeti: Konaklama sırasında çözüm beklenen oda, temizlik veya hizmet sorunu
       vize_pasaport:
         name: Vize
         description: Yurt dışı seyahat belgeleri
@@ -630,6 +702,12 @@ domains:
           arac_kiralama: Araç kiralama veya teslim
           transfer: Havalimanı transferi
           otobus_tren: Otobüs veya tren bileti
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Otel, havayolu, tur veya ulaşım hizmeti hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Otel, havayolu, tur veya ulaşım hizmeti hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Otel, havayolu, tur veya ulaşım hizmeti hakkında övgü, teşekkür veya olumlu değerlendirme
 
   gayrimenkul:
     name: Gayrimenkul
@@ -657,6 +735,12 @@ domains:
           aidat: Aidat tutarı veya ödemesi
           ortak_alan_ariza: Asansör, kalorifer veya ortak alan arızası
           komsuluk_sorunu: Gürültü veya komşuluk anlaşmazlığı
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Emlakçı, site yönetimi veya konut hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Emlakçı, site yönetimi veya konut hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Emlakçı, site yönetimi veya konut hakkında övgü, teşekkür veya olumlu değerlendirme
 
   otomotiv_mobilite:
     name: Otomotiv ve Mobilite
@@ -689,6 +773,12 @@ domains:
         intents:
           sarj_istasyonu: Şarj istasyonu bulma veya şarj hatası
           batarya_menzil: Batarya sağlığı veya menzil
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Servis, bayi, araç veya mobilite hizmeti hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Servis, bayi, araç veya mobilite hizmeti hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Servis, bayi, araç veya mobilite hizmeti hakkında övgü, teşekkür veya olumlu değerlendirme
 
   sanayi_uretim_tarim:
     name: Sanayi, Üretim ve Tarım
@@ -725,6 +815,12 @@ domains:
           sulama_gubreleme: Sulama veya gübreleme planı
           hayvan_sagligi: Hayvan hastalığı veya veteriner ihtiyacı
           tarimsal_destek: Tarımsal destek veya hibe başvurusu
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Üretici, fabrika veya tarım hizmeti hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Üretici, fabrika veya tarım hizmeti hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Üretici, fabrika veya tarım hizmeti hakkında övgü, teşekkür veya olumlu değerlendirme
 
   kisisel_verimlilik:
     name: Kişisel Verimlilik ve Ofis
@@ -789,6 +885,12 @@ domains:
         intents:
           bilet_alma: Bilet satın alma
           bilet_iptal_iade: Etkinlik iptali veya bilet iadesi
+      geri_bildirim:
+        name: Geri Bildirim
+        description: Dijital platform, oyun, yayın veya etkinlik hakkında talep içermeyen değerlendirme. Kapsamaz - somut sorun bildiren veya bir şey isteyen mesaj (ilgili niyete girer).
+        intents:
+          sikayet: Dijital platform, oyun, yayın veya etkinlik hakkında talep içermeyen şikâyet veya olumsuz değerlendirme
+          memnuniyet: Dijital platform, oyun, yayın veya etkinlik hakkında övgü, teşekkür veya olumlu değerlendirme
 
   kriz_destek:
     name: Kriz ve Psikososyal Destek
@@ -818,7 +920,7 @@ domains:
 
   genel_sohbet:
     name: Genel ve Kapsam Dışı
-    description: Selamlaşma, genel bilgi soruları, kurum hakkında sorular, geri bildirim ve hiçbir alana girmeyen talepler.
+    description: Selamlaşma, genel bilgi soruları, kurum hakkında sorular, konusu belli bir alana girmeyen geri bildirim ve hiçbir alana girmeyen talepler.
     subdomains:
       sohbet:
         name: Sohbet
@@ -837,7 +939,7 @@ domains:
         description: Görüş ve öneriler
         intents:
           oneri: Ürün veya hizmet önerisi
-          genel_memnuniyet: Genel memnuniyet veya memnuniyetsizlik
+          genel_memnuniyet: Konusu belli bir alana girmeyen genel memnuniyet veya memnuniyetsizlik
       kapsam_disi:
         name: Kapsam Dışı
         description: Desteklenmeyen veya anlaşılamayan talep
