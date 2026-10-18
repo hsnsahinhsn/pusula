@@ -101,3 +101,27 @@ def test_default_host_is_local(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["pusula-serve"])
     serve.main()
     assert seen["host"] == "127.0.0.1"
+
+
+TOPICS = {"kardiyoloji": {"description": "Kalp ve damar hastalıkları",
+                          "intents": {"randevu": "Kardiyoloji randevusu", "sonuc": "Tetkik sonucu sorusu"}},
+          "faturalama": "Ödeme, fatura ve sigorta işlemleri"}
+
+
+def test_route_with_own_topics_is_passed_through():
+    seen = {}
+
+    class TopicEngine(FakeEngine):
+        def route(self, state, universal=True, topics=None):
+            seen["topics"] = topics
+            return {"path": "kardiyoloji.randevu", "answers": {}}
+
+    c = TestClient(create_app(engine=TopicEngine()))
+    r = c.post("/v1/route", json={"state": "Randevu almak istiyorum", "topics": TOPICS})
+    assert r.status_code == 200 and r.json()["path"] == "kardiyoloji.randevu"
+    assert seen["topics"] == TOPICS
+
+
+@pytest.mark.parametrize("topics", [{"tek": "Tek konu"}, {"a": {"description": "x", "baska": {}}}, {"": "bos"}, []])
+def test_route_rejects_invalid_topics(client, topics):
+    assert client.post("/v1/route", json={"state": "x", "topics": topics}).status_code == 422

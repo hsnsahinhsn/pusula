@@ -9,6 +9,8 @@ Endpoints:
     POST /v1/systemone        {"state": str, "questions": {name: {type, instructions, criteria}}}
     POST /v1/systemone/batch  {"requests": [ {state, questions}, ... ]}
     POST /v1/route            {"state": str, "universal": true}  -> taxonomy routing
+                              {"state": str, "topics": {key: description | {"description", "intents"}}}
+                              -> routing through the institution's own list (konu -> niyet)
     GET  /v1/taxonomy         built-in taxonomy
     GET  /health              liveness (always 200)
     GET  /ready               503 until the model is loaded
@@ -30,7 +32,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from . import __version__
 from .schema import Question
-from .taxonomy import load_taxonomy
+from .taxonomy import load_taxonomy, topic_questions
 
 MAX_STATE_CHARS = int(os.getenv("PUSULA_MAX_STATE_CHARS", "60000"))
 MAX_QUESTIONS = int(os.getenv("PUSULA_MAX_QUESTIONS", "32"))
@@ -57,6 +59,15 @@ class BatchRequest(BaseModel):
 class RouteRequest(BaseModel):
     state: str = Field(..., min_length=1, max_length=MAX_STATE_CHARS)
     universal: bool = True
+    # An institution's own routing list (konu -> niyet); without it the built-in taxonomy is used.
+    topics: Optional[dict[str, Any]] = None
+
+    @field_validator("topics")
+    @classmethod
+    def _valid_topics(cls, v):
+        if v is not None:
+            topic_questions(v)  # raises ValueError (-> 422) for an invalid list
+        return v
 
 
 class ScanRequest(DecideRequest):
@@ -146,7 +157,8 @@ def create_app(engine: Any = None, model_dir: Optional[str] = None, api_key: Opt
     def route(req: RouteRequest):
         engine = get_engine()
         t0 = time.perf_counter()
-        out = engine.route(req.state, universal=req.universal)
+        out = (engine.route(req.state, universal=req.universal, topics=req.topics) if req.topics is not None
+               else engine.route(req.state, universal=req.universal))
         out["latency_ms"] = round((time.perf_counter() - t0) * 1000, 2)
         return out
 

@@ -20,6 +20,37 @@ MAX_SIBLINGS = 25
 # Question names used for hierarchical routing.
 Q_DOMAIN, Q_SUBDOMAIN, Q_INTENT = "alan", "alt_alan", "niyet"
 ROUTING_QUESTIONS = (Q_DOMAIN, Q_SUBDOMAIN, Q_INTENT)
+# Question name for the first level of an institution's own routing list (the second level is Q_INTENT).
+Q_TOPIC = "konu"
+
+
+def topic_questions(topics: dict) -> tuple[Question, dict[str, Question]]:
+    """An institution's own routing list -> (topic question, intent question per topic that has intents).
+
+    ``topics`` maps a topic key to its description, or to ``{"description": ..., "intents": {key: description}}``:
+        {"kardiyoloji": {"description": "Kalp ve damar hastalıkları",
+                         "intents": {"randevu": "Kardiyoloji randevusu", "sonuc": "Tetkik sonucu sorusu"}},
+         "faturalama": "Ödeme, fatura ve sigorta işlemleri"}
+    Raises ValueError for an invalid list (fewer than 2 or more than the allowed number of options, empty keys).
+    """
+    if not isinstance(topics, dict):
+        raise ValueError("topics must map topic keys to descriptions")
+    criteria: dict[str, Optional[str]] = {}
+    intents: dict[str, Question] = {}
+    for key, spec in topics.items():
+        if not isinstance(key, str) or not key.strip():
+            raise ValueError("topic keys must be non-empty strings")
+        if spec is None or isinstance(spec, str):
+            criteria[key] = spec or None
+            continue
+        if not isinstance(spec, dict) or set(spec) - {"description", "intents"}:
+            raise ValueError(f"topic {key!r}: use a description or {{'description': ..., 'intents': {{...}}}}")
+        criteria[key] = spec.get("description") or None
+        if spec.get("intents"):
+            intents[key] = Question(type="choice",
+                                    instructions=f"{criteria[key] or key} konusunda kişi tam olarak ne istiyor?",
+                                    criteria=dict(spec["intents"]))
+    return Question(type="choice", instructions="Bu mesaj hangi konuya ait?", criteria=criteria), intents
 
 
 @dataclass(frozen=True)

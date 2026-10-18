@@ -19,7 +19,7 @@ import torch
 
 from .model import PairEncoder, PusulaModel
 from .schema import Question, answer_from_probs
-from .taxonomy import Q_DOMAIN, Q_INTENT, Q_SUBDOMAIN, Taxonomy, load_taxonomy
+from .taxonomy import Q_DOMAIN, Q_INTENT, Q_SUBDOMAIN, Q_TOPIC, Taxonomy, load_taxonomy, topic_questions
 
 QuestionsIn = Mapping[str, Question | Mapping[str, Any]]
 
@@ -110,8 +110,14 @@ class BaseEngine:
     def decide(self, state: str, questions: QuestionsIn) -> dict[str, dict[str, Any]]:
         return self.decide_many([(state, questions)])[0]
 
-    def route(self, state: str, taxonomy: Optional[Taxonomy] = None, universal: bool = True) -> dict[str, Any]:
-        """Hierarchical routing alan -> alt_alan -> niyet (three passes), plus the universal questions."""
+    def route(self, state: str, taxonomy: Optional[Taxonomy] = None, universal: bool = True,
+              topics: Optional[Mapping[str, Any]] = None) -> dict[str, Any]:
+        """Hierarchical routing alan -> alt_alan -> niyet (three passes), plus the universal questions.
+
+        With ``topics`` (an institution's own list, see ``taxonomy.topic_questions``) the route is konu -> niyet
+        instead: one pass for the topic and, when that topic lists intents, one pass for the intent."""
+        if topics is not None:
+            return self._route_topics(state, topics, universal)
         tax = taxonomy or load_taxonomy()
         first = {Q_DOMAIN: tax.domain_question()}
         if universal:
@@ -125,6 +131,18 @@ class BaseEngine:
             "path": f"{domain}.{sub}.{answers[Q_INTENT]['choice']}",
             "answers": answers,
         }
+
+    def _route_topics(self, state: str, topics: Mapping[str, Any], universal: bool) -> dict[str, Any]:
+        topic_q, intent_qs = topic_questions(dict(topics))
+        first = {Q_TOPIC: topic_q}
+        if universal:
+            first.update(load_taxonomy().universal)
+        answers = self.decide(state, first)
+        topic = answers[Q_TOPIC]["choice"]
+        if topic not in intent_qs:
+            return {"path": topic, "answers": answers}
+        answers.update(self.decide(state, {Q_INTENT: intent_qs[topic]}))
+        return {"path": f"{topic}.{answers[Q_INTENT]['choice']}", "answers": answers}
 
 
 class D3Engine(BaseEngine):

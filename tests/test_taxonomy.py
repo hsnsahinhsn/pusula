@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from pusula.taxonomy import KEY_RE, MAX_SIBLINGS, ROUTING_QUESTIONS
 
 
@@ -40,3 +42,15 @@ def test_agent_questions(tax):
     assert tax.agent["islem_riski"].type == "score" and len(tax.agent["islem_riski"].option_keys()) == 4
     assert tax.agent["gorev_tamamlandi"].option_keys() == ["tamamlandi", "kismen", "tamamlanmadi"]
     assert "agent" in tax.to_dict() and not set(tax.agent) & set(tax.universal)
+
+
+def test_topic_questions():
+    from pusula.taxonomy import topic_questions
+
+    q, intents = topic_questions({"a": "Birinci", "b": {"description": "İkinci", "intents": {"x": "X", "y": "Y"}}})
+    assert q.option_keys() == ["a", "b"] and list(intents) == ["b"]
+    assert intents["b"].option_keys() == ["x", "y"]
+    for bad in ({"tek": "yalnız bir konu"}, {"a": "A", "b": {"description": "B", "intents": {"x": "tek niyet"}}},
+                {"a": "A", "b": {"aciklama": "yanlış anahtar"}}, ["a", "b"]):
+        with pytest.raises(ValueError):
+            topic_questions(bad)

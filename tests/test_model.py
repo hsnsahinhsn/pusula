@@ -91,3 +91,18 @@ def test_subsample_keeps_label():
                   soft=[0.05] * 20)
     idx, lab, soft = T.subsample(item, 8, random.Random(1))
     assert len(idx) == 8 and idx[lab] == 13 and sum(soft) == pytest.approx(1.0)
+
+
+def test_route_with_own_topics(tiny_engine):
+    topics = {"kardiyoloji": {"description": "Kalp ve damar hastalıkları",
+                              "intents": {"randevu": "Randevu", "sonuc": "Tetkik sonucu"}},
+              "faturalama": "Ödeme ve fatura"}
+    out = tiny_engine.route("Kalp kontrolü için randevu istiyorum.", topics=topics)
+    parts = out["path"].split(".")
+    assert parts[0] in topics and out["answers"]["konu"]["choice"] == parts[0]
+    if parts[0] == "kardiyoloji":
+        assert parts[1] in topics["kardiyoloji"]["intents"] and "niyet" in out["answers"]
+    else:
+        assert len(parts) == 1 and "niyet" not in out["answers"]
+    assert "aciliyet" in out["answers"]
+    assert "aciliyet" not in tiny_engine.route("x", topics=topics, universal=False)["answers"]
