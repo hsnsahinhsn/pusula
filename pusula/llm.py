@@ -15,9 +15,11 @@ DEFAULT_BASE_URL = os.getenv("LLM_API_BASE", "http://localhost:8000/v1")
 DEFAULT_MODEL = os.getenv("LLM_MODEL_NAME", "qwen")
 
 
-def make_client(base_url: str = DEFAULT_BASE_URL, timeout: float = 600.0):
+def make_client(base_url: str = DEFAULT_BASE_URL, timeout: float | None = None):
+    """``timeout`` (seconds) defaults to $LLM_TIMEOUT or 600; long thinking answers on a busy server need more."""
     from openai import AsyncOpenAI
 
+    timeout = timeout if timeout is not None else float(os.getenv("LLM_TIMEOUT", "600"))
     return AsyncOpenAI(base_url=base_url, api_key=os.getenv("LLM_API_KEY", "EMPTY"), timeout=timeout)
 
 
