@@ -78,7 +78,7 @@ universal:
     instructions: Metinde hakaret, küfür veya nefret söylemi var mı?
     criteria:
       yok: "Yok: hakaret, küfür veya nefret söylemi yok; sert ama hakaretsiz eleştiri dahil"
-      hakaret_kufur: "Hakaret veya küfür: bir kişiye ya da kuruma yönelik sövme veya aşağılama; olaya dayanan suçlama ve sert eleştiri hariç"
+      hakaret_kufur: "Hakaret veya küfür: bir kişiye ya da kuruma yönelik sövme veya aşağılama; olaya dayanan suçlama, olaya bağlı kaba söz ve sert eleştiri hariç"
       nefret_soylemi: "Nefret söylemi: etnik köken, din, cinsiyet, cinsel yönelim, engellilik, yaş, siyasi görüş, yöre gibi bir özelliği nedeniyle bir gruba yönelik aşağılama ya da düşmanlık"
   dolandiricilik:
     type: noul
@@ -92,7 +92,7 @@ universal:
     criteria:
       yok: "Yok: can güvenliğini tehdit eden bir durum yok"
       kendine_zarar: "Kendine zarar: intihar düşüncesi, kendine zarar verme isteği veya planı"
-      siddet_tehdit: "Şiddet veya tehdit: kişi şiddete uğruyor, tehdit ediliyor ya da başkasına zarar vermekten söz ediyor (mala zarar tehdidi dahil)"
+      siddet_tehdit: "Şiddet veya tehdit: kişi şiddete uğruyor, tehdit ediliyor ya da başkasına zarar vermekten söz ediyor (mala zarar ve şantaj tehdidi dahil)"
       tibbi_acil: "Tıbbi acil durum: göğüs ağrısı, nefes darlığı, bilinç kaybı, ağır kanama gibi hemen müdahale isteyen durum"
   yasal_risk:
     type: noul

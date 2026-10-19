@@ -82,7 +82,8 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
 ## mesaj_turu
 
 - Kişinin asıl yaptığına bak. Bir sorundan yakınıp çözüm isteyen mesaj **talep**tir ("Ürün kırık geldi, iade istiyorum");
-  çözüm istemeden yalnız yakınan mesaj **sikayet**tir ("Kalitesiz, almayın"). Olumlu yorum **ovgu**dur.
+  çözüm istemeden yalnız yakınan mesaj **sikayet**tir ("Kalitesiz, almayın"). Olumlu yorum **ovgu**dur. Sorununu anlatıp
+  kurumdan bir iş değil yol soran mesaj **soru**dur ("Kargom iki haftadır gelmedi, ne yapmalıyım?").
 - **bilgi_verme:** Bir durumu bildiriyor ama bir şey istemiyor ("Ödemeyi dün yaptım", "Adresim değişti").
 - **spam_anlamsiz:** Reklam, anlamsız karakter dizisi veya içeriksiz girdi. Kısa ama anlamlı yorumlar ("Temizliği çok
   zor", "Böyle bir şube yok") spam değildir.
@@ -94,25 +95,29 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
   ama dosya belli değil). Ajan bağlamında da aynı ölçüt geçerlidir.
 - **false:** Mesajdaki bilgiyle cevap verilebilir ya da makul bir varsayımla güvenle ilerlenebilir. Yalnız görüş
   bildiren yorumlarda eksik bilgi yoktur. Kurumun kişiyi geldiği kanaldan (giriş yapılmış uygulama, kayıtlı telefon)
-  bulabileceği varsayılır: takip numarası verilmemiş "Kargom nerede?" **false**dır. Konum vermeyen hayati bir acil
+  bulabileceği varsayılır: takip numarası verilmemiş "Kargom nerede?" ve önceki konuşmaya gönderen "Konuştuğumuz gibi
+  yapın" **false**dır. Günü kuruma bırakan istek ("Uygun bir güne randevu alın") de **false**dır. Konum vermeyen hayati bir acil
   durumda ilk doğru cevap (112'yi aramak, ilk yardım) bilgi beklemediği için **false** seçilir.
 
 ## hakaret
 
 - Soru metnin içeriğini ölçer, yazanın niyetini değil: başka birinin hakaretini alıntılayan bir şikâyette de hakaret
   işaretlenir (alıntının türüne göre **hakaret_kufur** ya da **nefret_soylemi**).
-- **hakaret_kufur:** Bir kişiye ya da kuruma yönelik sövme ya da aşağılama ("beyinsiz", "şerefsiz", "it"). Kimseye
+- **hakaret_kufur:** Bir kişiye ya da kuruma yönelik sövme ya da aşağılama ("beyinsiz", "şerefsiz", "it", "aptal",
+  "salak"). Olay anlatılmadan yapılan suçlama da ("Dolandırıcılar!", "Hırsızlar sizi") **hakaret_kufur**dur. Kimseye
   yönelmeyen ağır küfür de **hakaret_kufur**dur. Taraftarlık nedeniyle aşağılama **hakaret_kufur**dur.
 - **nefret_soylemi:** Bir gruba, grubun şu özelliklerinden biri nedeniyle yönelen aşağılama ya da düşmanlık: cinsiyet,
   ırk, renk, dil, din, inanç, mezhep, felsefi ya da siyasi görüş, etnik köken, uyruk, servet, doğum, medeni hâl, sağlık
-  durumu, engellilik, yaş, cinsel yönelim veya yöre (bölge kökeni). Kişiye ve gruba birlikte yönelen metinde
-  **nefret_soylemi** seçilir. Eşik suç eşiğinden düşüktür: gruba yönelik aşağılama yeterlidir.
+  durumu, engellilik, yaş, cinsel yönelim veya yöre (bölge kökeni). Kişiye ve gruba birlikte yönelen metinde ve tek bir
+  kişiyi grup kimliği üzerinden aşağılayan sözde ("Kadın kafası işte") **nefret_soylemi** seçilir. Eşik suç eşiğinden
+  düşüktür: gruba yönelik aşağılama yeterlidir.
 - **yok:** Sert ama hakaretsiz eleştiri ("rezalet bir hizmet", "berbat") hakaret değildir. Mesajda anlatılan somut bir
   olaya dayanan suçlama da hakaret değildir ("Paramı iade etmediniz, dolandırıcılar", "Bu fiyatlarla siz
-  soyguncusunuz"). Fiyata ya da hizmete yönelik benzetmeler ("Fiyatlarınız soygun") ve "lanet olsun" gibi hafif sözler
-  de hakaret değildir.
+  soyguncusunuz"). Anlatılan olaya bağlı kaba ve nezaket dışı sözler ("Fişi suratıma attı, terbiyesiz adam", "Utanmaz
+  şirket", "yüzsüz", "ukala") hakaret değildir. Fiyata ya da hizmete yönelik benzetmeler ("Fiyatlarınız soygun"), "lanet
+  olsun" gibi hafif sözler ve yalnız beddua ("Allah belanızı versin") de hakaret değildir.
 - Dayanak: TCK 125 (hakaret), 216 (halkın bir kesimini aşağılama), 6701 sayılı Kanun md. 3 (ayrımcılık temelleri) ve
-  Anayasa Mahkemesinin olaya dayanan sert eleştiriyi ifade özgürlüğü sayan kararları. Alıntı ve kimseye yönelmeyen ağır
+  Anayasa Mahkemesinin olaya dayanan sert eleştiriyi ve kaba, nezaket dışı sözü ifade özgürlüğü sayan kararları. Alıntı ve kimseye yönelmeyen ağır
   küfür kuralları erken uyarı için bilerek hukuktan geniş tutulmuştur.
 
 ## dolandiricilik
@@ -124,7 +129,10 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
   parçayı orijinal diye satmak, kopyalanmış IMEI. Dayanak: TCK 157 ve 158 (hileli davranışla aldatma).
 - **false:** Olağan ödeme, iade veya fatura işlemleri; dolandırıcılığı yalnız konu olarak soran bilgi soruları ("Kartım
   çalınırsa ne yapmalıyım?"); "dolandırıldım", "kazık yedim" gibi sözlerin yalnız pahalılık ya da bozuk ürün için
-  kullanılması.
+  kullanılması. Raf ile kasa fiyatı farkı ya da eski etiketin üstüne yapıştırılmış pahalı etiket, bilerek aldatma
+  açıkça anlatılmadıkça **false**dır. Bilerek yapıldığı belli olmayan gizli kusur da ("İkinci el araçta söylenenden
+  fazla boya çıktı, satıcı gözden kaçtı diyor") **false**dır. Şüphe işareti olmayan bir IBAN değişikliği bildirimi
+  **false**dır; acele, gizlilik isteği ya da farklı bir gönderen adresi gibi bir işaret varsa **true**dur.
 
 ## can_guvenligi
 
@@ -135,12 +143,20 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
 - **siddet_tehdit:** Kişi şiddete uğruyor, tehdit ediliyor ya da başkasına zarar vermekten söz ediyor ("Eşim beni tehdit
   ediyor, evden çıkamıyorum"). TCK 106'daki gibi mala zarar ya da başka bir kötülük tehdidi de ("Aracını yakarım",
   "Seni işinden ederim") ve birini intihara yönlendiren söz de ("Git kendini öldür") **siddet_tehdit**tir. Çocuğun
-  ihmal yüzünden tekrar tekrar zarar görmesi de bu sınıftadır. Yasal yollara başvuracağını söylemek tehdit değildir.
+  ihmal yüzünden tekrar tekrar zarar görmesi de bu sınıftadır. TCK 107'deki gibi şantaj ya da ifşa tehdidi ("Maaşımı
+  artırmazsanız şirketin sırlarını yayarım"), yüz yüze karşılaşma sözü ("Gelip hesaplaşacağım", "Kapında
+  bekleyeceğim") ve koruma kararı süren geçmiş şiddet ("Eski eşim için uzaklaştırma kararım var, adresimi kimseye
+  vermeyin") de **siddet_tehdit**tir. Yasal yollara başvuracağını ya da hakkını aramak için şikâyetini duyuracağını
+  ("Sosyal medyada herkese anlatacağım") söylemek tehdit değildir.
 - **tibbi_acil:** Hemen müdahale isteyen sağlık durumu (göğüs ağrısı, nefes darlığı, bilinç kaybı, ağır kanama).
   Şu an alınmış aşırı doz gibi hem kendine zarar hem tıbbi acil olan durumda **tibbi_acil** seçilir. Selde mahsur
   kalan ya da enkaz altındaki kişi de **tibbi_acil**dir; kimsenin mahsur ya da yaralı olmadığı bir tahliye değildir.
 - **yok:** Günlük "ölüyorum", "delireceğim" gibi abartılı sözler can güvenliği tehlikesi değildir. Evcil hayvan acilleri
-  bu soruda yer almaz; aciliyet sorusunda işaretlenir.
+  bu soruda yer almaz; aciliyet sorusunda işaretlenir. Zararı belirsiz öç sözleri ("Size gününüzü göstereceğim",
+  "Burnunuzdan fitil fitil getiririm"), kimsenin yaralı ya da mahsur olmadığı süren tehlike ("Binada gaz kokusu var",
+  açıkta elektrik kablosu) ve şu an sürmeyen geçmiş belirti ("Geçen hafta iki kez göğsüm ağrıdı, randevu istiyorum")
+  da **yok**tur; bunların aciliyeti aciliyet sorusunda işaretlenir.
+- Aynı metinde birden fazla durum varsa sıra şudur: **tibbi_acil**, sonra **kendine_zarar**, sonra **siddet_tehdit**.
 
 ## yasal_risk
 
@@ -148,7 +164,8 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
   Hakları ve Eşitlik Kurumu, düzenleyici kurum) söz konusu ya da yasal bir hakkın çiğnendiği ileri sürülüyor ("Cayma
   hakkımı kullandırmadılar").
 - **false:** Yasal bir yol anmayan memnuniyetsizlik; yasal bir konuyu yalnız bilgi olarak soran mesajlar ("Cayma hakkım
-  kaç gün?").
+  kaç gün?"). Kişinin kurumla değil başkasıyla süren hukuki süreci de ("Komşuma dava açtım, bunun için belge
+  istiyorum") **false**dır; soru kurum için yasal riski ölçer.
 
 ## ayrilma_riski
 
@@ -156,16 +173,19 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
 - **risk_var:** Ciddi memnuniyetsizlik, rakip firmayı anma, "son kez yazıyorum", "bir daha asla" gibi ayrılmaya yaklaşan
   işaretler. Ayrılma sözü olmasa da avukat, dava ya da resmî şikâyet tehdidi **risk_var**dır.
 - **hayir:** Ayrılma işareti yok; tek seferlik bir sorun bildirimi tek başına risk değildir. Kişinin başka bir kuruma
-  geçme imkânı olmayan hizmetlerde (SGK, vergi dairesi, belediye, nüfus müdürlüğü, elektrik dağıtım şirketi) cevap her
-  zaman **hayir**dır; devlet ya da özel hastane, üniversite ve okul gibi seçilebilen kurumlarda olağan kural uygulanır.
-  Yazan kurumun müşterisi değilse (tesisin yakınında oturan biri) ayrılacağı bir ilişki olmadığı için **hayir**
-  seçilir.
+  geçme imkânı olmayan hizmetlerde (SGK, vergi dairesi, belediye, nüfus müdürlüğü, elektrik ya da doğalgaz dağıtım
+  şirketi, otogar, araç muayenesi) cevap her zaman **hayir**dır; devlet ya da özel hastane, üniversite ve okul gibi
+  seçilebilen kurumlarda olağan kural uygulanır. Yazan kurumun müşterisi değilse (tesisin yakınında oturan biri) ya da
+  ilişkisi zaten bitmişse (taşınmış kiracı, sözleşmesini feshetmiş kişi) ayrılacağı bir ilişki olmadığı için yasal
+  tehditte de **hayir** seçilir.
 
 ## satis_firsati
 
 - **true:** Kişi bir ürün veya hizmet almak, fiyat ya da teklif öğrenmek, paketini yükseltmek ya da ek hizmet eklemek
   istiyor. Kampanya ya da fiyat soran sorular ("Kampanya ne zaman bitiyor?"), paket düşürme isteği ve "Fiyatı
-  düşürürseniz kalırım" gibi pazarlıklar da **true**dur (kişiyi tutmak için bir teklif yapılabilir).
+  düşürürseniz kalırım" gibi pazarlıklar da **true**dur (kişiyi tutmak için bir teklif yapılabilir). Almak istediği
+  üründe indirimin uygulanmadığını anlatan kişi de ("Reklamdaki indirimli ürünü almaya geldim, kasada indirim yoktu")
+  **true**dur; kişi hâlâ almak istiyor.
 - **false:** Satın alma ilgisi yok; mevcut bir siparişin durumu veya iadesi satış fırsatı değildir. Çalışma saati gibi
   genel sorular ve pazarlık içermeyen bir iptal isteği de **false**dur.
 
@@ -193,7 +213,8 @@ Yüksek ve üstü onay ister); netleştirme kararı evrensel `eksik_bilgi` sorus
   çelişiyor). Kullanıcının sorduğu asıl bilgi kaynakla destekleniyor ama ek bir ayrıntı kaynakta yoksa ya da tam
   uyuşmuyorsa **kismen**; asıl bilgi kaynakta yoksa ya da kaynakla çelişiyorsa **uydurma** seçilir. Kaynakta bilgi
   olmadığını doğru söyleyen cevap **dayaniyor**dur; kaynakta olan bir bilgi için "kaynakta yok" diyen cevap
-  **uydurma**dır. Özet isteğinde maddelerden biri uydurulmuş, ötekiler doğruysa **kismen** seçilir. Genel bilgi
+  **uydurma**dır. Özet isteğinde maddelerden biri uydurulmuş, ötekiler doğruysa **kismen** seçilir. Birden fazla soru
+  ya da madde istenmiş ve cevabın bir kısmı doğru, bir kısmı yanlış ya da kaynakta yoksa da **kismen** seçilir. Genel bilgi
   niteliğindeki bağlaçlar ve nezaket cümleleri dikkate alınmaz.
 - **gorev_tamamlandi:** tamamlandi (istenenin tamamı doğru), kismen (bir kısmı yapılmış ya da hatalı kısım var),
   tamamlanmadi (istek karşılanmamış, konu dışı ya da yanlış). Ajanın "yaptım" demesi yeterli değildir; cevaptaki sonuca
