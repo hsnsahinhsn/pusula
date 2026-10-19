@@ -93,29 +93,44 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
   boşa iş doğurur ("Siparişimi iptal edin" ama birden fazla sipariş olabilir ve hangisi belli değil; "Şu dosyayı düzelt"
   ama dosya belli değil). Ajan bağlamında da aynı ölçüt geçerlidir.
 - **false:** Mesajdaki bilgiyle cevap verilebilir ya da makul bir varsayımla güvenle ilerlenebilir. Yalnız görüş
-  bildiren yorumlarda eksik bilgi yoktur.
+  bildiren yorumlarda eksik bilgi yoktur. Kurumun kişiyi geldiği kanaldan (giriş yapılmış uygulama, kayıtlı telefon)
+  bulabileceği varsayılır: takip numarası verilmemiş "Kargom nerede?" **false**dır. Konum vermeyen hayati bir acil
+  durumda ilk doğru cevap (112'yi aramak, ilk yardım) bilgi beklemediği için **false** seçilir.
 
 ## hakaret
 
-- **hakaret_kufur:** Bir kişiye ya da kuruma yönelik aşağılama, hakaret veya küfür ("dolandırıcılar", "beyinsiz").
-- **nefret_soylemi:** Etnik köken, din, cinsiyet, cinsel yönelim, engellilik veya uyruk gibi bir gruba yönelik aşağılama
-  ya da düşmanlık. Kişiye ve gruba birlikte yönelen metinde **nefret_soylemi** seçilir.
-- **yok:** Sert ama hakaretsiz eleştiri ("rezalet bir hizmet", "berbat") hakaret değildir.
+- Soru metnin içeriğini ölçer, yazanın niyetini değil: başka birinin hakaretini alıntılayan bir şikâyette de hakaret
+  işaretlenir (alıntının türüne göre **hakaret_kufur** ya da **nefret_soylemi**).
+- **hakaret_kufur:** Bir kişiye ya da kuruma yönelik aşağılama, hakaret veya küfür ("dolandırıcılar", "beyinsiz",
+  "Siz soyguncusunuz"). Kimseye yönelmeyen ağır küfür de **hakaret_kufur**dur. Yaş, siyasi görüş veya taraftarlık
+  nedeniyle aşağılama **hakaret_kufur**dur.
+- **nefret_soylemi:** Etnik köken, din, cinsiyet, cinsel yönelim, engellilik, uyruk veya yöre (bölge kökeni) gibi bir
+  gruba yönelik aşağılama ya da düşmanlık. Kişiye ve gruba birlikte yönelen metinde **nefret_soylemi** seçilir.
+- **yok:** Sert ama hakaretsiz eleştiri ("rezalet bir hizmet", "berbat") hakaret değildir. Fiyata ya da hizmete yönelik
+  benzetmeler ("Fiyatlarınız soygun") ve "lanet olsun" gibi hafif sözler de hakaret değildir.
 
 ## dolandiricilik
 
 - **true:** Metnin kendisi bir dolandırıcılık girişimi olabilir (oltalama bağlantısı, sahte fatura veya belge, sahte hasar
-  ya da iade talebi, kimlik taklidi, acele para gönderme baskısı) ya da kişi dolandırıldığını bildiriyor.
+  ya da iade talebi, kimlik taklidi, acele para gönderme baskısı) ya da kişi dolandırıldığını bildiriyor. Kişinin
+  aldığı ve şüphelendiği bir SMS, e-posta veya aramayı anlatması da (bağlantıya tıklamamış, para göndermemiş olsa da)
+  ve taklit bir ürünün gerçek diye satılması da **true**dur.
 - **false:** Olağan ödeme, iade veya fatura işlemleri; dolandırıcılığı yalnız konu olarak soran bilgi soruları ("Kartım
-  çalınırsa ne yapmalıyım?").
+  çalınırsa ne yapmalıyım?"); "dolandırıldım", "kazık yedim" gibi sözlerin yalnız pahalılık ya da bozuk ürün için
+  kullanılması.
 
 ## can_guvenligi
 
-- **kendine_zarar:** İntihar düşüncesi, kendine zarar verme isteği veya planı ("Artık yaşamak istemiyorum").
+- **kendine_zarar:** İntihar düşüncesi, kendine zarar verme isteği veya planı ("Artık yaşamak istemiyorum"). Bir şeyi
+  elde etmek için söylenmiş olsa da ("İade etmezseniz kendimi öldürürüm") ve başka birinin (öğrenci, aile üyesi)
+  durumunu bildiren mesajda da **kendine_zarar** seçilir.
 - **siddet_tehdit:** Kişi şiddete uğruyor, tehdit ediliyor ya da başkasına zarar vermekten söz ediyor ("Eşim beni tehdit
   ediyor, evden çıkamıyorum").
 - **tibbi_acil:** Hemen müdahale isteyen sağlık durumu (göğüs ağrısı, nefes darlığı, bilinç kaybı, ağır kanama).
-- **yok:** Günlük "ölüyorum", "delireceğim" gibi abartılı sözler can güvenliği tehlikesi değildir.
+  Şu an alınmış aşırı doz gibi hem kendine zarar hem tıbbi acil olan durumda **tibbi_acil** seçilir. Selde mahsur
+  kalan ya da enkaz altındaki kişi de **tibbi_acil**dir.
+- **yok:** Günlük "ölüyorum", "delireceğim" gibi abartılı sözler can güvenliği tehlikesi değildir. Evcil hayvan acilleri
+  bu soruda yer almaz; aciliyet sorusunda işaretlenir.
 
 ## yasal_risk
 
@@ -128,14 +143,18 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
 
 - **acikca_istiyor:** Üyeliği, aboneliği veya sözleşmeyi bitirmek ya da başka firmaya geçmek istediğini açıkça söylüyor.
 - **risk_var:** Ciddi memnuniyetsizlik, rakip firmayı anma, "son kez yazıyorum", "bir daha asla" gibi ayrılmaya yaklaşan
-  işaretler.
-- **hayir:** Ayrılma işareti yok; tek seferlik bir sorun bildirimi tek başına risk değildir.
+  işaretler. Ayrılma sözü olmasa da avukat, dava ya da resmî şikâyet tehdidi **risk_var**dır.
+- **hayir:** Ayrılma işareti yok; tek seferlik bir sorun bildirimi tek başına risk değildir. Kişinin başka bir kuruma
+  geçme imkânı olmayan kamu hizmetlerinde (SGK, belediye, nüfus müdürlüğü) cevap her zaman **hayir**dır; özel hastane
+  ya da özel okul gibi seçilebilen kurumlarda olağan kural uygulanır.
 
 ## satis_firsati
 
 - **true:** Kişi bir ürün veya hizmet almak, fiyat ya da teklif öğrenmek, paketini yükseltmek ya da ek hizmet eklemek
-  istiyor.
-- **false:** Satın alma ilgisi yok; mevcut bir siparişin durumu veya iadesi satış fırsatı değildir.
+  istiyor. Kampanya ya da fiyat soran sorular ("Kampanya ne zaman bitiyor?"), paket düşürme isteği ve "Fiyatı
+  düşürürseniz kalırım" gibi pazarlıklar da **true**dur (kişiyi tutmak için bir teklif yapılabilir).
+- **false:** Satın alma ilgisi yok; mevcut bir siparişin durumu veya iadesi satış fırsatı değildir. Çalışma saati gibi
+  genel sorular ve pazarlık içermeyen bir iptal isteği de **false**dur.
 
 ## kisisel_veri
 
@@ -160,8 +179,9 @@ Yüksek ve üstü onay ister); netleştirme kararı evrensel `eksik_bilgi` sorus
   var), kismen (bir kısmı kaynakta yok ya da tam uyuşmuyor), uydurma (önemli bilgi kaynakta yok veya kaynakla
   çelişiyor). Kullanıcının sorduğu asıl bilgi kaynakla destekleniyor ama ek bir ayrıntı kaynakta yoksa ya da tam
   uyuşmuyorsa **kismen**; asıl bilgi kaynakta yoksa ya da kaynakla çelişiyorsa **uydurma** seçilir. Kaynakta bilgi
-  olmadığını doğru söyleyen cevap **dayaniyor**dur. Genel bilgi niteliğindeki bağlaçlar ve nezaket cümleleri dikkate
-  alınmaz.
+  olmadığını doğru söyleyen cevap **dayaniyor**dur; kaynakta olan bir bilgi için "kaynakta yok" diyen cevap
+  **uydurma**dır. Özet isteğinde maddelerden biri uydurulmuş, ötekiler doğruysa **kismen** seçilir. Genel bilgi
+  niteliğindeki bağlaçlar ve nezaket cümleleri dikkate alınmaz.
 - **gorev_tamamlandi:** tamamlandi (istenenin tamamı doğru), kismen (bir kısmı yapılmış ya da hatalı kısım var),
   tamamlanmadi (istek karşılanmamış, konu dışı ya da yanlış). Ajanın "yaptım" demesi yeterli değildir; cevaptaki sonuca
   bakılır.
