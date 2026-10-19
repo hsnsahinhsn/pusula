@@ -101,20 +101,27 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
 
 - Soru metnin içeriğini ölçer, yazanın niyetini değil: başka birinin hakaretini alıntılayan bir şikâyette de hakaret
   işaretlenir (alıntının türüne göre **hakaret_kufur** ya da **nefret_soylemi**).
-- **hakaret_kufur:** Bir kişiye ya da kuruma yönelik aşağılama, hakaret veya küfür ("dolandırıcılar", "beyinsiz",
-  "Siz soyguncusunuz"). Kimseye yönelmeyen ağır küfür de **hakaret_kufur**dur. Yaş, siyasi görüş veya taraftarlık
-  nedeniyle aşağılama **hakaret_kufur**dur.
-- **nefret_soylemi:** Etnik köken, din, cinsiyet, cinsel yönelim, engellilik, uyruk veya yöre (bölge kökeni) gibi bir
-  gruba yönelik aşağılama ya da düşmanlık. Kişiye ve gruba birlikte yönelen metinde **nefret_soylemi** seçilir.
-- **yok:** Sert ama hakaretsiz eleştiri ("rezalet bir hizmet", "berbat") hakaret değildir. Fiyata ya da hizmete yönelik
-  benzetmeler ("Fiyatlarınız soygun") ve "lanet olsun" gibi hafif sözler de hakaret değildir.
+- **hakaret_kufur:** Bir kişiye ya da kuruma yönelik sövme ya da aşağılama ("beyinsiz", "şerefsiz", "it"). Kimseye
+  yönelmeyen ağır küfür de **hakaret_kufur**dur. Taraftarlık nedeniyle aşağılama **hakaret_kufur**dur.
+- **nefret_soylemi:** Bir gruba, grubun şu özelliklerinden biri nedeniyle yönelen aşağılama ya da düşmanlık: cinsiyet,
+  ırk, renk, dil, din, inanç, mezhep, felsefi ya da siyasi görüş, etnik köken, uyruk, servet, doğum, medeni hâl, sağlık
+  durumu, engellilik, yaş, cinsel yönelim veya yöre (bölge kökeni). Kişiye ve gruba birlikte yönelen metinde
+  **nefret_soylemi** seçilir. Eşik suç eşiğinden düşüktür: gruba yönelik aşağılama yeterlidir.
+- **yok:** Sert ama hakaretsiz eleştiri ("rezalet bir hizmet", "berbat") hakaret değildir. Mesajda anlatılan somut bir
+  olaya dayanan suçlama da hakaret değildir ("Paramı iade etmediniz, dolandırıcılar", "Bu fiyatlarla siz
+  soyguncusunuz"). Fiyata ya da hizmete yönelik benzetmeler ("Fiyatlarınız soygun") ve "lanet olsun" gibi hafif sözler
+  de hakaret değildir.
+- Dayanak: TCK 125 (hakaret), 216 (halkın bir kesimini aşağılama), 6701 sayılı Kanun md. 3 (ayrımcılık temelleri) ve
+  Anayasa Mahkemesinin olaya dayanan sert eleştiriyi ifade özgürlüğü sayan kararları. Alıntı ve kimseye yönelmeyen ağır
+  küfür kuralları erken uyarı için bilerek hukuktan geniş tutulmuştur.
 
 ## dolandiricilik
 
 - **true:** Metnin kendisi bir dolandırıcılık girişimi olabilir (oltalama bağlantısı, sahte fatura veya belge, sahte hasar
   ya da iade talebi, kimlik taklidi, acele para gönderme baskısı) ya da kişi dolandırıldığını bildiriyor. Kişinin
   aldığı ve şüphelendiği bir SMS, e-posta veya aramayı anlatması da (bağlantıya tıklamamış, para göndermemiş olsa da)
-  ve taklit bir ürünün gerçek diye satılması da **true**dur.
+  ve satışta bilerek aldatma da **true**dur: taklit ürünü gerçek diye, ikinci el ürünü sıfır diye ya da yan sanayi
+  parçayı orijinal diye satmak, kopyalanmış IMEI. Dayanak: TCK 157 ve 158 (hileli davranışla aldatma).
 - **false:** Olağan ödeme, iade veya fatura işlemleri; dolandırıcılığı yalnız konu olarak soran bilgi soruları ("Kartım
   çalınırsa ne yapmalıyım?"); "dolandırıldım", "kazık yedim" gibi sözlerin yalnız pahalılık ya da bozuk ürün için
   kullanılması.
@@ -123,19 +130,23 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
 
 - **kendine_zarar:** İntihar düşüncesi, kendine zarar verme isteği veya planı ("Artık yaşamak istemiyorum"). Bir şeyi
   elde etmek için söylenmiş olsa da ("İade etmezseniz kendimi öldürürüm") ve başka birinin (öğrenci, aile üyesi)
-  durumunu bildiren mesajda da **kendine_zarar** seçilir.
+  durumunu bildiren mesajda da **kendine_zarar** seçilir. Takip ya da tehdit anlatan kişi kendine zarar düşüncesinden de
+  söz ediyorsa **kendine_zarar** seçilir.
 - **siddet_tehdit:** Kişi şiddete uğruyor, tehdit ediliyor ya da başkasına zarar vermekten söz ediyor ("Eşim beni tehdit
-  ediyor, evden çıkamıyorum").
+  ediyor, evden çıkamıyorum"). TCK 106'daki gibi mala zarar ya da başka bir kötülük tehdidi de ("Aracını yakarım",
+  "Seni işinden ederim") ve birini intihara yönlendiren söz de ("Git kendini öldür") **siddet_tehdit**tir. Çocuğun
+  ihmal yüzünden tekrar tekrar zarar görmesi de bu sınıftadır. Yasal yollara başvuracağını söylemek tehdit değildir.
 - **tibbi_acil:** Hemen müdahale isteyen sağlık durumu (göğüs ağrısı, nefes darlığı, bilinç kaybı, ağır kanama).
   Şu an alınmış aşırı doz gibi hem kendine zarar hem tıbbi acil olan durumda **tibbi_acil** seçilir. Selde mahsur
-  kalan ya da enkaz altındaki kişi de **tibbi_acil**dir.
+  kalan ya da enkaz altındaki kişi de **tibbi_acil**dir; kimsenin mahsur ya da yaralı olmadığı bir tahliye değildir.
 - **yok:** Günlük "ölüyorum", "delireceğim" gibi abartılı sözler can güvenliği tehlikesi değildir. Evcil hayvan acilleri
   bu soruda yer almaz; aciliyet sorusunda işaretlenir.
 
 ## yasal_risk
 
-- **true:** Dava, avukat, suç duyurusu, resmî şikâyet (tüketici hakem heyeti, KVKK başvurusu, düzenleyici kurum) söz
-  konusu ya da yasal bir hakkın çiğnendiği ileri sürülüyor ("Cayma hakkımı kullandırmadılar").
+- **true:** Dava, avukat, arabulucu, suç duyurusu, resmî şikâyet (tüketici hakem heyeti, KVKK başvurusu, Türkiye İnsan
+  Hakları ve Eşitlik Kurumu, düzenleyici kurum) söz konusu ya da yasal bir hakkın çiğnendiği ileri sürülüyor ("Cayma
+  hakkımı kullandırmadılar").
 - **false:** Yasal bir yol anmayan memnuniyetsizlik; yasal bir konuyu yalnız bilgi olarak soran mesajlar ("Cayma hakkım
   kaç gün?").
 
@@ -145,8 +156,10 @@ Israr, öfke veya "acil" kelimesi seviyeyi tek başına yükseltmez.
 - **risk_var:** Ciddi memnuniyetsizlik, rakip firmayı anma, "son kez yazıyorum", "bir daha asla" gibi ayrılmaya yaklaşan
   işaretler. Ayrılma sözü olmasa da avukat, dava ya da resmî şikâyet tehdidi **risk_var**dır.
 - **hayir:** Ayrılma işareti yok; tek seferlik bir sorun bildirimi tek başına risk değildir. Kişinin başka bir kuruma
-  geçme imkânı olmayan kamu hizmetlerinde (SGK, belediye, nüfus müdürlüğü) cevap her zaman **hayir**dır; özel hastane
-  ya da özel okul gibi seçilebilen kurumlarda olağan kural uygulanır.
+  geçme imkânı olmayan hizmetlerde (SGK, vergi dairesi, belediye, nüfus müdürlüğü, elektrik dağıtım şirketi) cevap her
+  zaman **hayir**dır; devlet ya da özel hastane, üniversite ve okul gibi seçilebilen kurumlarda olağan kural uygulanır.
+  Yazan kurumun müşterisi değilse (tesisin yakınında oturan biri) ayrılacağı bir ilişki olmadığı için **hayir**
+  seçilir.
 
 ## satis_firsati
 
