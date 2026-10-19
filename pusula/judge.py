@@ -3,6 +3,11 @@
 The judge sees the state and each question with its options in a shuffled, lettered order, but never
 the generator's labels, so its answers are an independent vote for consensus filtering.
 
+With ``--layout questions-first`` the built-in questions (domain, universal, agent) come before the state, in the
+taxonomy's order, and with ``--fixed-order`` their options are shuffled once per question name instead of once per
+example. Every message then starts with the same prompt prefix, which a vLLM server with prefix caching reads only
+once; the example's own questions follow the state as before.
+
     python -m pusula.judge --inp runs/full/generated.jsonl --out runs/full/judged.jsonl
 """
 from __future__ import annotations
@@ -34,14 +39,31 @@ SYSTEM = (
 )
 
 
-def lettered(ex: Example, seed: int = 0) -> dict[str, list[str]]:
-    """Per question: option keys in the shuffled order shown to the judge (index = letter)."""
+def shared_names() -> list[str]:
+    """Built-in question names in the taxonomy's order: the same definition in every message."""
+    tax = load_taxonomy()
+    return ["alan", *tax.universal, *tax.agent]
+
+
+def arranged(ex: Example, layout: str = "state-first") -> tuple[Example, int]:
+    """The example with its questions in prompt order, and how many built-in questions lead (questions-first only)."""
+    if layout != "questions-first":
+        return ex, 0
+    shared = [n for n in shared_names() if n in ex.questions]
+    own = [n for n in ex.questions if n not in set(shared)]
+    qs = {n: ex.questions[n] for n in [*shared, *own]}
+    return ex.model_copy(update={"questions": qs}), len(shared)
+
+
+def lettered(ex: Example, seed: int = 0, fixed: frozenset[str] = frozenset()) -> dict[str, list[str]]:
+    """Per question: option keys in the shuffled order shown to the judge (index = letter). Questions named in
+    ``fixed`` get one order per name (the same in every example), the others one order per example."""
     order = {}
     for name, q in ex.questions.items():
         keys = q.option_keys()
         if q.type != "score":  # keep ordinal levels in order
             keys = keys[:]
-            random.Random(f"{seed}:{ex.id}:{name}").shuffle(keys)
+            random.Random(f"{seed}:{name}" if name in fixed else f"{seed}:{ex.id}:{name}").shuffle(keys)
         order[name] = keys
     return order
 
@@ -74,13 +96,19 @@ def majority(votes: list[dict[str, str]]) -> dict[str, str]:
     return out
 
 
-def build_prompt(ex: Example, order: dict[str, list[str]], rationale: bool = False) -> str:
-    lines = ["Durum:", ex.state, ""]
+def build_prompt(ex: Example, order: dict[str, list[str]], rationale: bool = False, lead: int = 0) -> str:
+    """With ``lead`` > 0 (questions-first layout), the first ``lead`` questions come before the state."""
+    state = ["Durum:", ex.state, ""]
+    lines = ["Sorular, aşağıdaki 'Durum' metni hakkındadır.", ""] if lead else state[:]
     for n, (name, q) in enumerate(ex.questions.items(), 1):
+        if lead and n == lead + 1:
+            lines += state
         texts = dict(zip(q.option_keys(), q.option_texts()))
         lines.append(f"Soru {n} ({name}): {q.instructions}")
         lines += [f"  {code(i)}) {texts[k]}" for i, k in enumerate(order[name])]
         lines.append("")
+    if lead and lead >= len(ex.questions):
+        lines += state
     lines.append('Önce "gerekce" alanına durumu kısaca değerlendir, sonra her soru için seçtiğin harfi ver.'
                  if rationale else "Her soru için yalnızca seçtiğin harfi ver.")
     return "\n".join(lines)
@@ -123,13 +151,15 @@ async def run(args) -> None:
             view = refreshed(view, wanted)
         if not view.questions:
             return {}
+        view, lead = arranged(view, args.layout)
+        fixed = frozenset(shared_names()) if args.fixed_order else frozenset()
         votes, usage = [], []
         for v in range(args.votes):
-            order = lettered(view, args.seed + v)
+            order = lettered(view, args.seed + v, fixed)
             out = await chat_json(
                 client, args.model,
                 [{"role": "system", "content": system},
-                 {"role": "user", "content": build_prompt(view, order, args.rationale)}],
+                 {"role": "user", "content": build_prompt(view, order, args.rationale, lead)}],
                 answer_schema(order, args.rationale), temperature=0.0 if args.votes == 1 else 0.7,
                 top_p=1.0 if args.votes == 1 else 0.95, max_tokens=args.max_tokens, extra_body=extra, usage=usage,
             )
@@ -173,6 +203,10 @@ def main(argv=None) -> None:
     p.add_argument("--rationale", action="store_true", help="a short assessment before the answers")
     p.add_argument("--votes", type=int, default=1, help="sampled answers per example; the majority wins")
     p.add_argument("--extra-body", default="", help="JSON passed to the server, e.g. {\"reasoning_effort\": \"medium\"}")
+    p.add_argument("--layout", choices=["state-first", "questions-first"], default="state-first",
+                   help="questions-first: built-in questions before the state (a shared prompt prefix)")
+    p.add_argument("--fixed-order", action="store_true",
+                   help="shuffle each built-in question's options once per name, not once per example")
     asyncio.run(run(p.parse_args(argv)))
 
 

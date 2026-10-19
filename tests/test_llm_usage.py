@@ -32,6 +32,7 @@ def test_usage_includes_failed_attempts(monkeypatch):
     out = asyncio.run(chat_json(client, "m", [], {"type": "object"}, usage=usage))
     assert out == {"a": "A"}
     assert len(usage) == 2 and sum(u["cost"] for u in usage) == 0.002
+    assert [u["finish_reason"] for u in usage] == ["length", "stop"]  # runaway outputs can be counted
 
 
 def test_usage_is_optional():

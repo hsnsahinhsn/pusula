@@ -61,9 +61,9 @@ async def chat_json(
                 # options (e.g. gpt-oss: {"reasoning_effort": "medium"}).
                 extra_body=extra_body if extra_body is not None else {"chat_template_kwargs": {"enable_thinking": False}},
             )
-            if usage is not None and getattr(resp, "usage", None) is not None:
-                usage.append(resp.usage.model_dump())
             choice = resp.choices[0]
+            if usage is not None and getattr(resp, "usage", None) is not None:
+                usage.append({**resp.usage.model_dump(), "finish_reason": choice.finish_reason})
             if choice.finish_reason == "length":
                 raise ValueError("output truncated")
             return json.loads(choice.message.content)
