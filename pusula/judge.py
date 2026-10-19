@@ -114,6 +114,8 @@ async def run(args) -> None:
 
     system = system_prompt(args.policy, Path(args.policy_note).read_text(encoding="utf-8") if args.policy_note else "")
 
+    spent: dict[str, dict] = {}  # id -> billed usage of this judge (cost reported by e.g. OpenRouter)
+
     async def worker(ex: Example):
         view = ex if wanted is None else ex.model_copy(update={"questions": {
             k: q for k, q in ex.questions.items() if k in wanted}})
@@ -121,7 +123,7 @@ async def run(args) -> None:
             view = refreshed(view, wanted)
         if not view.questions:
             return {}
-        votes = []
+        votes, usage = [], []
         for v in range(args.votes):
             order = lettered(view, args.seed + v)
             out = await chat_json(
@@ -129,14 +131,22 @@ async def run(args) -> None:
                 [{"role": "system", "content": system},
                  {"role": "user", "content": build_prompt(view, order, args.rationale)}],
                 answer_schema(order, args.rationale), temperature=0.0 if args.votes == 1 else 0.7,
-                top_p=1.0 if args.votes == 1 else 0.95, max_tokens=args.max_tokens, extra_body=extra,
+                top_p=1.0 if args.votes == 1 else 0.95, max_tokens=args.max_tokens, extra_body=extra, usage=usage,
             )
             if out:
                 votes.append(decode(order, out))
+        if usage:
+            spent[ex.id] = {"cost": round(sum(float(u.get("cost") or 0) for u in usage), 7),
+                            "completion_tokens": sum(u.get("completion_tokens") or 0 for u in usage),
+                            "reasoning_tokens": sum((u.get("completion_tokens_details") or {}).get("reasoning_tokens") or 0
+                                                    for u in usage),
+                            "calls": len(usage)}
         return majority(votes) if votes else None
 
     def on_result(ex: Example, labels: dict[str, str]):
         ex.labels[args.source] = labels
+        if ex.id in spent:
+            ex.meta.setdefault("usage", {})[args.source] = spent.pop(ex.id)
         writer.write(ex)
 
     try:

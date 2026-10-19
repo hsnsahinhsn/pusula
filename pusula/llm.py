@@ -32,8 +32,12 @@ async def chat_json(
     max_tokens: int = 2048,
     retries: int = 3,
     extra_body: Optional[dict[str, Any]] = None,
+    usage: Optional[list[dict[str, Any]]] = None,
 ) -> Optional[dict[str, Any]]:
     """One structured completion; returns the parsed object, or None after `retries` failures.
+
+    With ``usage``, each response's token usage (and the cost, when the server reports it, e.g. OpenRouter) is appended
+    to that list, failed attempts included: they were billed too.
 
     Connection failures (the server restarting, e.g. after a watchdog restart on a shared GPU) do not
     use up retries: the call waits for the server to come back and tries again.
@@ -57,6 +61,8 @@ async def chat_json(
                 # options (e.g. gpt-oss: {"reasoning_effort": "medium"}).
                 extra_body=extra_body if extra_body is not None else {"chat_template_kwargs": {"enable_thinking": False}},
             )
+            if usage is not None and getattr(resp, "usage", None) is not None:
+                usage.append(resp.usage.model_dump())
             choice = resp.choices[0]
             if choice.finish_reason == "length":
                 raise ValueError("output truncated")
