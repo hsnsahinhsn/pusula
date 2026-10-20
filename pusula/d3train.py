@@ -7,6 +7,9 @@
     python -m pusula.d3train eval --d3 ~/hf/d3 --adapter runs/full/pusula-d3/best \
         --data runs/full/gold/gold.jsonl --out runs/full/reports/pusula_d3_gold.json
 
+    # CPU gate before a GPU run (tokenizer only): items build, labels are valid, validation is not empty
+    python -m pusula.d3train check --d3 ~/hf/d3 --data runs/full/final --eval runs/full/gold/gold.jsonl
+
 Training is resumable: `<out>/last` holds the adapter, readout, optimizer and step, and a restart skips
 the micro-batches already done (batch order is fixed by the seed). Choice options are shown in a random
 order per sample so the model learns the options, not their positions.
@@ -38,13 +41,30 @@ class Item:
     soft: Optional[list[float]] = None  # teacher distribution in the shown order (knowledge distillation)
 
 
+def rare_first(rows: list, label_source: str, rng: random.Random) -> list:
+    """One question name's (example, name) pairs, shuffled within each label value and then taken round-robin over
+    the values, rarest first: a share cut from the front keeps every row of a rare class (e.g. hakaret) before it
+    repeats the majority class."""
+    by_label = defaultdict(list)
+    for p in rows:
+        by_label[p[0].labels[label_source][p[1]]].append(p)
+    groups = [by_label[k] for k in sorted(by_label, key=lambda k: (len(by_label[k]), str(k)))]
+    for g in groups:
+        rng.shuffle(g)
+    return [g[i] for i in range(max(map(len, groups), default=0)) for g in groups if i < len(g)]
+
+
 def build_items(examples: list[Example], decider, label_source: str, rng: Optional[random.Random],
-                max_prompts: int = 0, weights: Optional[dict[str, float]] = None) -> list[Item]:
+                max_prompts: int = 0, weights: Optional[dict[str, float]] = None,
+                class_balance: bool = False) -> list[Item]:
     from .d3model import render, shuffled_order
 
     pairs = [(ex, name) for ex in examples for name in ex.labels.get(label_source, {})]
+    if not pairs:
+        return []
     if max_prompts and len(pairs) > max_prompts and rng is not None:
-        # balance question names: a share proportional to each name's weight (default 1), leftovers at random
+        # balance question names: a share proportional to each name's weight (default 1), leftovers at random;
+        # class_balance: inside a name the rare label values come first (see rare_first)
         by_name = defaultdict(list)
         for p in pairs:
             by_name[p[1]].append(p)
@@ -53,7 +73,10 @@ def build_items(examples: list[Example], decider, label_source: str, rng: Option
         chosen, rest = [], []
         for name in sorted(by_name):
             rows = by_name[name]
-            rng.shuffle(rows)
+            if class_balance:
+                rows = rare_first(rows, label_source, rng)
+            else:
+                rng.shuffle(rows)
             share = int(max_prompts * w[name] / total)
             chosen += rows[:share]
             rest += rows[share:]
@@ -149,6 +172,78 @@ def evaluate(decider, items: list[Item], token_budget: int) -> dict:
             "micro_acc": round(sum(ok_all) / max(len(ok_all), 1), 4), "ece": round(ece, 4), "acc": acc}
 
 
+def val_set(examples: list[Example], decider, seed: int, max_val: int) -> list[Item]:
+    """Validation items: options in a fixed-seed shuffled order (a writer that puts its target first must not reward a
+    first-option habit), then a fixed subset so every evaluation is comparable."""
+    items = build_items(examples, decider, "final", random.Random(seed + 1000))
+    if max_val and len(items) > max_val:
+        items = random.Random(0).sample(items, max_val)
+    return items
+
+
+class TokenizerDecider:
+    """What build_items needs (tokenizer, codes, encode) without the d3 weights: a CPU gate before a GPU run."""
+
+    def __init__(self, model_dir: str):
+        from transformers import AutoTokenizer
+
+        from .d3model import load_codes
+
+        self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
+        self.codes = load_codes(model_dir)
+
+    def encode(self, prompts):
+        return self.tokenizer(list(prompts), add_special_tokens=False)["input_ids"]
+
+
+def run_check(a) -> None:
+    """CPU gate: the training and evaluation items build exactly as `train` / `eval` build them (labels valid,
+    validation not empty). Exits non-zero on any problem; lengths over the token budgets are reported (an item
+    longer than the budget runs as a batch of its own)."""
+    decider = TokenizerDecider(a.d3)
+    report, problems = {}, []
+
+    def lengths(name, items, budget):
+        lens = sorted(len(it.ids) for it in items)
+        report[name] = {"items": len(items), "max_tokens": lens[-1] if lens else 0,
+                        "mean_tokens": round(sum(lens) / max(len(lens), 1), 1),
+                        "over_budget": sum(x > budget for x in lens)}
+
+    if a.data:
+        weights = {name: a.focus_weight for name in a.focus.split(",") if name} if a.focus else None
+        try:
+            train_items = build_items(read_examples(Path(a.data) / "train.jsonl"), decider, "final",
+                                      random.Random(a.seed), a.max_prompts, weights, not a.no_class_balance)
+            val_items = val_set(read_examples(Path(a.data) / "val.jsonl"), decider, a.seed, a.max_val)
+        except Exception as e:  # noqa: BLE001 - every failure is a gate failure, reported with its cause
+            problems.append(f"{a.data}: {type(e).__name__}: {e}")
+        else:
+            lengths("train", train_items, a.token_budget)
+            lengths("val", val_items, a.token_budget)
+            if not val_items:
+                problems.append(f"{a.data}/val.jsonl: doğrulama sorusu yok")
+            if a.focus:
+                seen = {it.name for it in train_items}
+                missing = [n for n in a.focus.split(",") if n and n not in seen]
+                if missing:
+                    report["focus_missing"] = missing  # a warning: the share goes to the other names
+    for f in a.eval or []:
+        try:
+            examples = read_examples(f)
+            source = "gold" if any("gold" in ex.labels for ex in examples) else "final"
+            items = build_items(examples, decider, source, None)
+        except Exception as e:  # noqa: BLE001
+            problems.append(f"{f}: {type(e).__name__}: {e}")
+            continue
+        lengths(Path(f).name, items, a.eval_token_budget)
+        if not items:
+            problems.append(f"{f}: etiketli soru yok")
+    report["problems"] = problems
+    print(json.dumps(report, ensure_ascii=False))
+    if problems:
+        raise SystemExit(1)
+
+
 def _precision(a) -> Optional[bool]:
     return {"4bit": True, "bf16": False}.get(a.precision)  # "auto" -> None (decided by GPU memory)
 
@@ -184,17 +279,17 @@ def train(a) -> None:
     last = out / "last"
     resume = (last / "trainer_state.json").exists() and not a.bench
     start = str(last) if resume else a.init_adapter  # continue from a trained Pusula adapter (e.g. v1 -> v2)
+    train_ex, val_ex = read_examples(Path(a.data) / "train.jsonl"), read_examples(Path(a.data) / "val.jsonl")
+    if not a.bench and not any(ex.labels.get("final") for ex in val_ex):  # before d3 is loaded (GPU time)
+        raise SystemExit(f"{Path(a.data) / 'val.jsonl'}: etiketli doğrulama sorusu yok; en iyi kayıt seçilemez")
     decider = D3Decider.load(a.d3, adapter=start, lora_rank=a.lora_rank,
                              gradient_checkpointing=not a.no_grad_ckpt, load_in_4bit=_precision(a), device=device)
     decider.readout.requires_grad_(True)
     rng = random.Random(a.seed)
     t0 = time.time()
     weights = {name: a.focus_weight for name in a.focus.split(",") if name} if a.focus else None
-    train_items = build_items(read_examples(Path(a.data) / "train.jsonl"), decider, "final", rng, a.max_prompts,
-                              weights)
-    val_items = build_items(read_examples(Path(a.data) / "val.jsonl"), decider, "final", None)
-    if a.max_val and len(val_items) > a.max_val:  # fixed subset so every evaluation is comparable
-        val_items = random.Random(0).sample(val_items, a.max_val)
+    train_items = build_items(train_ex, decider, "final", rng, a.max_prompts, weights, not a.no_class_balance)
+    val_items = val_set(val_ex, decider, a.seed, a.max_val)
     say(f"[cyan]{len(train_items)} eğitim / {len(val_items)} doğrulama sorusu "
         f"({time.time() - t0:.0f}s tokenizasyon), {world} GPU[/cyan]")
 
@@ -282,7 +377,7 @@ def train(a) -> None:
         if not a.bench and (step % a.save_every == 0 or step == steps_total):
             if main:
                 decider.backbone.eval()
-                m = evaluate(decider, val_items, a.token_budget)
+                m = evaluate(decider, val_items, a.val_token_budget or a.token_budget)
                 decider.backbone.train()
                 say(f"[bold]adım {step}[/bold] val macro_acc {m['macro_acc']:.4f} ece {m['ece']:.4f}")
                 log.write(json.dumps({"step": step, "val": m}, ensure_ascii=False) + "\n")
@@ -333,6 +428,10 @@ def main(argv=None) -> None:
                                                  "of --max-prompts (e.g. where base d3 is weakest)")
     t.add_argument("--focus-weight", type=float, default=2.0)
     t.add_argument("--max-val", type=int, default=1500)
+    t.add_argument("--val-token-budget", type=int, default=0,
+                   help="padded tokens per validation micro-batch (no gradients, so it can be larger; 0 = --token-budget)")
+    t.add_argument("--no-class-balance", action="store_true",
+                   help="sample each question name's share at random (v1.0) instead of rare label values first")
     t.add_argument("--epochs", type=int, default=1)
     t.add_argument("--lora-rank", type=int, default=32)
     t.add_argument("--init-adapter", default=None, help="start from this trained adapter (LoRA + readout) instead of base d3")
@@ -362,8 +461,20 @@ def main(argv=None) -> None:
     e.add_argument("--token-budget", type=int, default=16384)
     e.add_argument("--out", required=True)
     e.add_argument("--precision", choices=["auto", "4bit", "bf16"], default="auto")
+    c = sub.add_parser("check", help="CPU gate before a GPU run: build the items with the d3 tokenizer only")
+    c.add_argument("--d3", required=True, help="d3 directory (only the tokenizer and decision_config.json are read)")
+    c.add_argument("--data", default=None, help="training directory (train.jsonl / val.jsonl), built as `train` does")
+    c.add_argument("--eval", nargs="*", default=None, help="evaluation files, built as `eval` does")
+    c.add_argument("--max-prompts", type=int, default=40000)
+    c.add_argument("--focus", default="")
+    c.add_argument("--focus-weight", type=float, default=2.0)
+    c.add_argument("--max-val", type=int, default=1500)
+    c.add_argument("--no-class-balance", action="store_true")
+    c.add_argument("--seed", type=int, default=17)
+    c.add_argument("--token-budget", type=int, default=8192)
+    c.add_argument("--eval-token-budget", type=int, default=16384)
     a = p.parse_args(argv)
-    train(a) if a.cmd == "train" else run_eval(a)
+    {"train": train, "eval": run_eval, "check": run_check}[a.cmd](a)
 
 
 if __name__ == "__main__":

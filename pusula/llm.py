@@ -35,8 +35,13 @@ async def chat_json(
     retries: int = 3,
     extra_body: Optional[dict[str, Any]] = None,
     usage: Optional[list[dict[str, Any]]] = None,
+    retry_sampling: Optional[dict[str, Any]] = None,
 ) -> Optional[dict[str, Any]]:
     """One structured completion; returns the parsed object, or None after `retries` failures.
+
+    ``retry_sampling`` (e.g. ``{"temperature": 1.0, "top_p": 0.95, "top_k": 20}``) replaces the sampling settings after
+    a failed attempt: a greedy thinking model that ran into a loop would repeat the same loop on every retry. Keys other
+    than temperature and top_p go to the request body.
 
     With ``usage``, each response's token usage (and the cost, when the server reports it, e.g. OpenRouter) is appended
     to that list, failed attempts included: they were billed too.
@@ -46,22 +51,27 @@ async def chat_json(
     """
     from openai import APIConnectionError
 
+    # Qwen3.x: answer directly; structured output and thinking do not mix. Other models pass their own
+    # options (e.g. gpt-oss: {"reasoning_effort": "medium"}).
+    body = extra_body if extra_body is not None else {"chat_template_kwargs": {"enable_thinking": False}}
     attempt = 0
     while attempt < retries:
+        temp, tp, extra = temperature, top_p, body
+        if attempt and retry_sampling:
+            rest = {k: v for k, v in retry_sampling.items() if k not in ("temperature", "top_p")}
+            temp, tp, extra = retry_sampling.get("temperature", temp), retry_sampling.get("top_p", tp), {**body, **rest}
         try:
             resp = await client.chat.completions.create(
                 model=model,
                 messages=messages,
-                temperature=temperature,
-                top_p=top_p,
+                temperature=temp,
+                top_p=tp,
                 max_tokens=max_tokens,
                 response_format={
                     "type": "json_schema",
                     "json_schema": {"name": "output", "schema": schema, "strict": True},
                 },
-                # Qwen3.x: answer directly; structured output and thinking do not mix. Other models pass their own
-                # options (e.g. gpt-oss: {"reasoning_effort": "medium"}).
-                extra_body=extra_body if extra_body is not None else {"chat_template_kwargs": {"enable_thinking": False}},
+                extra_body=extra,
             )
             choice = resp.choices[0]
             if usage is not None and getattr(resp, "usage", None) is not None:

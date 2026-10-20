@@ -139,6 +139,7 @@ async def run(args) -> None:
 
     wanted = set(args.questions.split(",")) if args.questions else None
     extra = json.loads(args.extra_body) if args.extra_body else None
+    retry_sampling = json.loads(args.retry_sampling) if args.retry_sampling else None
 
     system = system_prompt(args.policy, Path(args.policy_note).read_text(encoding="utf-8") if args.policy_note else "")
 
@@ -162,6 +163,7 @@ async def run(args) -> None:
                  {"role": "user", "content": build_prompt(view, order, args.rationale, lead)}],
                 answer_schema(order, args.rationale), temperature=0.0 if args.votes == 1 else 0.7,
                 top_p=1.0 if args.votes == 1 else 0.95, max_tokens=args.max_tokens, extra_body=extra, usage=usage,
+                retry_sampling=retry_sampling,
             )
             if out:
                 votes.append(decode(order, out))
@@ -203,6 +205,9 @@ def main(argv=None) -> None:
     p.add_argument("--rationale", action="store_true", help="a short assessment before the answers")
     p.add_argument("--votes", type=int, default=1, help="sampled answers per example; the majority wins")
     p.add_argument("--extra-body", default="", help="JSON passed to the server, e.g. {\"reasoning_effort\": \"medium\"}")
+    p.add_argument("--retry-sampling", default="",
+                   help="JSON sampling for retries after a failed attempt (a greedy thinking loop repeats itself), e.g. "
+                        "{\"temperature\": 1.0, \"top_p\": 0.95, \"top_k\": 20}")
     p.add_argument("--layout", choices=["state-first", "questions-first"], default="state-first",
                    help="questions-first: built-in questions before the state (a shared prompt prefix)")
     p.add_argument("--fixed-order", action="store_true",

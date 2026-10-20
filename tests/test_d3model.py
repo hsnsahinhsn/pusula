@@ -169,3 +169,62 @@ def test_teacher_labels_only_selected_questions(example):
     first = next(iter(ex.questions))
     label_chunk(LogitDecider(), [ex], token_budget=2000, source="pusula", questions={first})
     assert set(ex.labels["pusula"]) == {first} and set(ex.teacher) == {first}
+
+
+def _noul_rows(n_pos, n_neg):
+    from pusula.schema import Example
+
+    q = Question(type="noul", instructions="Hakaret var mı?", criteria={"true": "Evet"})
+    return [Example(id=f"r{i}", state=f"mesaj {i}", questions={"hakaret": q},
+                    labels={"final": {"hakaret": "true" if i < n_pos else "false"}}) for i in range(n_pos + n_neg)]
+
+
+def test_class_balance_keeps_every_rare_row():
+    rows = _noul_rows(5, 195)
+    filler = _noul_rows(0, 200)
+    for ex in filler:
+        ex.id = "f" + ex.id
+        ex.questions = {"diger": ex.questions["hakaret"]}
+        ex.labels = {"final": {"diger": "false"}}
+    items = build_items(rows + filler, FakeDecider(), "final", random.Random(0), max_prompts=40, class_balance=True)
+    rare = [it for it in items if it.name == "hakaret" and it.label == 1]
+    assert len(items) == 40 and len(rare) == 5  # all 5 positives inside a 20-row share of 200 rows
+    plain = build_items(rows + filler, FakeDecider(), "final", random.Random(0), max_prompts=40)
+    assert sum(it.name == "hakaret" and it.label == 1 for it in plain) < 5
+
+
+def test_rare_first_round_robin_rarest_first():
+    from pusula.d3train import rare_first
+
+    rows = [(ex, "hakaret") for ex in _noul_rows(2, 6)]
+    order = [ex.labels["final"]["hakaret"] for ex, _ in rare_first(rows, "final", random.Random(1))]
+    assert order[:4] == ["true", "false", "true", "false"] and sorted(order) == sorted(["true"] * 2 + ["false"] * 6)
+
+
+def test_build_items_empty_and_val_set_shuffles():
+    from pusula.d3train import val_set
+
+    assert build_items([], FakeDecider(), "final", None) == []
+    q = Question(type="choice", instructions="?", criteria={k: None for k in "abcdefgh"})
+    from pusula.schema import Example
+
+    rows = [Example(id=f"v{i}", state="x", questions={"tur": q}, labels={"final": {"tur": "a"}}) for i in range(40)]
+    items = val_set(rows, FakeDecider(), 17, 0)
+    assert {it.label for it in items} != {0}  # the first option is not always the answer
+    assert [it.label for it in items] == [it.label for it in val_set(rows, FakeDecider(), 17, 0)]  # fixed seed
+
+
+def test_check_gate_fails_on_empty_val(tmp_path, monkeypatch):
+    import pytest
+
+    from pusula import d3train
+
+    monkeypatch.setattr(d3train, "TokenizerDecider", lambda _dir: FakeDecider())
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "train.jsonl").write_text("".join(ex.model_dump_json() + "\n" for ex in _noul_rows(3, 10)))
+    (data / "val.jsonl").write_text("")
+    with pytest.raises(SystemExit):
+        d3train.main(["check", "--d3", "x", "--data", str(data)])
+    (data / "val.jsonl").write_text("".join(ex.model_dump_json() + "\n" for ex in _noul_rows(1, 2)))
+    d3train.main(["check", "--d3", "x", "--data", str(data), "--max-prompts", "5"])
