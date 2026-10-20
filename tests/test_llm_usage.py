@@ -56,3 +56,52 @@ def test_retry_sampling_after_a_failed_attempt(monkeypatch):
 
 async def _no_wait(*_):
     return None
+
+
+class _Hung:
+    """A server that answers /models but never finishes a completion: every request times out."""
+
+    def __init__(self):
+        self.calls = 0
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
+
+    async def create(self, **kw):
+        import httpx
+        from openai import APITimeoutError
+
+        self.calls += 1
+        raise APITimeoutError(request=httpx.Request("POST", "http://x/v1/chat/completions"))
+
+
+def test_timeout_uses_up_a_retry():
+    client = _Hung()
+    assert asyncio.run(chat_json(client, "m", [], {"type": "object"}, retries=3)) is None
+    assert client.calls == 3  # before: resent forever (a timeout is an APIConnectionError)
+
+
+def test_dead_server_stops_the_pool():
+    import pytest
+
+    from pusula.llm import ServerUnavailable, run_pool
+
+    seen, results = [], []
+
+    async def worker(i):
+        seen.append(i)
+        if i == 2:
+            raise ServerUnavailable("gone")
+        return i
+
+    with pytest.raises(ServerUnavailable):
+        asyncio.run(run_pool(range(100), worker, 1, lambda item, r: results.append(r)))
+    assert results == [0, 1] and seen == [0, 1, 2]  # the rest is drained without work; a rerun resumes by id
+
+
+def test_server_wait_is_bounded(monkeypatch):
+    import pytest
+
+    from pusula.llm import ServerUnavailable, wait_for_server
+
+    monkeypatch.setattr("pusula.llm.asyncio.sleep", _no_wait)
+    with pytest.raises(ServerUnavailable):
+        asyncio.run(wait_for_server("http://127.0.0.1:9/v1", timeout_s=0.0))

@@ -179,26 +179,64 @@ def _noul_rows(n_pos, n_neg):
                     labels={"final": {"hakaret": "true" if i < n_pos else "false"}}) for i in range(n_pos + n_neg)]
 
 
-def test_class_balance_keeps_every_rare_row():
-    rows = _noul_rows(5, 195)
-    filler = _noul_rows(0, 200)
+def _with_filler(rows):
+    filler = _noul_rows(0, len(rows))
     for ex in filler:
         ex.id = "f" + ex.id
         ex.questions = {"diger": ex.questions["hakaret"]}
         ex.labels = {"final": {"diger": "false"}}
-    items = build_items(rows + filler, FakeDecider(), "final", random.Random(0), max_prompts=40, class_balance=True)
-    rare = [it for it in items if it.name == "hakaret" and it.label == 1]
-    assert len(items) == 40 and len(rare) == 5  # all 5 positives inside a 20-row share of 200 rows
-    plain = build_items(rows + filler, FakeDecider(), "final", random.Random(0), max_prompts=40)
-    assert sum(it.name == "hakaret" and it.label == 1 for it in plain) < 5
+    return rows + filler
 
 
-def test_rare_first_round_robin_rarest_first():
+def _rare(items):
+    return sum(it.name == "hakaret" and it.label == 1 for it in items)
+
+
+def test_class_balance_boost_is_capped_at_3x():
+    # 30 positives in 200 rows, a 20-row share: natural 3, at most 3x = 9 (before the cap: all 10 of the even split)
+    rows = _with_filler(_noul_rows(30, 170))
+    items = build_items(rows, FakeDecider(), "final", random.Random(0), max_prompts=40, class_balance=True)
+    assert len(items) == 40 and _rare(items) == 9
+    # 5 positives in 200: natural 0.5, cap ceil(1.5) = 2
+    rows = _with_filler(_noul_rows(5, 195))
+    assert _rare(build_items(rows, FakeDecider(), "final", random.Random(0), max_prompts=40, class_balance=True)) == 2
+
+
+def test_class_balance_keeps_the_type_mix_of_own_questions():
+    from pusula.schema import Example
+
+    # the writer's own question s1: unique choice keys mixed with noul and score (57/30/13 %), as in the factory
+    rng, rows = random.Random(3), []
+    for i in range(1000):
+        r = rng.random()
+        if r < 0.57:
+            q = Question(type="choice", instructions="?", criteria={f"k{i}a": None, f"k{i}b": None})
+            lab = f"k{i}a"
+        elif r < 0.87:
+            q, lab = Question(type="noul", instructions="?", criteria={"true": "Evet"}), rng.choice(["true", "false"])
+        else:
+            q, lab = Question(type="score", instructions="?", criteria=["az", "orta", "çok"]), str(rng.randrange(3))
+        rows.append(Example(id=f"s{i}", state="x", questions={"s1": q}, labels={"final": {"s1": lab}}))
+    filler = [Example(id=f"f{i}", state="x", questions={"diger": Question(type="noul", instructions="?", criteria={"true": "E"})},
+                      labels={"final": {"diger": "false"}}) for i in range(1000)]
+    items = build_items(rows + filler, FakeDecider(), "final", random.Random(0), max_prompts=600, class_balance=True)
+    own = [it.qtype for it in items if it.name == "s1"]
+    assert len(own) == 300 and 0.30 <= sum(t != "choice" for t in own) / len(own) <= 0.56  # before: almost all choice
+
+
+def test_rare_first_ties_are_random():
     from pusula.d3train import rare_first
+    from pusula.schema import Example
 
-    rows = [(ex, "hakaret") for ex in _noul_rows(2, 6)]
-    order = [ex.labels["final"]["hakaret"] for ex, _ in rare_first(rows, "final", random.Random(1))]
-    assert order[:4] == ["true", "false", "true", "false"] and sorted(order) == sorted(["true"] * 2 + ["false"] * 6)
+    q = Question(type="choice", instructions="?", criteria={k: None for k in "abc"})
+    rows = [(Example(id=f"t{i}", state="x", questions={"tur": q}, labels={"final": {"tur": "abc"[i % 3]}}), "tur")
+            for i in range(30)]
+    smallest = set()
+    for seed in range(20):  # share 5 over three equal values: one value gets 1 row, the other two get 2
+        got = [ex.labels["final"]["tur"] for ex, _ in rare_first(rows, "final", random.Random(seed), 5)[:5]]
+        assert len(got) == 5 and sorted(got.count(k) for k in "abc") == [1, 2, 2]
+        smallest.add(min("abc", key=got.count))
+    assert len(smallest) > 1  # before: alphabetical, the same value every time
 
 
 def test_build_items_empty_and_val_set_shuffles():
@@ -228,3 +266,12 @@ def test_check_gate_fails_on_empty_val(tmp_path, monkeypatch):
         d3train.main(["check", "--d3", "x", "--data", str(data)])
     (data / "val.jsonl").write_text("".join(ex.model_dump_json() + "\n" for ex in _noul_rows(1, 2)))
     d3train.main(["check", "--d3", "x", "--data", str(data), "--max-prompts", "5"])
+
+
+def test_save_due_on_steps_and_on_the_clock():
+    from pusula.d3train import save_due
+
+    assert save_due(100, 440, 100, 30, 5) is True and save_due(440, 440, 100, 30, 5) is True  # schedule, last step
+    assert save_due(37, 440, 100, 30, 29 * 60) is False
+    assert save_due(37, 440, 100, 30, 30 * 60) == "clock"  # ranks agree on it before saving
+    assert save_due(37, 440, 100, 0, 10 ** 6) is False  # off by default

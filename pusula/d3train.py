@@ -41,17 +41,49 @@ class Item:
     soft: Optional[list[float]] = None  # teacher distribution in the shown order (knowledge distillation)
 
 
-def rare_first(rows: list, label_source: str, rng: random.Random) -> list:
-    """One question name's (example, name) pairs, shuffled within each label value and then taken round-robin over
-    the values, rarest first: a share cut from the front keeps every row of a rare class (e.g. hakaret) before it
-    repeats the majority class."""
+BOOST_MAX = 3.0  # class balance: a rare label value gets at most 3 times its natural share (user decision, 21 Oct 2026)
+
+
+def rare_first(rows: list, label_source: str, rng: random.Random, share: int, boost: float = BOOST_MAX) -> list:
+    """One question name's (example, name) pairs, ordered so that the first `share` rows give the rare label values a
+    larger share: the values are filled evenly (water-filling), each up to `boost` times its natural share, ties in a
+    random order. A share cut from the front keeps more rows of a rare class (e.g. hakaret) without moving the prior far.
+
+    Only for a fixed option set (one question type, the same options in every row: a template). A name whose options
+    differ per row, such as the writer's own questions s1-s3 (choice keys almost all unique, mixed with noul and score),
+    is shuffled as in v1.0: balancing by answer string would fill its share with one-off choice keys."""
+    rows = list(rows)
+    rng.shuffle(rows)
+    n = len(rows)
+    kinds = {(p[0].questions[p[1]].type, tuple(p[0].questions[p[1]].option_keys())) for p in rows}
+    if share >= n or len(kinds) > 1:
+        return rows
     by_label = defaultdict(list)
-    for p in rows:
+    for p in rows:  # rows are shuffled: each group is a random sample
         by_label[p[0].labels[label_source][p[1]]].append(p)
-    groups = [by_label[k] for k in sorted(by_label, key=lambda k: (len(by_label[k]), str(k)))]
-    for g in groups:
-        rng.shuffle(g)
-    return [g[i] for i in range(max(map(len, groups), default=0)) for g in groups if i < len(g)]
+    cap = {k: min(len(g), math.ceil(boost * share * len(g) / n)) for k, g in by_label.items()}
+    order = list(by_label)
+    rng.shuffle(order)
+    order.sort(key=lambda k: cap[k])  # stable: equal caps keep the random order
+    quota, left = {}, share
+    for i, k in enumerate(order):
+        quota[k] = min(cap[k], left // (len(order) - i))
+        left -= quota[k]
+    for k in order:  # what the floors left over, to values below their cap (the caps add up to at least share)
+        add = min(cap[k] - quota[k], left)
+        quota[k] += add
+        left -= add
+    chosen = [p for k in order for p in by_label[k][: quota[k]]]
+    rng.shuffle(chosen)
+    return chosen + [p for k in order for p in by_label[k][quota[k]:]]
+
+
+def save_due(step: int, steps_total: int, save_every: int, save_minutes: float, since_save_s: float):
+    """Checkpoint now? True on the step schedule (the same on every rank), "clock" when only the clock says so (ranks
+    must agree on that first), False otherwise."""
+    if step % save_every == 0 or step == steps_total:
+        return True
+    return "clock" if save_minutes and since_save_s >= save_minutes * 60 else False
 
 
 def build_items(examples: list[Example], decider, label_source: str, rng: Optional[random.Random],
@@ -64,7 +96,7 @@ def build_items(examples: list[Example], decider, label_source: str, rng: Option
         return []
     if max_prompts and len(pairs) > max_prompts and rng is not None:
         # balance question names: a share proportional to each name's weight (default 1), leftovers at random;
-        # class_balance: inside a name the rare label values come first (see rare_first)
+        # class_balance: inside a fixed-option name the rare label values get a larger share (see rare_first)
         by_name = defaultdict(list)
         for p in pairs:
             by_name[p[1]].append(p)
@@ -73,11 +105,11 @@ def build_items(examples: list[Example], decider, label_source: str, rng: Option
         chosen, rest = [], []
         for name in sorted(by_name):
             rows = by_name[name]
+            share = int(max_prompts * w[name] / total)
             if class_balance:
-                rows = rare_first(rows, label_source, rng)
+                rows = rare_first(rows, label_source, rng, share)
             else:
                 rng.shuffle(rows)
-            share = int(max_prompts * w[name] / total)
             chosen += rows[:share]
             rest += rows[share:]
         rng.shuffle(rest)
@@ -314,6 +346,7 @@ def train(a) -> None:
     decider.backbone.train()
     log = (out / "train_log.jsonl").open("a", encoding="utf-8") if main else None
     running, t_step = 0.0, time.time()
+    t_save = t_step
     bench_tokens, t_bench = 0, 0.0
     bad = skipped = 0  # non-finite micro-batch losses / optimizer steps skipped for non-finite gradients
     while step < steps_total:
@@ -374,7 +407,15 @@ def train(a) -> None:
                 log.write(json.dumps({"step": step, "loss": running / a.log_every}) + "\n")
                 log.flush()
             running, t_step = 0.0, time.time()
-        if not a.bench and (step % a.save_every == 0 or step == steps_total):
+        due = save_due(step, steps_total, a.save_every, 0 if a.bench else a.save_minutes, time.time() - t_save)
+        if world > 1 and a.save_minutes and not a.bench and due is not True:
+            # the clocks of the ranks may disagree: all ranks reach this line together (the step schedule is shared)
+            # and take the same branch (the barrier below)
+            flag = torch.tensor([float(due == "clock")], device=decider.device)
+            dist.all_reduce(flag, op=dist.ReduceOp.MAX)
+            due = flag.item() > 0
+        if not a.bench and due:
+            t_save = time.time()
             if main:
                 decider.backbone.eval()
                 m = evaluate(decider, val_items, a.val_token_budget or a.token_budget)
@@ -447,6 +488,8 @@ def main(argv=None) -> None:
                    help="weight of the hard-label loss; the rest is KL to the teacher distribution (1 = no distillation)")
     t.add_argument("--log-every", type=int, default=10)
     t.add_argument("--save-every", type=int, default=200)
+    t.add_argument("--save-minutes", type=float, default=0,
+                   help="also validate and save when this many minutes passed since the last save (0 = off)")
     t.add_argument("--seed", type=int, default=17)
     t.add_argument("--precision", choices=["auto", "4bit", "bf16"], default="auto",
                    help="d3 weights: bf16 (LoRA, needs ~80 GB GPU) or 4bit (QLoRA); auto picks by GPU memory")
