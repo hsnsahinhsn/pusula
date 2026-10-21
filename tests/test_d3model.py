@@ -275,3 +275,23 @@ def test_save_due_on_steps_and_on_the_clock():
     assert save_due(37, 440, 100, 30, 29 * 60) is False
     assert save_due(37, 440, 100, 30, 30 * 60) == "clock"  # ranks agree on it before saving
     assert save_due(37, 440, 100, 0, 10 ** 6) is False  # off by default
+
+
+def test_checkpoint_swap_and_recover(tmp_path):
+    """A save is written to <name>.tmp and swapped in; a kill between the two renames leaves <name>.old, which is used."""
+    from pusula.d3train import _fresh, _recover, _swap_in
+
+    dst = tmp_path / "last"
+    for step in (1, 2):
+        tmp = _fresh(tmp_path / "last.tmp")
+        tmp.mkdir()
+        (tmp / "trainer_state.json").write_text(str(step))
+        _swap_in(tmp, dst)
+    assert (dst / "trainer_state.json").read_text() == "2"
+    assert not (tmp_path / "last.old").exists() and not (tmp_path / "last.tmp").exists()
+    dst.rename(tmp_path / "last.old")  # killed after the first rename of the next save
+    (tmp_path / "last.tmp").mkdir()
+    (tmp_path / "last.tmp" / "half").write_text("x")
+    _recover(dst)
+    assert (dst / "trainer_state.json").read_text() == "2"
+    assert not (tmp_path / "last.old").exists() and not (tmp_path / "last.tmp").exists()

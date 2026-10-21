@@ -103,9 +103,13 @@ async def chat_json(
     return None
 
 
-async def wait_for_server(base_url: str = DEFAULT_BASE_URL, timeout_s: float = 3600.0) -> None:
+async def wait_for_server(base_url: str = DEFAULT_BASE_URL, timeout_s: float | None = None) -> None:
+    """Waits until the server answers; ServerUnavailable after ``timeout_s`` (default: LLM_SERVER_WAIT seconds when set,
+    else 3600 for a cold vLLM start)."""
     import urllib.request
 
+    if timeout_s is None:
+        timeout_s = float(os.getenv("LLM_SERVER_WAIT", "3600"))
     url = base_url.rstrip("/") + "/models"
     t0 = time.time()
     while True:

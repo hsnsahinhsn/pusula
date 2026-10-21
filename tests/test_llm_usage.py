@@ -105,3 +105,15 @@ def test_server_wait_is_bounded(monkeypatch):
     monkeypatch.setattr("pusula.llm.asyncio.sleep", _no_wait)
     with pytest.raises(ServerUnavailable):
         asyncio.run(wait_for_server("http://127.0.0.1:9/v1", timeout_s=0.0))
+
+
+def test_server_start_wait_reads_env(monkeypatch):
+    """The start-up wait (judge, factory) uses LLM_SERVER_WAIT too, not a fixed hour."""
+    import pytest
+
+    from pusula.llm import ServerUnavailable, wait_for_server
+
+    monkeypatch.setattr("pusula.llm.asyncio.sleep", _no_wait)
+    monkeypatch.setenv("LLM_SERVER_WAIT", "0")
+    with pytest.raises(ServerUnavailable, match=r"in 0s"):
+        asyncio.run(wait_for_server("http://127.0.0.1:9/v1"))

@@ -20,6 +20,7 @@ import argparse
 import json
 import math
 import random
+import shutil
 import time
 from collections import defaultdict
 from dataclasses import dataclass
@@ -295,6 +296,34 @@ def _dist():
     return (dist.get_rank() if world > 1 else 0), world, f"cuda:{local}"
 
 
+def _swap_in(tmp: Path, dst: Path) -> None:
+    """Moves a fully written checkpoint folder into place: a kill at any point leaves ``dst`` or ``dst.old`` complete."""
+    old = dst.with_name(dst.name + ".old")
+    if old.exists():
+        shutil.rmtree(old)
+    if dst.exists():
+        dst.rename(old)
+    tmp.rename(dst)
+    shutil.rmtree(old, ignore_errors=True)
+
+
+def _recover(dst: Path) -> None:
+    """Undoes a save that was cut between the two renames of ``_swap_in``; drops a half-written ``.tmp``."""
+    old, tmp = dst.with_name(dst.name + ".old"), dst.with_name(dst.name + ".tmp")
+    if not dst.exists() and old.exists():
+        old.rename(dst)
+    elif old.exists():
+        shutil.rmtree(old)
+    if tmp.exists():
+        shutil.rmtree(tmp)
+
+
+def _fresh(path: Path) -> Path:
+    if path.exists():
+        shutil.rmtree(path)
+    return path
+
+
 def train(a) -> None:
     """Single- or multi-GPU (torchrun --nproc-per-node N): every GPU holds a full d3 copy, each optimizer
     step's micro-batches are split across GPUs and the LoRA/readout gradients are averaged."""
@@ -309,6 +338,11 @@ def train(a) -> None:
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     last = out / "last"
+    if main:  # a save cut by a kill: the previous complete checkpoint is used
+        _recover(out / "best")
+        _recover(last)
+    if world > 1:
+        dist.barrier()
     resume = (last / "trainer_state.json").exists() and not a.bench
     start = str(last) if resume else a.init_adapter  # continue from a trained Pusula adapter (e.g. v1 -> v2)
     train_ex, val_ex = read_examples(Path(a.data) / "train.jsonl"), read_examples(Path(a.data) / "val.jsonl")
@@ -423,13 +457,17 @@ def train(a) -> None:
                 say(f"[bold]adım {step}[/bold] val macro_acc {m['macro_acc']:.4f} ece {m['ece']:.4f}")
                 log.write(json.dumps({"step": step, "val": m}, ensure_ascii=False) + "\n")
                 log.flush()
-                if m["macro_acc"] > best:
+                if m["macro_acc"] > best:  # written to <name>.tmp, then swapped in (a kill never leaves a torn folder)
                     best = m["macro_acc"]
-                    decider.save_adapter(out / "best", {"step": step, "val": m})
-                decider.save_adapter(last, {"step": step})
-                torch.save(opt.state_dict(), last / "optimizer.pt")
-                torch.save(sched.state_dict(), last / "scheduler.pt")
-                (last / "trainer_state.json").write_text(json.dumps({"step": step, "best": best}))
+                    tmp = _fresh(out / "best.tmp")
+                    decider.save_adapter(tmp, {"step": step, "val": m})
+                    _swap_in(tmp, out / "best")
+                tmp = _fresh(out / "last.tmp")
+                decider.save_adapter(tmp, {"step": step})
+                torch.save(opt.state_dict(), tmp / "optimizer.pt")
+                torch.save(sched.state_dict(), tmp / "scheduler.pt")
+                (tmp / "trainer_state.json").write_text(json.dumps({"step": step, "best": best}))
+                _swap_in(tmp, last)
             if world > 1:
                 dist.barrier()
     if main and not a.bench:
