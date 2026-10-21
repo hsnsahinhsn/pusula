@@ -5,6 +5,8 @@
 #   bash scripts/setup_gpu.sh            # python deps + Pusula
 #   WITH_VLLM=1 bash scripts/setup_gpu.sh   # also vLLM (data generation with Qwen)
 #   bash scripts/setup_gpu.sh models     # also download vllm-sr/d3 (to $D3_DIR) and TabiBERT
+#   AFTER_PIP='<command>' bash scripts/setup_gpu.sh   # optional: run <command> once the Python packages and Pusula are
+#                                                     # installed, before the slow kernel build (off by default)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export HF_HOME=${HF_HOME:-/workspace/hf} D3_DIR=${D3_DIR:-/workspace/d3}
@@ -30,6 +32,8 @@ PY
 $PIP "transformers==5.17.0" "safetensors>=0.4" einops pyarrow "huggingface_hub>=1.0" pyyaml rich "pydantic>=2"   fastapi uvicorn openai ninja psutil tqdm packaging numpy
 $PIP --no-deps "peft>=0.13" "accelerate>=1.10" flash-linear-attention fla-core "bitsandbytes>=0.46.1"  # 4-bit d3 on GPUs < 80 GB
 $PIP --no-deps -e .
+# optional status hook (e.g. a launcher marks "Python ready" so CPU or API work can start during the kernel build)
+if [[ -n ${AFTER_PIP:-} ]]; then bash -c "$AFTER_PIP" || echo "AFTER_PIP hook failed (ignored)" >&2; fi
 # the CUDA toolkit that builds kernels must match torch's CUDA (e.g. the image ships 12.6, the torch wheel is 13.0)
 TCU=$(python -c "import torch; print(torch.version.cuda)")
 if [ ! -x "/usr/local/cuda-$TCU/bin/nvcc" ] && command -v apt-get >/dev/null; then
