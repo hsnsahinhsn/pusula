@@ -295,3 +295,47 @@ def test_checkpoint_swap_and_recover(tmp_path):
     _recover(dst)
     assert (dst / "trainer_state.json").read_text() == "2"
     assert not (tmp_path / "last.old").exists() and not (tmp_path / "last.tmp").exists()
+
+
+def _ddp_worker(rank, world, port, out):
+    import torch.distributed as dist
+
+    from pusula.d3train import ddp_probe
+
+    dist.init_process_group("gloo", init_method=f"tcp://127.0.0.1:{port}", rank=rank, world_size=world)
+    ok, gbps = ddp_probe(dist, "cpu", rank, world, mb=1, small=3)
+    out[rank] = (ok, gbps > 0)
+    dist.destroy_process_group()
+
+
+def test_ddp_probe_two_processes():
+    """The pre-training link test passes on a healthy 2-process group (gloo on CPU stands in for NCCL)."""
+    import socket
+
+    import torch.multiprocessing as mp
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    out = mp.Manager().dict()
+    mp.spawn(_ddp_worker, args=(2, port, out), nprocs=2)
+    assert dict(out) == {0: (True, True), 1: (True, True)}
+
+
+def test_ddp_probe_catches_corrupt_sums():
+    """A link that returns wrong sums (not only one that hangs) fails the test on every rank."""
+    from types import SimpleNamespace
+
+    from pusula.d3train import ddp_probe
+
+    class Bad:
+        ReduceOp = SimpleNamespace(MAX="max")
+        calls = 0
+
+        def all_reduce(self, x, op=None):
+            if op is None:
+                Bad.calls += 1
+                x.fill_(3.0 if Bad.calls != 5 else 2.0)  # world 2: 1 + 2 = 3; one small all-reduce comes back wrong
+
+    ok, _ = ddp_probe(Bad(), "cpu", 0, 2, mb=1, small=4)
+    assert not ok

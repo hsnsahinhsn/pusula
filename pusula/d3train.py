@@ -495,6 +495,47 @@ def run_eval(a) -> None:
     console.print_json(data=report)
 
 
+def ddp_probe(dist, device: str, rank: int, world: int, mb: int = 256, small: int = 200) -> tuple[bool, float]:
+    """All-reduces one large tensor (3 times) and many small ones (like the per-parameter LoRA gradients), every
+    result checked exactly (a broken peer-to-peer path can corrupt data as well as hang). Returns (ok on all ranks,
+    GB/s of the large all-reduces)."""
+    import torch
+
+    want = world * (world + 1) / 2  # rank r sends r + 1; sums of small integers are exact in float32
+    big = torch.full((mb * 2**18,), float(rank + 1), device=device)
+    good, t0 = True, time.time()
+    for _ in range(3):
+        x = big.clone()
+        dist.all_reduce(x)
+        good &= bool((x == want).all())
+    gbps = 3 * big.numel() * 4 / max(time.time() - t0, 1e-9) / 1e9
+    for _ in range(small):
+        x = torch.full((2**18,), float(rank + 1), device=device)
+        dist.all_reduce(x)
+        good &= bool((x == want).all())
+    flag = torch.tensor([0.0 if good else 1.0], device=device)
+    dist.all_reduce(flag, op=dist.ReduceOp.MAX)
+    return flag.item() == 0.0, gbps
+
+
+def run_ddpcheck(a) -> None:
+    """Link test before multi-GPU training (under torchrun): rank 0 prints DDP_OK or DDP_BAD, a bad result exits 2.
+    A hung link never returns; the caller's timeout catches it."""
+    import sys
+
+    import torch.distributed as dist
+
+    rank, world, device = _dist()
+    t0 = time.time()
+    ok, gbps = ddp_probe(dist, device, rank, world, a.mb, a.small)
+    if rank == 0:
+        print(f"{'DDP_OK' if ok else 'DDP_BAD'} {world} GPU, {gbps:.1f} GB/s, {time.time() - t0:.1f} s", flush=True)
+    if dist.is_initialized():
+        dist.destroy_process_group()
+    if not ok:
+        sys.exit(2)
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -554,8 +595,11 @@ def main(argv=None) -> None:
     c.add_argument("--seed", type=int, default=17)
     c.add_argument("--token-budget", type=int, default=8192)
     c.add_argument("--eval-token-budget", type=int, default=16384)
+    d = sub.add_parser("ddpcheck", help="multi-GPU link test before training (run under torchrun)")
+    d.add_argument("--mb", type=int, default=256, help="size of the large all-reduce in MiB")
+    d.add_argument("--small", type=int, default=200, help="number of 1 MiB all-reduces")
     a = p.parse_args(argv)
-    {"train": train, "eval": run_eval, "check": run_check}[a.cmd](a)
+    {"train": train, "eval": run_eval, "check": run_check, "ddpcheck": run_ddpcheck}[a.cmd](a)
 
 
 if __name__ == "__main__":
