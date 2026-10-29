@@ -148,8 +148,11 @@ def main(argv=None) -> None:
         results["latency"] = measure_latency(engine)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "eval.json").write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
     (out / "eval.md").write_text(to_markdown(results), encoding="utf-8")
+    # eval.json last and atomic: its presence means the report is complete (a cut run is measured again)
+    tmp = out / "eval.json.tmp"
+    tmp.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(out / "eval.json")
     console.print(to_markdown(results))
 
 

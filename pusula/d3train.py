@@ -490,8 +490,12 @@ def run_eval(a) -> None:
     items = build_items(examples, decider, source, None)
     report = {"model": "pusula-d3" if a.adapter else "d3-base", "adapter": a.adapter, "data": a.data,
               "reference": source, **evaluate(decider, items, a.token_budget)}
-    Path(a.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(a.out).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    out = Path(a.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    # atomic: a run cut while writing must not leave a partial report that the next run takes as done
+    tmp = out.with_name(out.name + ".tmp")
+    tmp.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(out)
     console.print_json(data=report)
 
 
