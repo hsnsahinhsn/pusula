@@ -39,7 +39,18 @@ class JsonlWriter:
     def __init__(self, path: str | Path, mode: str = "a"):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        # a killed writer can leave a truncated last line: end it first, or the next row would join it and both would be
+        # unreadable (readers skip the fragment, the id is asked again)
+        torn = mode == "a" and self.path.exists() and self.path.stat().st_size > 0 and not self._ends_with_newline()
         self._f = self.path.open(mode, encoding="utf-8")
+        if torn:
+            self._f.write("\n")
+            self._f.flush()
+
+    def _ends_with_newline(self) -> bool:
+        with self.path.open("rb") as f:
+            f.seek(-1, os.SEEK_END)
+            return f.read(1) == b"\n"
 
     def write(self, obj) -> None:
         if isinstance(obj, Example):

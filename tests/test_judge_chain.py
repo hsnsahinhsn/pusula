@@ -124,3 +124,17 @@ def test_chain_skips_answers_in_other_cards_parts(tmp_path, monkeypatch):
     _chain(tmp_path, p1)
     assert first["id"] not in {r["id"] for r in read_jsonl(c2)}
     assert len(list(read_jsonl(c2))) == len(list(read_jsonl(c1))) - 1
+
+
+
+def test_jsonl_writer_ends_a_torn_line_before_appending(tmp_path):
+    from pusula.jsonl import JsonlWriter, read_jsonl
+
+    f = tmp_path / "part.jsonl"
+    f.write_text('{"id": "a"}\n{"id": "b", "lab')   # killed writer left half a row
+    with JsonlWriter(f) as w:
+        w.write({"id": "c"})
+    assert [r["id"] for r in read_jsonl(f)] == ["a", "c"]
+    with JsonlWriter(f) as w:   # a clean file gets no extra line
+        w.write({"id": "d"})
+    assert f.read_text().count("\n\n") == 0 and [r["id"] for r in read_jsonl(f)] == ["a", "c", "d"]
