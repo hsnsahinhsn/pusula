@@ -483,20 +483,25 @@ def run_eval(a) -> None:
     from .d3model import D3Decider
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    if len(a.data) != len(a.out):
+        raise SystemExit(f"--data ({len(a.data)}) and --out ({len(a.out)}) must pair up")
+    # one model load for every set (30 Oct 2026: a load per set cost ~3 min each, ~half of the evaluation time)
     decider = D3Decider.load(a.d3, adapter=a.adapter, load_in_4bit=_precision(a), device=device)
     decider.backbone.eval()
-    examples = read_examples(a.data)
-    source = a.label_source or ("gold" if any("gold" in ex.labels for ex in examples) else "final")
-    items = build_items(examples, decider, source, None)
-    report = {"model": "pusula-d3" if a.adapter else "d3-base", "adapter": a.adapter, "data": a.data,
-              "reference": source, **evaluate(decider, items, a.token_budget)}
-    out = Path(a.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    # atomic: a run cut while writing must not leave a partial report that the next run takes as done
-    tmp = out.with_name(out.name + ".tmp")
-    tmp.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(out)
-    console.print_json(data=report)
+    for data, out_path in zip(a.data, a.out):
+        examples = read_examples(data)
+        source = a.label_source or ("gold" if any("gold" in ex.labels for ex in examples) else "final")
+        items = build_items(examples, decider, source, None)
+        report = {"model": "pusula-d3" if a.adapter else "d3-base", "adapter": a.adapter, "data": data,
+                  "reference": source, **evaluate(decider, items, a.token_budget)}
+        out = Path(out_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        # atomic: a run cut while writing must not leave a partial report that the next run takes as done
+        tmp = out.with_name(out.name + ".tmp")
+        tmp.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(out)
+        console.print(f"EVAL_DONE {out}")
+        console.print_json(data=report)
 
 
 def ddp_probe(dist, device: str, rank: int, world: int, mb: int = 256, small: int = 200) -> tuple[bool, float]:
@@ -582,10 +587,10 @@ def main(argv=None) -> None:
     e = sub.add_parser("eval")
     e.add_argument("--d3", required=True)
     e.add_argument("--adapter", default=None)
-    e.add_argument("--data", required=True)
+    e.add_argument("--data", required=True, nargs="+", help="one or more evaluation files (the model loads once)")
     e.add_argument("--label-source", default=None)
     e.add_argument("--token-budget", type=int, default=16384)
-    e.add_argument("--out", required=True)
+    e.add_argument("--out", required=True, nargs="+", help="one report per --data file, same order")
     e.add_argument("--precision", choices=["auto", "4bit", "bf16"], default="auto")
     c = sub.add_parser("check", help="CPU gate before a GPU run: build the items with the d3 tokenizer only")
     c.add_argument("--d3", required=True, help="d3 directory (only the tokenizer and decision_config.json are read)")

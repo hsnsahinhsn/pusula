@@ -339,3 +339,40 @@ def test_ddp_probe_catches_corrupt_sums():
 
     ok, _ = ddp_probe(Bad(), "cpu", 0, 2, mb=1, small=4)
     assert not ok
+
+
+def test_eval_loads_the_model_once_for_many_sets(tmp_path, monkeypatch):
+    import json
+
+    import pytest
+    import torch
+
+    from pusula import d3train
+
+    loads = []
+
+    class EvalDecider(FakeDecider):
+        backbone = torch.nn.Identity()
+
+        def logits(self, ids, counts):
+            return torch.tensor([[2.0] + [0.0] * (max(counts) - 1) for _ in ids])
+
+    def load(*args, **kwargs):
+        loads.append(args)
+        return EvalDecider()
+
+    monkeypatch.setattr(d3model.D3Decider, "load", staticmethod(load))
+    files, outs = [], []
+    for k in range(3):
+        f = tmp_path / f"eval_{k}.jsonl"
+        f.write_text("".join(ex.model_dump_json() + "\n" for ex in _noul_rows(1, 2)))
+        files.append(str(f))
+        outs.append(str(tmp_path / "r" / f"v_{k}.json"))
+    d3train.main(["eval", "--d3", "x", "--precision", "bf16", "--data", *files, "--out", *outs])
+    assert len(loads) == 1
+    for f, o in zip(files, outs):
+        rep = json.loads(open(o).read())
+        assert rep["data"] == f and rep["n"] == 3 and rep["model"] == "d3-base"
+    assert not list((tmp_path / "r").glob("*.tmp"))
+    with pytest.raises(SystemExit):
+        d3train.main(["eval", "--d3", "x", "--data", *files, "--out", outs[0]])
