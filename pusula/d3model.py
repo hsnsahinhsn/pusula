@@ -134,6 +134,7 @@ class D3Decider:
     def __init__(self, backbone, readout, tokenizer, codes: list[str], device):
         self.backbone = backbone
         self.readout = readout          # torch.nn.Parameter [255, hidden], fp32
+        self.base_readout = None        # with an adapter: the base model's readout (logits(base=True))
         self.tokenizer = tokenizer
         self.codes = codes
         self.device = device
@@ -188,13 +189,18 @@ class D3Decider:
             backbone.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
         tokenizer = AutoTokenizer.from_pretrained(model_dir)
         decider = cls(backbone, readout, tokenizer, load_codes(model_dir), torch.device(device))
+        if adapter and not trainable:  # inference: keep the base readout so a question can be asked without the adapter
+            decider.base_readout = load_file(str(Path(model_dir) / "readout.safetensors"))["weight"].to(device, torch.float32)
         return decider
 
     def encode(self, prompts: Sequence[str]) -> list[list[int]]:
         return self.tokenizer(list(prompts), add_special_tokens=False)["input_ids"]
 
-    def logits(self, sequences: Sequence[Sequence[int]], counts: Sequence[int]):
-        """Code logits [B, max(counts)] (fp32) for left-padded prompts; padded options get -1e4."""
+    def logits(self, sequences: Sequence[Sequence[int]], counts: Sequence[int], base: bool = False):
+        """Code logits [B, max(counts)] (fp32) for left-padded prompts; padded options get -1e4. base=True: the base
+        Decision 3.0 answer (LoRA adapter disabled, base readout); only when an adapter was loaded for inference."""
+        import contextlib
+
         import torch
 
         width = max(len(s) for s in sequences)
@@ -204,9 +210,12 @@ class D3Decider:
             ids[i, width - len(s):] = torch.as_tensor(s, dtype=torch.long)
             mask[i, width - len(s):] = 1
         ids, mask = ids.to(self.device), mask.to(self.device)
-        hidden = self.backbone(input_ids=ids, attention_mask=mask, use_cache=False).last_hidden_state[:, -1]
+        use_base = base and self.base_readout is not None
+        ctx = self.backbone.disable_adapter() if use_base else contextlib.nullcontext()
+        with ctx:
+            hidden = self.backbone(input_ids=ids, attention_mask=mask, use_cache=False).last_hidden_state[:, -1]
         k = max(counts)
-        logits = hidden.float() @ self.readout[:k].T
+        logits = hidden.float() @ (self.base_readout if use_base else self.readout)[:k].T
         invalid = torch.arange(k, device=self.device)[None] >= torch.as_tensor(list(counts), device=self.device)[:, None]
         return logits.masked_fill(invalid, -1e4)
 

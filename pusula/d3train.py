@@ -87,9 +87,17 @@ def save_due(step: int, steps_total: int, save_every: int, save_minutes: float, 
     return "clock" if save_minutes and since_save_s >= save_minutes * 60 else False
 
 
+def _balance(a) -> bool | frozenset:
+    """Class balance: off (--no-class-balance), only in --balance-only names (31 Oct 2026: natural sampling for the
+    routing and urgency priors, rare values first where the rare value is the point, e.g. eksik_bilgi true), or all."""
+    if a.balance_only:
+        return frozenset(n for n in a.balance_only.split(",") if n)
+    return not a.no_class_balance
+
+
 def build_items(examples: list[Example], decider, label_source: str, rng: Optional[random.Random],
                 max_prompts: int = 0, weights: Optional[dict[str, float]] = None,
-                class_balance: bool = False) -> list[Item]:
+                class_balance: bool | frozenset = False) -> list[Item]:
     from .d3model import render, shuffled_order
 
     pairs = [(ex, name) for ex in examples for name in ex.labels.get(label_source, {})]
@@ -107,7 +115,7 @@ def build_items(examples: list[Example], decider, label_source: str, rng: Option
         for name in sorted(by_name):
             rows = by_name[name]
             share = int(max_prompts * w[name] / total)
-            if class_balance:
+            if class_balance is True or (class_balance and name in class_balance):
                 rows = rare_first(rows, label_source, rng, share)
             else:
                 rng.shuffle(rows)
@@ -246,7 +254,7 @@ def run_check(a) -> None:
         weights = {name: a.focus_weight for name in a.focus.split(",") if name} if a.focus else None
         try:
             train_items = build_items(read_examples(Path(a.data) / "train.jsonl"), decider, "final",
-                                      random.Random(a.seed), a.max_prompts, weights, not a.no_class_balance)
+                                      random.Random(a.seed), a.max_prompts, weights, _balance(a))
             val_items = val_set(read_examples(Path(a.data) / "val.jsonl"), decider, a.seed, a.max_val)
         except Exception as e:  # noqa: BLE001 - every failure is a gate failure, reported with its cause
             problems.append(f"{a.data}: {type(e).__name__}: {e}")
@@ -354,7 +362,7 @@ def train(a) -> None:
     rng = random.Random(a.seed)
     t0 = time.time()
     weights = {name: a.focus_weight for name in a.focus.split(",") if name} if a.focus else None
-    train_items = build_items(train_ex, decider, "final", rng, a.max_prompts, weights, not a.no_class_balance)
+    train_items = build_items(train_ex, decider, "final", rng, a.max_prompts, weights, _balance(a))
     val_items = val_set(val_ex, decider, a.seed, a.max_val)
     say(f"[cyan]{len(train_items)} eğitim / {len(val_items)} doğrulama sorusu "
         f"({time.time() - t0:.0f}s tokenizasyon), {world} GPU[/cyan]")
@@ -561,6 +569,8 @@ def main(argv=None) -> None:
                    help="padded tokens per validation micro-batch (no gradients, so it can be larger; 0 = --token-budget)")
     t.add_argument("--no-class-balance", action="store_true",
                    help="sample each question name's share at random (v1.0) instead of rare label values first")
+    t.add_argument("--balance-only", default="",
+                   help="comma-separated names: rare label values first only in these names, the rest at random")
     t.add_argument("--epochs", type=int, default=1)
     t.add_argument("--lora-rank", type=int, default=32)
     t.add_argument("--init-adapter", default=None, help="start from this trained adapter (LoRA + readout) instead of base d3")
@@ -601,6 +611,7 @@ def main(argv=None) -> None:
     c.add_argument("--focus-weight", type=float, default=2.0)
     c.add_argument("--max-val", type=int, default=1500)
     c.add_argument("--no-class-balance", action="store_true")
+    c.add_argument("--balance-only", default="")
     c.add_argument("--seed", type=int, default=17)
     c.add_argument("--token-budget", type=int, default=8192)
     c.add_argument("--eval-token-budget", type=int, default=16384)

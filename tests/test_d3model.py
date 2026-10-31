@@ -202,6 +202,29 @@ def test_class_balance_boost_is_capped_at_3x():
     assert _rare(build_items(rows, FakeDecider(), "final", random.Random(0), max_prompts=40, class_balance=True)) == 2
 
 
+def test_class_balance_only_in_named_questions():
+    # same 30-in-200 positives in two names: balanced only where named (9 of 20), natural elsewhere
+    rows = _noul_rows(30, 170)
+    other = _noul_rows(30, 170)
+    for ex in other:
+        ex.id = "o" + ex.id
+        ex.questions = {"diger": ex.questions["hakaret"]}
+        ex.labels = {"final": {"diger": ex.labels["final"]["hakaret"]}}
+    items = build_items(rows + other, FakeDecider(), "final", random.Random(0), max_prompts=40,
+                        class_balance=frozenset({"hakaret"}))
+    assert _rare(items) == 9
+    assert sum(it.name == "diger" and it.label == 1 for it in items) < 9
+
+
+def test_balance_flag_parsing():
+    from types import SimpleNamespace
+
+    from pusula.d3train import _balance
+    assert _balance(SimpleNamespace(balance_only="", no_class_balance=False)) is True
+    assert _balance(SimpleNamespace(balance_only="", no_class_balance=True)) is False
+    assert _balance(SimpleNamespace(balance_only="eksik_bilgi,hakaret", no_class_balance=True)) == {"eksik_bilgi", "hakaret"}
+
+
 def test_class_balance_keeps_the_type_mix_of_own_questions():
     from pusula.schema import Example
 

@@ -148,10 +148,16 @@ class D3Engine(BaseEngine):
 
     model_name = "pusula-d3"
 
-    def __init__(self, decider, token_budget: int = 16384, calibration: Optional[Mapping[str, Any]] = None):
+    def __init__(self, decider, token_budget: int = 16384, calibration: Optional[Mapping[str, Any]] = None,
+                 own_base: bool = False):
         self.decider = decider
         self.token_budget = token_budget
         self._lock = threading.Lock()
+        # own_base: a question that is not one of Pusula's built-in questions (routing, template and agent questions)
+        # is answered by the base Decision 3.0 (adapter off). 31 Oct 2026 measurement: on users' own questions in
+        # unseen sectors the base model scored higher than the fine-tuned adapters (92.8 vs 90.5 / 91.2).
+        self.own_base = own_base
+        self._builtin: Optional[tuple[set[str], list[Question]]] = None
         # per-option log-prob biases for the built-in universal questions (pusula.calibrate); applied only when
         # a request asks exactly that question, never to a custom question that happens to share its name
         self._calibration: dict[str, tuple[Question, list[float]]] = {}
@@ -164,8 +170,9 @@ class D3Engine(BaseEngine):
 
     @classmethod
     def load(cls, base: str, adapter: Optional[str] = None, device: str = "cuda:0",
-             load_in_4bit: Optional[bool] = None) -> "D3Engine":
-        """`load_in_4bit=None` picks BF16 when the weights fit the GPU, else 4-bit (PUSULA_D3_4BIT overrides)."""
+             load_in_4bit: Optional[bool] = None, own_base: Optional[bool] = None) -> "D3Engine":
+        """`load_in_4bit=None` picks BF16 when the weights fit the GPU, else 4-bit (PUSULA_D3_4BIT overrides).
+        `own_base=None` reads PUSULA_OWN_BASE ("1" = own questions are answered by the base model)."""
         from .d3model import D3Decider
 
         base = os.path.expanduser(base)
@@ -177,10 +184,28 @@ class D3Engine(BaseEngine):
         if os.path.isfile(calib_file):
             with open(calib_file, encoding="utf-8") as f:
                 calibration = json.load(f)
-        engine = cls(decider, calibration=calibration)
+        if own_base is None:
+            own_base = os.environ.get("PUSULA_OWN_BASE", "0") == "1"
+        engine = cls(decider, calibration=calibration, own_base=bool(own_base and adapter))
         if adapter is None:
             engine.model_name = "d3-base"
         return engine
+
+    def _is_builtin(self, name: str, q: Question) -> bool:
+        """True for a question the adapter was trained on: a routing question (alan, alt_alan, niyet, and konu of an
+        institution's own list), a universal (template) question or an agent question, by name or by content. By name
+        too, because a built-in question may arrive in an earlier wording: the published benchmark and older clients
+        use v1.0 texts and option lists of duygu, guvenlik, kisisel_veri and the routing questions."""
+        if self._builtin is None:
+            tax = load_taxonomy()
+            qs = [tax.domain_question()]
+            for d, dom in tax.domains.items():
+                qs.append(tax.subdomain_question(d))
+                qs += [tax.intent_question(d, sk) for sk in dom.subdomains]
+            names = {Q_DOMAIN, Q_SUBDOMAIN, Q_INTENT, Q_TOPIC, *tax.universal, *tax.agent}
+            self._builtin = (names, qs + list(tax.universal.values()) + list(tax.agent.values()))
+        names, qs = self._builtin
+        return name in names or q in qs
 
     @torch.inference_mode()
     def decide_many(self, requests: Sequence[tuple[str, QuestionsIn]]) -> list[dict[str, dict[str, Any]]]:
@@ -190,21 +215,25 @@ class D3Engine(BaseEngine):
         d = self.decider
         ids = d.encode([render(d.tokenizer, requests[r][0], q, d.codes) for r, _, q in jobs])
         results: list[dict[str, dict[str, Any]]] = [{} for _ in requests]
-        order = sorted(range(len(jobs)), key=lambda i: len(ids[i]))
-        lengths = [len(ids[i]) for i in order]
+        use_base = [self.own_base and not self._is_builtin(name, q) for _, name, q in jobs]
         with self._lock:
-            start = 0
-            while start < len(order):
-                end = self._batch_end(lengths, start)
-                batch = order[start:end]
-                counts = [len(jobs[i][2].option_keys()) for i in batch]
-                with torch.autocast(d.device.type, dtype=torch.bfloat16, enabled=d.device.type == "cuda"):
-                    logits = d.logits([ids[i] for i in batch], counts)
-                probs = torch.softmax(logits.float(), dim=-1).cpu()
-                for row, i in enumerate(batch):
-                    r, name, q = jobs[i]
-                    results[r][name] = answer_from_probs(q, self._calibrate(name, q, probs[row, : counts[row]].tolist()))
-                start = end
+            for base in (False, True):  # one forward pass never mixes adapter and base answers
+                order = sorted((i for i in range(len(jobs)) if use_base[i] == base), key=lambda i: len(ids[i]))
+                lengths = [len(ids[i]) for i in order]
+                start = 0
+                while start < len(order):
+                    end = self._batch_end(lengths, start)
+                    batch = order[start:end]
+                    counts = [len(jobs[i][2].option_keys()) for i in batch]
+                    with torch.autocast(d.device.type, dtype=torch.bfloat16, enabled=d.device.type == "cuda"):
+                        logits = d.logits([ids[i] for i in batch], counts, base=True) if base else \
+                            d.logits([ids[i] for i in batch], counts)
+                    probs = torch.softmax(logits.float(), dim=-1).cpu()
+                    for row, i in enumerate(batch):
+                        r, name, q = jobs[i]
+                        p = probs[row, : counts[row]].tolist()
+                        results[r][name] = answer_from_probs(q, p if base else self._calibrate(name, q, p))
+                    start = end
         return results
 
     def _batch_end(self, lengths: Sequence[int], start: int, max_padding: float = 0.25) -> int:
