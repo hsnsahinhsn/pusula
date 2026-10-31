@@ -259,6 +259,7 @@ Invalid questions are rejected with HTTP 422 and the reason. The server is confi
 | `PUSULA_D3_BASE` | — | Base `vllm-sr/d3` directory; required for Pusula (`PUSULA_MODEL_DIR` then points to the adapter) |
 | `PUSULA_MODEL_DIR` | — | Pusula adapter directory, or a Pusula Nano model directory |
 | `PUSULA_DEVICE` | auto | `cuda`, `cuda:1`, `cpu`… |
+| `PUSULA_OWN_BASE` | 1 | Pusula only: custom questions (not built-in) are answered by base Decision 3.0 with the adapter disabled; `0` uses the adapter for every question |
 | `PUSULA_CORS_ORIGINS` | none | Comma-separated allowed origins for browser clients |
 | `PUSULA_MAX_QUESTIONS` | 32 | Questions per request |
 | `PUSULA_MAX_BATCH` | 64 | Requests per batch call |

@@ -172,7 +172,7 @@ class D3Engine(BaseEngine):
     def load(cls, base: str, adapter: Optional[str] = None, device: str = "cuda:0",
              load_in_4bit: Optional[bool] = None, own_base: Optional[bool] = None) -> "D3Engine":
         """`load_in_4bit=None` picks BF16 when the weights fit the GPU, else 4-bit (PUSULA_D3_4BIT overrides).
-        `own_base=None` reads PUSULA_OWN_BASE ("1" = own questions are answered by the base model)."""
+        `own_base=None` reads PUSULA_OWN_BASE (default "1": own questions are answered by the base model; "0" = adapter)."""
         from .d3model import D3Decider
 
         base = os.path.expanduser(base)
@@ -185,7 +185,7 @@ class D3Engine(BaseEngine):
             with open(calib_file, encoding="utf-8") as f:
                 calibration = json.load(f)
         if own_base is None:
-            own_base = os.environ.get("PUSULA_OWN_BASE", "0") == "1"
+            own_base = os.environ.get("PUSULA_OWN_BASE", "1") != "0"   # v2.0 default (user decision, 31 Oct 2026)
         engine = cls(decider, calibration=calibration, own_base=bool(own_base and adapter))
         if adapter is None:
             engine.model_name = "d3-base"

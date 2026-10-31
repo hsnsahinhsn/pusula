@@ -260,6 +260,7 @@ Geçersiz sorular HTTP 422 ve gerekçesiyle reddedilir. Sunucu, ortam değişken
 | `PUSULA_D3_BASE` | — | Temel `vllm-sr/d3` dizini; Pusula için gereklidir (bu durumda `PUSULA_MODEL_DIR` adaptörü gösterir) |
 | `PUSULA_MODEL_DIR` | — | Pusula adaptör dizini ya da Pusula Nano model dizini |
 | `PUSULA_DEVICE` | otomatik | `cuda`, `cuda:1`, `cpu`… |
+| `PUSULA_OWN_BASE` | 1 | Yalnız Pusula: hazır olmayan (kullanıcıya özel) sorular adaptör kapatılarak temel Decision 3.0 ile cevaplanır; `0` her soruda adaptörü kullanır |
 | `PUSULA_CORS_ORIGINS` | yok | Tarayıcı istemcileri için virgülle ayrılmış izinli origin'ler |
 | `PUSULA_MAX_QUESTIONS` | 32 | İstek başına soru sayısı |
 | `PUSULA_MAX_BATCH` | 64 | Toplu çağrıdaki istek sayısı |
