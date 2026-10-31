@@ -42,7 +42,7 @@
 
 <main>
 <div class="wrap hero">
-  <p class="eyebrow">Açık kaynak · Apache 2.0 · v1.0</p>
+  <p class="eyebrow">Açık kaynak · Apache 2.0 · v2.0</p>
   <h1>İlk Türkçe tam donanımlı<br>karar modeli</h1>
   <p class="lead">Karar modelleri, bir metin hakkında tanımlı sorulara (örneğin bir kaydın hangi ekibe
   yönlendirileceği, ne kadar acil olduğu ya da bir insana devredilmesinin gerekip gerekmediği) cevap verir ve metin
@@ -58,18 +58,18 @@
   <div class="tiles">
     <div class="tile">
       <p class="label">Gerçek müşteri mesajları</p>
-      <p class="value">85,6</p>
-      <p class="delta">Decision 3.0: 77,4 · <strong>+8,2</strong></p>
+      <p class="value">91,8</p>
+      <p class="delta">Decision 3.0: 84,0 · <strong>+7,8</strong></p>
     </div>
     <div class="tile">
       <p class="label">Uzun müşteri şikâyetleri</p>
-      <p class="value">88,0</p>
-      <p class="delta">Decision 3.0: 81,4 · <strong>+6,6</strong></p>
+      <p class="value">87,9</p>
+      <p class="delta">Decision 3.0: 81,5 · <strong>+6,4</strong></p>
     </div>
     <div class="tile">
       <p class="label">Türkçe Karar Benchmark'ı</p>
-      <p class="value">92,6</p>
-      <p class="delta">Decision 3.0: 88,5 · <strong>+4,1</strong></p>
+      <p class="value">92,2</p>
+      <p class="delta">Decision 3.0: 88,5 · <strong>+3,7</strong></p>
     </div>
   </div>
   <p class="note">Pusula'nın doğruluğu (%). Değerlendirme yöntemi <a href="#results">Sonuçlar</a> bölümünde açıklanmıştır.</p>
@@ -166,7 +166,7 @@
         <dl>
           <dt>Boyut</dt><dd>26B: <code>vllm-sr/d3</code> üzerine 0,9 GB'lık LoRA adaptörü</dd>
           <dt>Çalıştığı yer</dt><dd>GPU: BF16'da ≥ 64 GB, 4-bit'te ≥ 24 GB</dd>
-          <dt>Benchmark / altın</dt><dd>92,6 / 90,4</dd>
+          <dt>Benchmark / altın</dt><dd>92,2 / 93,1</dd>
           <dt>Ağırlıklar</dt><dd><a href="https://huggingface.co/hsnsahinhsn/pusula">hsnsahinhsn/pusula</a></dd>
         </dl>
       </div>
@@ -177,7 +177,7 @@
         <dl>
           <dt>Boyut</dt><dd>149M (<a href="https://huggingface.co/boun-tabilab/TabiBERT">TabiBERT</a> cross-encoder)</dd>
           <dt>Çalıştığı yer</dt><dd>CPU veya herhangi bir GPU</dd>
-          <dt>Benchmark / altın</dt><dd>82,7 / 84,6</dd>
+          <dt>Benchmark / altın</dt><dd>83,3 / 91,3</dd>
           <dt>Ağırlıklar</dt><dd><a href="https://huggingface.co/hsnsahinhsn/pusula-nano">hsnsahinhsn/pusula-nano</a></dd>
         </dl>
       </div>
@@ -205,11 +205,11 @@
     <script type="application/json" id="chart-data">
 {"title": "Decision 3.0 ve Pusula, doğruluk (%)", "domain": [75, 100], "step": 5, "series": ["Decision 3.0", "Pusula"],
  "rows": [
-  {"label": "Gerçek müşteri mesajları", "base": 77.4, "pusula": 85.6},
-  {"label": "Uzun müşteri şikâyetleri", "base": 81.4, "pusula": 88.0},
-  {"label": "Türkçe Karar Benchmark'ı", "base": 88.5, "pusula": 92.6},
-  {"label": "Altın test seti", "base": 85.5, "pusula": 90.4},
-  {"label": "Kendi sorularınız", "base": 94.8, "pusula": 94.2},
+  {"label": "Gerçek müşteri mesajları", "base": 84.0, "pusula": 91.8},
+  {"label": "Uzun müşteri şikâyetleri", "base": 81.5, "pusula": 87.9},
+  {"label": "Türkçe Karar Benchmark'ı", "base": 88.5, "pusula": 92.2},
+  {"label": "Altın test seti", "base": 86.3, "pusula": 93.1},
+  {"label": "Özel sorular", "base": 92.8, "pusula": 93.5},
   {"label": "MASSIVE tr-TR, niyet", "base": 85.3, "pusula": 85.2},
   {"label": "OffensEval 2020 Türkçe", "base": 88.4, "pusula": 88.3}
  ]}
@@ -219,13 +219,13 @@
       <table class="results">
         <thead><tr><th>Değerlendirme</th><th class="num">Soru</th><th class="num">Decision 3.0</th><th class="num">Pusula</th><th class="num">Pusula Nano</th></tr></thead>
         <tbody>
-          <tr><td>Gerçek müşteri mesajları (500, eğitim dışı, lisanslı)</td><td class="num">4.500</td><td class="num">77,4</td><td class="num best">85,6</td><td class="num">84,7</td></tr>
-          <tr><td>Uzun müşteri şikâyetleri (500, eğitim dışı, lisanslı)</td><td class="num">4.500</td><td class="num">81,4</td><td class="num best">88,0</td><td class="num">84,6</td></tr>
-          <tr><td><a href="https://github.com/hsnsahinhsn/pusula/blob/main/benchmark/README.md">Türkçe Karar Benchmark'ı</a> (2.194 mesaj)</td><td class="num">19.861</td><td class="num">88,5</td><td class="num best">92,6</td><td class="num">82,7</td></tr>
-          <tr><td>Altın test seti (eğitimde olmayan 759 mesaj)</td><td class="num">7.015</td><td class="num">85,5</td><td class="num best">90,4</td><td class="num">84,6</td></tr>
-          <tr><td>Kendi sorularınız (497 mesaj × 3 özel soru)</td><td class="num">1.491</td><td class="num best">94,8</td><td class="num">94,2</td><td class="num">87,6</td></tr>
-          <tr><td>MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı)</td><td class="num">2.974</td><td class="num best">85,3</td><td class="num">85,2</td><td class="num">36,4</td></tr>
-          <tr><td>OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler)</td><td class="num">3.528</td><td class="num best">88,4</td><td class="num">88,3</td><td class="num">30,6</td></tr>
+          <tr><td>Gerçek müşteri mesajları (500, eğitim dışı, lisanslı)</td><td class="num">7.500</td><td class="num">84,0</td><td class="num best">91,8</td><td class="num">88,9</td></tr>
+          <tr><td>Uzun müşteri şikâyetleri (500, eğitim dışı, lisanslı)</td><td class="num">4.500</td><td class="num">81,5</td><td class="num best">87,9</td><td class="num">85,2</td></tr>
+          <tr><td><a href="https://github.com/hsnsahinhsn/pusula/blob/main/benchmark/README.md">Türkçe Karar Benchmark'ı</a> (2.194 mesaj)</td><td class="num">19.861</td><td class="num">88,5</td><td class="num best">92,2</td><td class="num">83,3</td></tr>
+          <tr><td>Altın test seti (eğitimde olmayan 757 mesaj)</td><td class="num">11.355</td><td class="num">86,3</td><td class="num best">93,1</td><td class="num">91,3</td></tr>
+          <tr><td>Görülmemiş sektörlerde özel sorular</td><td class="num">400</td><td class="num">92,8</td><td class="num best">93,5</td><td class="num">53,2</td></tr>
+          <tr><td>MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı)</td><td class="num">2.974</td><td class="num best">85,3</td><td class="num">85,2</td><td class="num">26,9</td></tr>
+          <tr><td>OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler)</td><td class="num">3.528</td><td class="num best">88,4</td><td class="num">88,3</td><td class="num">80,9</td></tr>
         </tbody>
       </table>
     </div>
@@ -235,14 +235,21 @@
       <table>
         <thead><tr><th>Soru</th><th class="num">Decision 3.0</th><th class="num">Pusula</th></tr></thead>
         <tbody>
-          <tr><td>Aciliyet (4 seviye)</td><td class="num">53,2</td><td class="num best">78,9</td></tr>
-          <tr><td>İnsana devretme</td><td class="num">81,5</td><td class="num best">89,2</td></tr>
-          <tr><td>Alan</td><td class="num">82,1</td><td class="num best">86,8</td></tr>
-          <tr><td>Duygu</td><td class="num">85,0</td><td class="num best">88,3</td></tr>
-          <tr><td>Güvenlik riski</td><td class="num">94,2</td><td class="num best">98,0</td></tr>
-          <tr><td>Eylem gerekli mi</td><td class="num">88,9</td><td class="num best">90,5</td></tr>
-          <tr><td>Kişisel veri</td><td class="num best">96,4</td><td class="num">96,3</td></tr>
-          <tr><td>Niyet</td><td class="num">96,8</td><td class="num best">97,0</td></tr>
+          <tr><td>Alan</td><td class="num">82,0</td><td class="num best">82,8</td></tr>
+          <tr><td>Mesaj türü</td><td class="num">69,0</td><td class="num best">93,4</td></tr>
+          <tr><td>Aciliyet (4 seviye)</td><td class="num">53,1</td><td class="num best">82,8</td></tr>
+          <tr><td>Duygu</td><td class="num">89,2</td><td class="num best">92,7</td></tr>
+          <tr><td>Eksik bilgi</td><td class="num">71,5</td><td class="num best">90,8</td></tr>
+          <tr><td>Eylem gerekli mi</td><td class="num">88,6</td><td class="num best">91,8</td></tr>
+          <tr><td>İnsana devretme</td><td class="num">81,4</td><td class="num best">87,1</td></tr>
+          <tr><td>Kişisel veri</td><td class="num">96,4</td><td class="num best">96,7</td></tr>
+          <tr><td>Güvenlik riski</td><td class="num">95,6</td><td class="num best">99,2</td></tr>
+          <tr><td>Hakaret ve nefret söylemi</td><td class="num">99,2</td><td class="num best">100,0</td></tr>
+          <tr><td>Dolandırıcılık</td><td class="num">92,1</td><td class="num best">98,8</td></tr>
+          <tr><td>Can güvenliği</td><td class="num">98,0</td><td class="num best">99,1</td></tr>
+          <tr><td>Yasal risk</td><td class="num best">95,5</td><td class="num">95,2</td></tr>
+          <tr><td>Ayrılma riski</td><td class="num">85,7</td><td class="num best">88,9</td></tr>
+          <tr><td>Satış fırsatı</td><td class="num">97,2</td><td class="num best">97,9</td></tr>
         </tbody>
       </table>
     </div>
@@ -251,8 +258,12 @@
       <li><strong>Gerçek müşteri mesajları:</strong> Değerlendirme, ticari bir iş ortağından lisanslanan ve eğitimde
       kullanılmayan 500'er anonim mesajdan oluşan iki set üzerinde yapılmıştır: müşteri mesajları (yorum, şikâyet ve
       soru) ile uzun ve ayrıntılı müşteri şikâyetleri. Bu setler yayımlanmamaktadır.</li>
-      <li><strong>Aciliyet kısmen özneldir:</strong> iki etiketçi mesajların %84,4'ünde aynı cevabı vermektedir;
-      ulaşılabilir sonuç bu oranla sınırlıdır (Pusula: 78,9).</li>
+      <li><strong>Sürüm 2.0:</strong> Değerlendirme setleri 20 şablonu kapsayacak biçimde genişletilmiş ve v2.0
+      etiketleme politikasıyla etiketlenmiştir; bu nedenle puanlar v1.0 için yayımlananlarla karşılaştırılamaz. v2.0'ın
+      daha düşük kaldığı ölçümler dâhil v1.0 ile karşılaştırma
+      <a href="https://github.com/hsnsahinhsn/pusula/blob/main/README_TR.md#sonuçlar">README</a> dosyasında yer almaktadır.</li>
+      <li><strong>Özel sorular</strong> (hazır şablonlar arasında yer almayan sorular), adaptör kapatılarak temel
+      Decision 3.0 modeli tarafından cevaplanmaktadır; hazır şablonlar adaptörle cevaplanmaktadır.</li>
       <li><strong>Pusula Nano</strong> ağırlıklı olarak hazır sorularla eğitilmiştir. Hazır sorulardan farklı ya da
       çok seçenekli görevler için Pusula önerilmektedir.</li>
       <li>MASSIVE ve OffensEval eğitim verisinde yer almamaktadır.</li>

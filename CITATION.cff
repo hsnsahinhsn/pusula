@@ -15,8 +15,8 @@ authors:
 repository-code: "https://github.com/hsnsahinhsn/pusula"
 url: "https://hsnsahinhsn.github.io/pusula/"
 license: Apache-2.0
-version: "1.0"
-date-released: "2026-10-18"
+version: "2.0"
+date-released: "2026-10-31"
 keywords:
   - turkish
   - decision model

@@ -31,15 +31,15 @@ geliştirilmiştir ve Türkçedeki doğrulukları sınırlıdır. **Pusula, Tür
   karşılaştırılmıştır; sonuçlar modelle birlikte yayımlanmaktadır. Benchmark,
   [Hugging Face](https://huggingface.co/datasets/hsnsahinhsn/turkish-decision-benchmark) üzerinde de sunulmaktadır.
 
-> **Durum:** v1.0 (18 Ekim 2026). Ağırlıklar: [Pusula](https://huggingface.co/hsnsahinhsn/pusula) ·
+> **Durum:** v2.0 (31 Ekim 2026). Ağırlıklar: [Pusula](https://huggingface.co/hsnsahinhsn/pusula) ·
 > [Pusula Nano](https://huggingface.co/hsnsahinhsn/pusula-nano). Önceki sürümler [Sürümler](#sürümler) bölümünde listelenmektedir.
 
 ## Modeller
 
 | Model | Boyut | Çalıştığı yer | Benchmark / altın set | Ne için |
 |---|---|---|---|---|
-| **Pusula** (Türkçe Decision 3.0) | 26B: `vllm-sr/d3` üzerine 0,9 GB'lık LoRA adaptörü | GPU: BF16'da ≥ 64 GB, 4-bit'te ≥ 24 GB | **92,6 / 90,4** | En yüksek doğruluk; hazır ve özel sorular için |
-| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU veya herhangi bir GPU | 82,7 / 84,6 | Hazır sorularda yüksek hacim ve düşük gecikme |
+| **Pusula** (Türkçe Decision 3.0) | 26B: `vllm-sr/d3` üzerine 0,9 GB'lık LoRA adaptörü | GPU: BF16'da ≥ 64 GB, 4-bit'te ≥ 24 GB | **92,2 / 93,1** | En yüksek doğruluk; hazır ve özel sorular için |
+| **Pusula Nano** | 149M ([TabiBERT](https://huggingface.co/boun-tabilab/TabiBERT) cross-encoder) | CPU veya herhangi bir GPU | 83,3 / 91,3 | Hazır sorularda yüksek hacim ve düşük gecikme |
 
 Her iki model de aynı istekleri kabul eder.
 
@@ -53,40 +53,70 @@ Claude Sonnet 5.5) tarafından atanmış; ayrışmalar hakem tarafından karara 
 çerçevesinde Claude tarafından kör olarak etiketlenmiştir. Değerlendirme etiketleri yalnızca ölçüm amacıyla
 kullanılmakta olup hiçbir zaman eğitim etiketi olarak kullanılmamaktadır.
 
-| Değerlendirme | Soru | Decision 3.0 | **Pusula** | Pusula Nano |
-|---|---|---|---|---|
-| Gerçek müşteri mesajları (500, eğitim dışı, lisanslı) | 4.500 | 77,4 | **85,6** | 84,7 |
-| Uzun müşteri şikâyetleri (500, eğitim dışı, lisanslı) | 4.500 | 81,4 | **88,0** | 84,6 |
-| [Türkçe Karar Benchmark'ı](benchmark/README.md) (2.194 mesaj) | 19.861 | 88,5 | **92,6** | 82,7 |
-| Altın test seti (eğitimde olmayan 759 mesaj) | 7.015 | 85,5 | **90,4** | 84,6 |
-| Kendi sorularınız (497 mesaj × 3 özel soru) | 1.491 | **94,8** | 94,2 | 87,6 |
-| MASSIVE tr-TR, 60 seçenekli niyet, sıfır örnek (insan yazımı) | 2.974 | **85,3** | 85,2 | 36,4 |
-| OffensEval 2020 Türkçe, saldırgan dil (gerçek tweet'ler) | 3.528 | **88,4** | 88,3 | 30,6 |
+v2.0'da değerlendirme setleri 20 şablonu kapsayacak biçimde genişletilmiş ve v2.0 etiketleme politikasıyla
+etiketlenmiştir. Bu nedenle Decision 3.0 ve 1.0 modelleri aynı setlerde yeniden ölçülmüş olup puanları v1.0 ile
+yayımlananlardan farklıdır. Decision 3.0 ile Pusula 1.0'ın MASSIVE ve OffensEval puanları v1.0 sürümündekilerdir.
+
+| Değerlendirme | Soru | Decision 3.0 | Pusula 1.0 | **Pusula 2.0** | Pusula Nano 1.0 | **Pusula Nano 2.0** |
+|---|---:|---:|---:|---:|---:|---:|
+| Gerçek müşteri mesajları (500, eğitim dışı, lisanslı) | 7.500 | 84,0 | 88,5 | **91,8** | 64,0 | **88,9** |
+| Uzun müşteri şikâyetleri (500, eğitim dışı, lisanslı) | 4.500 | 81,5 | 88,1 | **87,9** | 84,6 | **85,2** |
+| [Türkçe Karar Benchmark'ı](benchmark/README.md) (2.194 mesaj) | 19.861 | 88,5 | 92,6 | **92,2** | 82,7 | **83,3** |
+| Altın test seti (757 eğitim dışı mesaj) | 11.355 | 86,3 | 90,5 | **93,1** | 62,8 | **91,3** |
+| Görülmemiş sektörlerde kullanıcıya özel sorular | 400 | 92,8 | 91,2 | **93,5** | 50,5 | **53,2** |
+| Eksik bilgi (`eksik_bilgi`) | 99 | 98,0 | 96,0 | **88,9** | 58,6 | **50,5** |
+| Satış fırsatı (`satis_firsati`) | 100 | 97,0 | 97,0 | **97,0** | 51,0 | **94,0** |
+| Can güvenliği (`can_guvenligi`) | 120 | 100,0 | 100,0 | **100,0** | 81,7 | **85,0** |
+| Hakaret ve nefret söylemi (`hakaret`) | 114 | 93,0 | 93,0 | **97,4** | 43,9 | **71,0** |
+| Dolandırıcılık (`dolandiricilik`) | 97 | 99,0 | 100,0 | **99,0** | 51,5 | **66,0** |
+| Ajan cevabının kaynağa dayanması (`kaynaga_dayanma`) | 100 | 93,0 | 93,0 | **97,0** | 30,0 | **34,0** |
+| Yapay zekâ ajanı soruları (şablon 17-20) | 300 | 96,8 | 97,5 | **97,5** | 51,2 | **65,5** |
+| E-postalarda kişisel veri | 150 | 95,3 | 98,7 | **99,3** | 71,3 | **89,3** |
+| Belgelere gizlenmiş komutlar | 400 | 100,0 | 100,0 | **100,0** | 73,8 | **78,0** |
+| Uzun belgeler (yaklaşık 12.000 karakter) | 120 | 100,0 | 100,0 | **100,0** | 46,7 | **60,0** |
+| MASSIVE tr-TR, 60 niyet, sıfır örnekle (insan yazımı) | 2.974 | 85,3 | 85,2 | **85,2** | 36,4 | **26,9** |
+| OffensEval 2020 Türkçe, saldırgan dil (gerçek tweetler) | 3.528 | 88,4 | 88,3 | **88,3** | 30,6 | **80,9** |
 
 Altın test seti, soru bazında:
 
-| Soru | Decision 3.0 | **Pusula** |
-|---|---|---|
-| Aciliyet (4 seviye) | 53,2 | **78,9** |
-| İnsana devretme | 81,5 | **89,2** |
-| Alan | 82,1 | **86,8** |
-| Duygu | 85,0 | **88,3** |
-| Güvenlik riski | 94,2 | **98,0** |
-| Eylem gerekli mi | 88,9 | **90,5** |
-| Kişisel veri | **96,4** | 96,3 |
-| Niyet | 96,8 | **97,0** |
+| Soru | Decision 3.0 | Pusula 1.0 | Pusula 2.0 |
+|---|---:|---:|---:|
+| Alan | 82,0 | **86,7** | 82,8 |
+| Mesaj türü | 69,0 | 79,9 | **93,4** |
+| Aciliyet (4 düzey) | 53,1 | 78,7 | **82,8** |
+| Duygu | 89,2 | 88,5 | **92,7** |
+| Eksik bilgi | 71,5 | 76,3 | **90,8** |
+| Eylem gerekli | 88,6 | 90,5 | **91,8** |
+| İnsana devret | 81,4 | **89,2** | 87,1 |
+| Kişisel veri | 96,4 | 96,2 | **96,7** |
+| Güvenlik riski | 95,6 | 98,7 | **99,2** |
+| Hakaret ve nefret söylemi | 99,2 | **100,0** | **100,0** |
+| Dolandırıcılık | 92,1 | 94,6 | **98,8** |
+| Can güvenliği | 98,0 | 98,3 | **99,1** |
+| Yasal risk | 95,5 | **95,6** | 95,2 |
+| Ayrılma riski | 85,7 | 87,6 | **88,9** |
+| Satış fırsatı | 97,2 | 96,7 | **97,9** |
 
 - **Gerçek müşteri mesajları:** Değerlendirme, ticari bir iş ortağından lisanslanan ve eğitimde kullanılmayan
   500'er anonim mesajdan oluşan iki set üzerinde yapılmıştır: müşteri mesajları (yorum, şikâyet ve soru) ile uzun ve
   ayrıntılı müşteri şikâyetleri. Bu setler yayımlanmamaktadır. Aynı kaynaklardan alınan diğer mesajlar eğitimde
-  kullanılmış ve açık bir model (Qwen) tarafından etiketlenmiştir.
-- **Aciliyet kısmen özneldir:** iki etiketçi mesajların %84,4'ünde aynı cevabı vermektedir; ulaşılabilir sonuç bu
-  oranla sınırlıdır (Pusula: 78,9).
-- **Özel sorular:** Pusula, Decision 3.0 ile aynı düzeydedir (94,2'ye 94,8; altın setteki özel sorularda +1,6,
-  OffensEval'de −0,1, MASSIVE'de −0,1).
-- **Pusula Nano** ağırlıklı olarak hazır sorularla eğitilmiştir. Gerçek mesajlardaki doğruluğu Pusula'ya yakındır
-  (84,7'ye 85,6). Hazır sorulardan farklı ya da çok seçenekli görevler için Pusula önerilmektedir (OffensEval'de
-  88,3'e 30,6, MASSIVE'de 85,2'ye 36,4).
+  kullanılmış ve açık bir model (Qwen3.8-27B) tarafından etiketlenmiştir.
+- **Pusula 2.0'ın Pusula 1.0'ın gerisinde kaldığı ölçümler:** eksik bilgi 88,9 (Pusula 1.0: 96,0; 99 mesaj),
+  benchmark 92,2 (92,6), uzun müşteri şikâyetleri 87,9 (88,1) ve dolandırıcılık 99,0 (100,0; tek mesaj). Soru
+  bazında alan 82,8 (86,7), insana devretme 87,1 (89,2) ve yasal risk 95,2 (95,6) daha düşüktür. Bu alanlardaki
+  iyileştirmeler v2.1 için planlanmaktadır.
+- **Eksik bilgi:** Bu soru v1.0 eğitiminde yer almadığından Pusula 1.0 bu soruyu temel modelin genel yeteneğiyle
+  cevaplamaktadır; temel model bu sette 98,0 almaktadır. Altın test setinde ise aynı soru Pusula 2.0 tarafından daha
+  doğru cevaplanmaktadır (90,8; Pusula 1.0: 76,3; Decision 3.0: 71,5).
+- **Özel sorular:** Hazır şablonlar arasında yer almayan sorular, adaptör kapatılarak temel Decision 3.0 modeli
+  tarafından cevaplanmakta (`PUSULA_OWN_BASE`, varsayılan olarak açık), aynı istekteki hazır şablonlar ise adaptörle
+  cevaplanmaktadır. Görülmemiş sektörlerdeki özel sorularda Pusula 2.0 93,5'e ulaşmaktadır (Decision 3.0: 92,8;
+  Pusula 1.0: 91,2); MASSIVE ve OffensEval'deki puanları Decision 3.0 düzeyindedir.
+- **Pusula Nano 2.0**, eğitim verisine lisanslı gerçek müşteri mesajları eklenerek bir tur (epoch) eğitilmiştir.
+  17 ölçümün 15'inde Nano 1.0'ın üzerinde, MASSIVE 26,9 (Nano 1.0: 36,4) ve eksik bilgi 50,5 (58,6) ölçümlerinde
+  ise gerisindedir. Nano 1.0, 20 şablon tanıtılmadan önce eğitildiğinden bu şablonları içeren setlerde daha düşük
+  puan almaktadır. Hazır sorulardan farklı ya da çok seçenekli görevler için Pusula önerilmektedir (MASSIVE'de
+  85,2'ye 26,9).
 - MASSIVE ve OffensEval eğitim verisinde yer almamaktadır.
 
 ## İçindekiler
@@ -278,8 +308,7 @@ verilmelidir (`guvenlik` sorusundaki `guvenli` gibi). En fazla 200.000 karakterl
 
 ## Hazır taksonomi ve yönlendirme
 
-> Bu bölümde anlatılan 20 şablon ve kurumun kendi listesiyle yönlendirme v2.0 ile gelmektedir (geliştirme
-> aşamasında). v1.0 ve önceki modeller, önceki altı evrensel soruyla eğitilmiştir.
+> Bu bölümde anlatılan 20 şablon ve kurumun kendi listesiyle yönlendirme v2.0 ile gelmiştir. v1.0 ve önceki modeller, önceki altı evrensel soruyla eğitilmiştir.
 
 `POST /v1/route` (ya da `engine.route(metin)`) mesajı üç adımda (**alan**, **alt_alan** ve **niyet**) yönlendirir ve
 evrensel soruları aynı çağrıda cevaplar:
@@ -471,7 +500,8 @@ Her sürüm bu depoda ve iki Hugging Face deposunda etiketlenmektedir. Önceki a
 
 | Sürüm | Tarih | Gerçek müşteri mesajları (Pusula / Nano) | Notlar |
 |---|---|---|---|
-| `v1.0` | 18 Ekim 2026 | 85,6 / 84,7 | Güncel sürüm. Ek lisanslı eğitim verisi (uzun müşteri şikâyetleri) ve eğitim dışı ikinci bir gerçek ölçüm seti. |
+| `v2.0` | 31 Ekim 2026 | 91,8 / 88,9 | Güncel sürüm. 20 şablon, kurumun kendi listesiyle yönlendirme ve temel modelle cevaplanan özel sorular; NACE Rev. 2.1 sektörleri ve ESCO meslekleri üzerinde yeni sentetik eğitim verisi; lisanslı gerçek mesajlarla eğitilen Pusula Nano. Değerlendirme setleri genişletildiğinden puanlar önceki satırlarla karşılaştırılamaz. |
+| `v1.0` | 18 Ekim 2026 | 85,6 / 84,7 | Ek lisanslı eğitim verisi (uzun müşteri şikâyetleri) ve eğitim dışı ikinci bir gerçek ölçüm seti. |
 | `v1.0-onizleme` | 17 Ekim 2026 | 84,1 / 82,9 | Önizleme sürümü. |
 
 ## Katkıda bulunanlar ve atıf
@@ -491,7 +521,7 @@ Pusula'nın bir araştırmada veya üründe kullanılması durumunda aşağıdak
   title   = {Pusula: The First Full-Featured Turkish Decision Model},
   author  = {Şahin, Hasan and Sayman, Ahmet},
   year    = {2026},
-  version = {1.0},
+  version = {2.0},
   url     = {https://github.com/hsnsahinhsn/pusula},
   license = {Apache-2.0}
 }

@@ -42,7 +42,7 @@
 
 <main>
 <div class="wrap hero">
-  <p class="eyebrow">Open source · Apache 2.0 · v1.0</p>
+  <p class="eyebrow">Open source · Apache 2.0 · v2.0</p>
   <h1>The first full-featured<br>Turkish decision model</h1>
   <p class="lead">Decision models answer typed questions about a text (for example, which team should handle a ticket,
   how urgent it is or whether a human should take over) and return a <strong>probability for every option</strong>
@@ -57,18 +57,18 @@
   <div class="tiles">
     <div class="tile">
       <p class="label">Real customer messages</p>
-      <p class="value">85.6</p>
-      <p class="delta">Decision 3.0: 77.4 · <strong>+8.2</strong></p>
+      <p class="value">91.8</p>
+      <p class="delta">Decision 3.0: 84.0 · <strong>+7.8</strong></p>
     </div>
     <div class="tile">
       <p class="label">Long customer complaints</p>
-      <p class="value">88.0</p>
-      <p class="delta">Decision 3.0: 81.4 · <strong>+6.6</strong></p>
+      <p class="value">87.9</p>
+      <p class="delta">Decision 3.0: 81.5 · <strong>+6.4</strong></p>
     </div>
     <div class="tile">
       <p class="label">Turkish Decision Benchmark</p>
-      <p class="value">92.6</p>
-      <p class="delta">Decision 3.0: 88.5 · <strong>+4.1</strong></p>
+      <p class="value">92.2</p>
+      <p class="delta">Decision 3.0: 88.5 · <strong>+3.7</strong></p>
     </div>
   </div>
   <p class="note">Accuracy (%) of Pusula. The evaluation method is described under <a href="#results">Results</a>.</p>
@@ -166,7 +166,7 @@
         <dl>
           <dt>Size</dt><dd>26B: a 0.9 GB LoRA adapter on top of <code>vllm-sr/d3</code></dd>
           <dt>Runs on</dt><dd>GPU: ≥ 64 GB in BF16, ≥ 24 GB in 4-bit</dd>
-          <dt>Benchmark / gold</dt><dd>92.6 / 90.4</dd>
+          <dt>Benchmark / gold</dt><dd>92.2 / 93.1</dd>
           <dt>Weights</dt><dd><a href="https://huggingface.co/hsnsahinhsn/pusula">hsnsahinhsn/pusula</a></dd>
         </dl>
       </div>
@@ -177,7 +177,7 @@
         <dl>
           <dt>Size</dt><dd>149M (<a href="https://huggingface.co/boun-tabilab/TabiBERT">TabiBERT</a> cross-encoder)</dd>
           <dt>Runs on</dt><dd>CPU or any GPU</dd>
-          <dt>Benchmark / gold</dt><dd>82.7 / 84.6</dd>
+          <dt>Benchmark / gold</dt><dd>83.3 / 91.3</dd>
           <dt>Weights</dt><dd><a href="https://huggingface.co/hsnsahinhsn/pusula-nano">hsnsahinhsn/pusula-nano</a></dd>
         </dl>
       </div>
@@ -204,11 +204,11 @@
     <script type="application/json" id="chart-data">
 {"title": "Decision 3.0 and Pusula, accuracy (%)", "domain": [75, 100], "step": 5, "series": ["Decision 3.0", "Pusula"],
  "rows": [
-  {"label": "Real customer messages", "base": 77.4, "pusula": 85.6},
-  {"label": "Long customer complaints", "base": 81.4, "pusula": 88.0},
-  {"label": "Turkish Decision Benchmark", "base": 88.5, "pusula": 92.6},
-  {"label": "Gold test set", "base": 85.5, "pusula": 90.4},
-  {"label": "Your own questions", "base": 94.8, "pusula": 94.2},
+  {"label": "Real customer messages", "base": 84.0, "pusula": 91.8},
+  {"label": "Long customer complaints", "base": 81.5, "pusula": 87.9},
+  {"label": "Turkish Decision Benchmark", "base": 88.5, "pusula": 92.2},
+  {"label": "Gold test set", "base": 86.3, "pusula": 93.1},
+  {"label": "Custom questions", "base": 92.8, "pusula": 93.5},
   {"label": "MASSIVE tr-TR, intent", "base": 85.3, "pusula": 85.2},
   {"label": "OffensEval 2020 Turkish", "base": 88.4, "pusula": 88.3}
  ]}
@@ -218,13 +218,13 @@
       <table class="results">
         <thead><tr><th>Evaluation</th><th class="num">Questions</th><th class="num">Decision 3.0</th><th class="num">Pusula</th><th class="num">Pusula Nano</th></tr></thead>
         <tbody>
-          <tr><td>Real customer messages (500 held-out, licensed)</td><td class="num">4,500</td><td class="num">77.4</td><td class="num best">85.6</td><td class="num">84.7</td></tr>
-          <tr><td>Long customer complaints (500 held-out, licensed)</td><td class="num">4,500</td><td class="num">81.4</td><td class="num best">88.0</td><td class="num">84.6</td></tr>
-          <tr><td><a href="https://github.com/hsnsahinhsn/pusula/blob/main/benchmark/README.md">Turkish Decision Benchmark</a> (2,194 messages)</td><td class="num">19,861</td><td class="num">88.5</td><td class="num best">92.6</td><td class="num">82.7</td></tr>
-          <tr><td>Gold test set (759 held-out messages)</td><td class="num">7,015</td><td class="num">85.5</td><td class="num best">90.4</td><td class="num">84.6</td></tr>
-          <tr><td>Your own questions (497 messages × 3 ad-hoc questions)</td><td class="num">1,491</td><td class="num best">94.8</td><td class="num">94.2</td><td class="num">87.6</td></tr>
-          <tr><td>MASSIVE tr-TR, 60-way intent, zero-shot (human-written)</td><td class="num">2,974</td><td class="num best">85.3</td><td class="num">85.2</td><td class="num">36.4</td></tr>
-          <tr><td>OffensEval 2020 Turkish, offensive language (real tweets)</td><td class="num">3,528</td><td class="num best">88.4</td><td class="num">88.3</td><td class="num">30.6</td></tr>
+          <tr><td>Real customer messages (500 held-out, licensed)</td><td class="num">7,500</td><td class="num">84.0</td><td class="num best">91.8</td><td class="num">88.9</td></tr>
+          <tr><td>Long customer complaints (500 held-out, licensed)</td><td class="num">4,500</td><td class="num">81.5</td><td class="num best">87.9</td><td class="num">85.2</td></tr>
+          <tr><td><a href="https://github.com/hsnsahinhsn/pusula/blob/main/benchmark/README.md">Turkish Decision Benchmark</a> (2,194 messages)</td><td class="num">19,861</td><td class="num">88.5</td><td class="num best">92.2</td><td class="num">83.3</td></tr>
+          <tr><td>Gold test set (757 held-out messages)</td><td class="num">11,355</td><td class="num">86.3</td><td class="num best">93.1</td><td class="num">91.3</td></tr>
+          <tr><td>Custom questions in unseen sectors</td><td class="num">400</td><td class="num">92.8</td><td class="num best">93.5</td><td class="num">53.2</td></tr>
+          <tr><td>MASSIVE tr-TR, 60-way intent, zero-shot (human-written)</td><td class="num">2,974</td><td class="num best">85.3</td><td class="num">85.2</td><td class="num">26.9</td></tr>
+          <tr><td>OffensEval 2020 Turkish, offensive language (real tweets)</td><td class="num">3,528</td><td class="num best">88.4</td><td class="num">88.3</td><td class="num">80.9</td></tr>
         </tbody>
       </table>
     </div>
@@ -234,14 +234,21 @@
       <table>
         <thead><tr><th>Question</th><th class="num">Decision 3.0</th><th class="num">Pusula</th></tr></thead>
         <tbody>
-          <tr><td>Urgency (4 levels)</td><td class="num">53.2</td><td class="num best">78.9</td></tr>
-          <tr><td>Human handoff</td><td class="num">81.5</td><td class="num best">89.2</td></tr>
-          <tr><td>Domain</td><td class="num">82.1</td><td class="num best">86.8</td></tr>
-          <tr><td>Emotion</td><td class="num">85.0</td><td class="num best">88.3</td></tr>
-          <tr><td>Security risk</td><td class="num">94.2</td><td class="num best">98.0</td></tr>
-          <tr><td>Action required</td><td class="num">88.9</td><td class="num best">90.5</td></tr>
-          <tr><td>Personal data</td><td class="num best">96.4</td><td class="num">96.3</td></tr>
-          <tr><td>Intent</td><td class="num">96.8</td><td class="num best">97.0</td></tr>
+          <tr><td>Domain</td><td class="num">82.0</td><td class="num best">82.8</td></tr>
+          <tr><td>Message type</td><td class="num">69.0</td><td class="num best">93.4</td></tr>
+          <tr><td>Urgency (4 levels)</td><td class="num">53.1</td><td class="num best">82.8</td></tr>
+          <tr><td>Emotion</td><td class="num">89.2</td><td class="num best">92.7</td></tr>
+          <tr><td>Missing information</td><td class="num">71.5</td><td class="num best">90.8</td></tr>
+          <tr><td>Action required</td><td class="num">88.6</td><td class="num best">91.8</td></tr>
+          <tr><td>Human handoff</td><td class="num">81.4</td><td class="num best">87.1</td></tr>
+          <tr><td>Personal data</td><td class="num">96.4</td><td class="num best">96.7</td></tr>
+          <tr><td>Security risk</td><td class="num">95.6</td><td class="num best">99.2</td></tr>
+          <tr><td>Insults and hate speech</td><td class="num">99.2</td><td class="num best">100.0</td></tr>
+          <tr><td>Fraud</td><td class="num">92.1</td><td class="num best">98.8</td></tr>
+          <tr><td>Life and safety</td><td class="num">98.0</td><td class="num best">99.1</td></tr>
+          <tr><td>Legal risk</td><td class="num best">95.5</td><td class="num">95.2</td></tr>
+          <tr><td>Churn risk</td><td class="num">85.7</td><td class="num best">88.9</td></tr>
+          <tr><td>Sales opportunity</td><td class="num">97.2</td><td class="num best">97.9</td></tr>
         </tbody>
       </table>
     </div>
@@ -250,8 +257,12 @@
       <li><strong>Real customer messages:</strong> Evaluation was performed on two held-out sets of 500 anonymized
       messages licensed from a commercial partner: customer messages (reviews, complaints and questions) and long,
       detailed customer complaints. These sets are not published.</li>
-      <li><strong>Urgency is partly subjective:</strong> the two annotators agree on 84.4% of messages, which bounds the
-      attainable score (Pusula: 78.9).</li>
+      <li><strong>Version 2.0:</strong> the evaluation sets were extended to the 20 templates and labeled under the v2.0
+      labeling policy, so the scores are not comparable with those published for v1.0. A comparison with v1.0, including
+      the evaluations on which v2.0 is lower, is given in the
+      <a href="https://github.com/hsnsahinhsn/pusula#results">README</a>.</li>
+      <li><strong>Custom questions</strong> (questions that are not among the built-in templates) are answered by the base
+      Decision 3.0 model with the adapter disabled; the built-in templates are answered with the adapter.</li>
       <li><strong>Pusula Nano</strong> was trained mainly on the built-in questions. For tasks that differ from the
       built-in questions, or that have many options, Pusula is recommended.</li>
       <li>MASSIVE and OffensEval are not included in the training data.</li>
