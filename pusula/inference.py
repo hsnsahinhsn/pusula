@@ -158,6 +158,7 @@ class D3Engine(BaseEngine):
         # unseen sectors the base model scored higher than the fine-tuned adapters (92.8 vs 90.5 / 91.2).
         self.own_base = own_base
         self._builtin: Optional[tuple[set[str], list[Question]]] = None
+        self._base_templates: Optional[list[Question]] = None
         # per-option log-prob biases for the built-in universal questions (pusula.calibrate); applied only when
         # a request asks exactly that question, never to a custom question that happens to share its name
         self._calibration: dict[str, tuple[Question, list[float]]] = {}
@@ -167,6 +168,11 @@ class D3Engine(BaseEngine):
                 q = universal.get(name)
                 if q is not None and len(q.option_keys()) == c["options"]:
                     self._calibration[name] = (q, list(c["bias"]))
+
+    # Built-in templates that own_base also sends to the base model (user decision, 31 Oct 2026). eksik_bilgi was not
+    # in the v1.0 training; on the missing-information exam set the base model scored 98.0 and the v2.0 adapter 88.9
+    # (on the real customer messages the adapter scored higher, 95.4 vs 75.6).
+    BASE_TEMPLATES = ("eksik_bilgi",)
 
     @classmethod
     def load(cls, base: str, adapter: Optional[str] = None, device: str = "cuda:0",
@@ -207,6 +213,15 @@ class D3Engine(BaseEngine):
         names, qs = self._builtin
         return name in names or q in qs
 
+    def _use_base(self, name: str, q: Question) -> bool:
+        """own_base routing: own questions, and the BASE_TEMPLATES (by name or content), go to the base model."""
+        if not self.own_base:
+            return False
+        if self._base_templates is None:
+            universal = load_taxonomy().universal
+            self._base_templates = [universal[n] for n in self.BASE_TEMPLATES if n in universal]
+        return not self._is_builtin(name, q) or name in self.BASE_TEMPLATES or q in self._base_templates
+
     @torch.inference_mode()
     def decide_many(self, requests: Sequence[tuple[str, QuestionsIn]]) -> list[dict[str, dict[str, Any]]]:
         from .d3model import render
@@ -215,7 +230,7 @@ class D3Engine(BaseEngine):
         d = self.decider
         ids = d.encode([render(d.tokenizer, requests[r][0], q, d.codes) for r, _, q in jobs])
         results: list[dict[str, dict[str, Any]]] = [{} for _ in requests]
-        use_base = [self.own_base and not self._is_builtin(name, q) for _, name, q in jobs]
+        use_base = [self._use_base(name, q) for _, name, q in jobs]
         with self._lock:
             for base in (False, True):  # one forward pass never mixes adapter and base answers
                 order = sorted((i for i in range(len(jobs)) if use_base[i] == base), key=lambda i: len(ids[i]))

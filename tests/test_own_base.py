@@ -106,3 +106,18 @@ def test_logits_base_uses_base_readout_and_restores_adapter():
     assert dec.logits([[1, 2]], [2], base=True).tolist() == [[6.0, 2.0]]   # hidden 2 (adapter off) x base readout
     assert not bb.disabled
     assert dec.logits([[1, 2]], [2]).tolist() == [[1.0, 2.0]]              # adapter on, adapter readout
+
+
+def test_base_templates_use_base():
+    tax = load_taxonomy()
+    eb = tax.universal["eksik_bilgi"]
+    other = next(q for n, q in tax.universal.items() if n != "eksik_bilgi")
+    dec = RecordingDecider()
+    eng = D3Engine(dec, own_base=True)
+    res = eng.decide_many([("Siparişim ne zaman gelir?", {"eksik_bilgi": eb, "netlik": eb, "diger": other})])[0]
+    assert sum(n for f, n in dec.calls if f) == 2              # eksik_bilgi by name and by content
+    assert sum(n for f, n in dec.calls if not f) == 1          # the other template keeps the adapter
+    assert res["eksik_bilgi"]["noul"] < 0.5 and res["netlik"]["noul"] < 0.5
+    off = RecordingDecider()
+    D3Engine(off).decide_many([("Siparişim ne zaman gelir?", {"eksik_bilgi": eb})])
+    assert {f for f, _ in off.calls} == {False}                 # own_base off: the adapter answers everything
