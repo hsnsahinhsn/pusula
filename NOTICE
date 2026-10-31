@@ -8,6 +8,11 @@ This product includes or builds on the following Apache-2.0 licensed works:
   The d3 prompt contract and non-causal attention hook in pusula/d3model.py follow vllm-sr/d3
   (adapted there from perplexity-ai/pplx-decider-v1.1-27b, Apache-2.0).
 - Qwen3.8-27B, https://huggingface.co/Qwen/Qwen3.8-27B (Qwen Team, Alibaba Cloud).
+  In version 2.0, Qwen3.8-27B (FP8 version Qwen/Qwen3.8-27B-FP8) was also used as the teacher model that
+  labeled the training data.
+- Gemma 4, https://huggingface.co/google/gemma-4-31B-it (Google). In version 2.0, Gemma-4-31B-it (FP8 version
+  RedHatAI/gemma-4-31B-it-FP8-dynamic, with the draft model google/gemma-4-31B-it-assistant) was used to write
+  synthetic Turkish training messages.
 - TabiBERT, https://huggingface.co/boun-tabilab/TabiBERT (Boğaziçi University TABILAB).
 
 Pusula model weights are LoRA adapters and a code readout trained on top of vllm-sr/d3 (Pusula)
@@ -17,3 +22,11 @@ Data provenance. Pusula models were trained primarily on synthetic Turkish data 
 project. A limited set of real customer messages, licensed from a commercial partner, was also
 included in the training data. These messages were anonymized prior to use and are not redistributed
 in any form.
+
+Classifications used to diversify the synthetic data (version 2.0). The sectors and occupations of the
+synthetic messages were sampled from the following classifications. They are not redistributed.
+- NACE Rev. 2.1, the statistical classification of economic activities in the European Community.
+  Source: Eurostat. © European Union. Reused under Commission Decision 2011/833/EU.
+- ESCO (European Skills, Competences, Qualifications and Occupations), occupations pillar.
+  This product uses the ESCO classification of the European Commission. © European Union.
+  Reused under Commission Decision 2011/833/EU.
